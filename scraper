@@ -5,30 +5,41 @@ require 'hpricot'
 require 'open-uri'
 
 
-def author_lookup(elem)
-  return elem.inner_text
+def scrape_author(user_id)
+  $authors ||= []
+  unless $authors[user_id.to_i]
+    doc = open("http://www.vim.org/account/profile.php?user_id=#{user_id}") { |f| Hpricot(f) }
+    doc.at('td[text()="user name"]').next_sibling.inner_text
+    u = { :user_id => user_id }
+    u[:user_name] = doc.at('td[text()="user name"]').next_sibling.inner_text
+    u[:first_name] = doc.at('td[text()="first name"]').next_sibling.inner_text
+    u[:last_name] = doc.at('td[text()="last name"]').next_sibling.inner_text
+    u[:email] = doc.at('td[text()="email"]').next_sibling.inner_text
+    u[:homepage] = doc.at('td[text()="homepage"]').next_sibling.inner_text
+    $authors[user_id.to_i] = u
+  end
+  return $authors[user_id.to_i]
 end
 
 
-def scrape(id)
-  doc = open("http://www.vim.org/scripts/script.php?script_id=#{id}") { |f| Hpricot(f) }
-  s = {}
+def scrape_script(script_id)
+  doc = open("http://www.vim.org/scripts/script.php?script_id=#{script_id}") { |f| Hpricot(f) }
+  s = {:script_id => script_id}
   s[:name], s[:summary] = doc.search('.txth1').inner_text.split(" : ", 2)
   s[:script_type] = doc.at('td[text()="script type"]').parent.next_sibling.children.first.inner_text
   s[:description] = doc.at('td[text()="description"]').parent.next_sibling.children.first.inner_text.gsub("\r", "\n")
   s[:install_details] = doc.at('td[text()="install details"]').parent.next_sibling.children.first.inner_text.gsub("\r", "\n")
   s[:versions] = doc.search('a[@href*="download_script.php?"]').to_a.map do |a|
-    v = {}
-    v[:url] = 'http://www.vim.org/scripts/' + a.attributes['href']
+    v = {:url => 'http://www.vim.org/scripts/' + a.attributes['href']}
     row = a.parent
     v[:script_version] = row.siblings_at(1).inner_text
     v[:date] = row.siblings_at(2).inner_text
     v[:vim_version] = row.siblings_at(3).inner_text
-    v[:author] = author_lookup(row.siblings_at(4))
+    v[:author] = scrape_author(row.siblings_at(4).at('a').attributes['href'].match(/\d+/)[0])
     v[:release_notes] = row.siblings_at(5).inner_text.gsub("\r", "\n")
     v
   end
   s
 end
 
-pp scrape(3096)
+pp scrape_script(1567)
