@@ -1,0 +1,34 @@
+#!/bin/env ruby
+
+require 'rubygems'
+require 'hpricot'
+require 'open-uri'
+
+
+def author_lookup(elem)
+  return elem.inner_text
+end
+
+
+def scrape(id)
+  doc = open("http://www.vim.org/scripts/script.php?script_id=#{id}") { |f| Hpricot(f) }
+  s = {}
+  s[:name], s[:summary] = doc.search('.txth1').inner_text.split(" : ", 2)
+  s[:script_type] = doc.at('td[text()="script type"]').parent.next_sibling.children.first.inner_text
+  s[:description] = doc.at('td[text()="description"]').parent.next_sibling.children.first.inner_text.gsub("\r", "\n")
+  s[:install_details] = doc.at('td[text()="install details"]').parent.next_sibling.children.first.inner_text.gsub("\r", "\n")
+  s[:versions] = doc.search('a[@href*="download_script.php?"]').to_a.map do |a|
+    v = {}
+    v[:url] = 'http://www.vim.org/scripts/' + a.attributes['href']
+    row = a.parent
+    v[:script_version] = row.siblings_at(1).inner_text
+    v[:date] = row.siblings_at(2).inner_text
+    v[:vim_version] = row.siblings_at(3).inner_text
+    v[:author] = author_lookup(row.siblings_at(4))
+    v[:release_notes] = row.siblings_at(5).inner_text.gsub("\r", "\n")
+    v
+  end
+  s
+end
+
+pp scrape(3096)
