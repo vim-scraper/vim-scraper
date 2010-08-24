@@ -1,0 +1,20 @@
+#!/bin/env ruby
+
+require 'rubygems'
+require 'json'
+require 'grit'
+
+repos_dir = 'repos'
+
+script = JSON.parse($stdin.read)
+Dir.mkdir repos_dir unless test ?d, repos_dir
+repo_path = File.join(repos_dir, script['name'] + '.git')
+repo = Grit::Repo.init_bare_or_open(repo_path)
+
+script['versions'].reverse.each do |version|
+    puts "#{version['date']} #{version['script_version']}"
+end
+
+# token = File.read('token').chomp
+# client = Octopussy::Client.new(:login => 'vim-scripts', :token => token)
+

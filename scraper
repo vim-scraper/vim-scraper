@@ -3,6 +3,7 @@
 require 'rubygems'
 require 'hpricot'
 require 'open-uri'
+require 'json'
 
 
 def scrape_author(user_id)
@@ -42,4 +43,6 @@ def scrape_script(script_id)
   s
 end
 
-pp scrape_script(1567)
+
+puts JSON.pretty_generate(scrape_script(1567))
+
