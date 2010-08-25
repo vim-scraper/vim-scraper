@@ -193,6 +193,13 @@ def filenameify(s)
 end
 
 
+def gittagify(s)
+    # replace any chars git might take issue with (space, backslash, ^:)?]
+    # interesting, git doesn't like it when a tag ends with a period
+    s.gsub(/[^A-Za-z0-9_\-!#\@\$%&;<>+=(){|},.\]]/, '-').gsub(/\.$/, '.-')
+end
+
+
 def write_script(script)
     return unless script
     filename = File.join($scripts_dir, "#{'%04d' % script[:script_id]} - #{filenameify(script[:name])}.json")
@@ -292,14 +299,15 @@ def tag_version(version)
     ENV['GIT_COMMITTER_NAME'] = $vimscripts_name
     ENV['GIT_COMMITTER_EMAIL'] = $vimscripts_email
     # don't need to chdir before git tag since Gitrb set GIT_DIR.  :-/
-    $repo.git_tag('-a', version['script_version'], '-m', "tag #{version['script_version']}")
+    $repo.git_tag('-a', gittagify(version['script_version']), '-m', "tag #{version['script_version']}")
     ENV.delete('GIT_COMMITTER_NAME')
     ENV.delete('GIT_COMMITTER_EMAIL')
 end
 
 
 def find_version(version)
-    tagref = "#{$repo.path}/refs/tags/#{version['script_version']}"
+    tagname = gittagify(version['script_version'])
+    tagref = "#{$repo.path}/refs/tags/#{tagname}"
     return nil unless test ?f, tagref
     id = File.read(tagref)
     tag = $repo.get(id)
