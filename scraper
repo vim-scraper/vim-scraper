@@ -150,7 +150,7 @@ end
 
 def write_script(script)
     filename = File.join($scripts_dir, "#{'%04d' % script[:script_id]} - #{script[:name]}.json")
-    puts "scraped #{filename}"
+    puts "Scraped #{filename}"
     File.open(filename, 'w') { |f|
         f.write(JSON.pretty_generate(fix_encoding(script)))
     }
@@ -158,7 +158,7 @@ end
 
 
 def download(url, dest)
-    puts "Downloading #{url} to #{dest}"
+    puts "  downloading #{url} to #{dest}"
     open(url, 'rb') { |u|
         File.open(dest, 'wb') { |f|
             f.write(u.read)
@@ -210,11 +210,11 @@ def add_version(version, script)
     case pkgfile
     when /\.vim$/ then smart_copy_file(script, version['filename'], File.read(pkgfile))
     when /\.zip$/ then copy_zipfile(script, pkgfile)
-    when /\.tar\.gz$|\.tgz$/ then puts "can't handle .tar.gz"
-    when /\.tar\.bz2?$|\.tbz2?$/ then puts "can't handle .tar.bz"
-    when /\.gz$/ then puts "can't handle .gz"
-    when /\.bz2?$/ then puts "can't handle .bz"
-    when /\.vba$/ then puts "can't handle .vba"
+    when /\.tar\.gz$|\.tgz$/ then raise "can't handle .tar.gz"
+    when /\.tar\.bz2?$|\.tbz2?$/ then raise "can't handle .tar.bz"
+    when /\.gz$/ then raise "can't handle .gz"
+    when /\.bz2?$/ then raise "can't handle .bz"
+    when /\.vba$/ then raise "can't handle .vba"
     end
 end
 
@@ -277,7 +277,7 @@ def dump_repo(repo)
     log = log.each_line.reduce([]) { |a,v| a.push(v) unless v =~ /^CommitDate: /; a }.join
     ENV.delete('GIT_DIR')
     filename = File.join($repostats_dir, File.basename(repo).gsub(/\.git$/, '') + '.stats')
-    puts "stats for #{filename}"
+    puts "Stats for #{filename}"
     File.open(filename, 'w') { |f|
         f.write log
     }
