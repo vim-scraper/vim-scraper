@@ -31,8 +31,8 @@ Dir.mkdir $packages_dir unless test ?d, $packages_dir
 
 
 # http://github.com/hpricot/hpricot/issues#issue/25
-# super ugly that hpricot manages to screw up charset encodings
-# apparently it also requires this patch to hpricot itself:
+# super ugly that hpricot manages to screw up charset encodings so badly.
+# I'm patching hpricot directly as follows.  should probably convert this to a monkeypatch.
 #
 # --- a/lib/hpricot/traverse.rb	2010-08-25 02:07:55.288095773 -0700
 # +++ b/lib/hpricot/traverse.rb	2010-08-25 02:08:02.403095712 -0700
@@ -41,13 +41,31 @@ Dir.mkdir $packages_dir unless test ?d, $packages_dir
 #      def inner_text
 #        if respond_to?(:children) and children
 # -        children.map { |x| x.inner_text }.join
-# +        children.map { |x| x.inner_text.dup.force_encoding("ISO-8859-1") }.join
+# +        children.map { |x| str = x.inner_text; str = str.dup.force_encoding('ISO-8859-1').encode('UTF-8') if str.encoding.to_s == 'ASCII-8BIT' || str.encoding.to_s == 'ISO-8859-1'; str }.join
 #        else
 #          ""
 #        end
 #
+# --- a/lib/hpricot/builder.rb   2010-08-25 09:55:37.894992548 -0700
+# +++ b/lib/hpricot/builder.rb   2010-08-25 09:55:23.880992337 -0700
+# @@ -6,8 +6,9 @@
+#  module Hpricot
+#    # XML unescape
+#    def self.uxs(str)
+# -    str.to_s.
+# -        gsub(/\&(\w+);/) { [NamedCharacters[$1] || ??].pack("U*") }.
+# +    str = str.to_s
+# +    str = str.dup.force_encoding('ISO-8859-1').encode('UTF-8') if str.encoding.to_s == 'ASCII-8BIT' || str.encoding.to_s == 'ISO-8859-1'
+# +    str.gsub(/\&(\w+);/) { [NamedCharacters[$1] || ??].pack("U*") }.
+#          gsub(/\&\#(\d+);/) { [$1.to_i].pack("U*") }
+#    end
+#
 # Run './scraper 5' to see a script with a bunch of embedded nbsps
 # that breaks hpricot horribly.
+#
+# encoding resources:
+# http://yokolet.blogspot.com/2009/07/design-and-implementation-of-ruby-m17n.html
+# http://yehudakatz.com/2010/05/05/ruby-1-9-encodings-a-primer-and-the-solution-for-rails/
 
 module Hpricot
     module Traverse
@@ -137,11 +155,24 @@ def fix_encoding(h)
         h.each { |v| a.push fix_encoding(v) }
         a
     elsif h.kind_of? String
-        s = h.dup
-        s.force_encoding('ISO-8859-1') if s.encoding == 'ASCII-8BIT'
-        s.gsub!("\xA0", " ")   # not sure why this is necessary, seems obvious?
-        s = s.encode("UTF-8")
-        s
+        if h.encoding.to_s == 'ASCII-8BIT'
+            h = h.dup.force_encoding('ISO-8859-1').encode("UTF-8")
+        end
+        h
+    else
+        h
+    end
+end
+
+
+def check_encoding(h)
+    # recursively prints the encoding of every key/value/element etc
+    if h.kind_of? Hash
+        h.each_pair { |k,v| check_encoding(k); check_encoding(v) }
+    elsif h.kind_of? Array
+        h.each { |v| check_encoding(v) }
+    elsif h.kind_of? String
+        puts "#{h.encoding}: #{h[0..50]}"
     else
         h
     end
@@ -152,7 +183,9 @@ def write_script(script)
     filename = File.join($scripts_dir, "#{'%04d' % script[:script_id]} - #{script[:name]}.json")
     puts "Scraped #{filename}"
     File.open(filename, 'w') { |f|
-        f.write(JSON.pretty_generate(fix_encoding(script)))
+        farg = fix_encoding(script)
+        # check_encoding(farg)
+        f.write(JSON.pretty_generate(farg))
     }
 end
 
