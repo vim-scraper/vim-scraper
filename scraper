@@ -8,11 +8,12 @@ require 'gitrb'
 require 'zip/zipfilesystem' # rubyzip gem
 
 
-$scripts_dir = 'scripts'
-$repos_dir = 'repos'
-$packages_dir = 'scripts'
 $vimscripts_name = "vim-scripts"
 $vimscripts_email = 'vimscripts@rinspin.com'
+
+$repos_dir = 'repos'
+$scripts_dir = 'scripts'
+$packages_dir = 'packages'
 
 Dir.mkdir $scripts_dir unless test ?d, $scripts_dir
 Dir.mkdir $repos_dir unless test ?d, $repos_dir
@@ -109,15 +110,15 @@ end
 
 
 def add_version(version, script)
-    scriptname = "#{version['date']} #{version['script_version']} #{version['filename']}"
-    scriptdir = File.join($packages_dir, script['name'])
-    Dir.mkdir scriptdir unless test ?d, scriptdir
-    scriptfile = File.join(scriptdir, scriptname)
-    download(version['url'], scriptfile) unless test ?f, scriptfile
+    pkgname = "#{version['date']} #{version['script_version']} #{version['filename']}"
+    pkgdir = File.join($packages_dir, script['name'])
+    Dir.mkdir pkgdir unless test ?d, pkgdir
+    pkgfile = File.join(pkgdir, pkgname)
+    download(version['url'], pkgfile) unless test ?f, pkgfile
 
-    case scriptfile
-    when /\.vim$/ then smart_copy_file(script, version['filename'], File.read(scriptfile))
-    when /\.zip$/ then copy_zipfile(scriptfile)
+    case pkgfile
+    when /\.vim$/ then smart_copy_file(script, version['filename'], File.read(pkgfile))
+    when /\.zip$/ then copy_zipfile(pkgfile)
     when /\.tar\.gz$|\.tgz$/ then puts "can't handle .tar.gz"
     when /\.tar\.bz2?$|\.tbz2?$/ then puts "can't handle .tar.bz"
     when /\.gz$/ then puts "can't handle .gz"
