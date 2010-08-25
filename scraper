@@ -24,10 +24,10 @@ Dir.mkdir $packages_dir unless test ?d, $packages_dir
 
 # http://github.com/hpricot/hpricot/issues#issue/25
 # super ugly that hpricot manages to screw up charset encodings
-# apparently it also requires this patch:
-# 
-# --- /tmp/traverse.orig.rb	2010-08-25 02:07:55.288095773 -0700
-# +++ /tmp/traverse.new.rb	2010-08-25 02:08:02.403095712 -0700
+# apparently it also requires this patch to hpricot itself:
+#
+# --- a/lib/hpricot/traverse.rb	2010-08-25 02:07:55.288095773 -0700
+# +++ b/lib/hpricot/traverse.rb	2010-08-25 02:08:02.403095712 -0700
 # @@ -157,7 +157,7 @@
 #      # HTML elements are removed.
 #      def inner_text
@@ -37,7 +37,9 @@ Dir.mkdir $packages_dir unless test ?d, $packages_dir
 #        else
 #          ""
 #        end
-
+#
+# Run './scraper 5' to see a script with a bunch of embedded nbsps
+# that breaks hpricot horribly.
 
 module Hpricot
     module Traverse
@@ -66,6 +68,7 @@ module Hpricot
         alias_method :inner_content, :content
     end
 end
+
 
 
 
@@ -114,6 +117,9 @@ end
 
 
 def fix_encoding(h)
+    # see the Hpricot monkey patch above.  It gave us random encodings,
+    # we need to force them back to their default before converting to utf8.
+    # ugly!!
     if h.kind_of? Hash
         o = Hash.new
         h.each_pair { |k,v| o[k] = fix_encoding(v) }
