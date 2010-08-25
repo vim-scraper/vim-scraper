@@ -9,6 +9,7 @@ require 'zip/zipfilesystem' # rubyzip gem
 
 $repos_dir = 'repos'
 $scripts_dir = 'scripts'
+$vimscripts_email = 'vimscripts@rinspin.com'
 
 
 def download(url, dest)
@@ -65,18 +66,23 @@ end
 def read_script(script)
     Dir.mkdir $repos_dir unless test ?d, $repos_dir
     $repo_path = File.join($repos_dir, script['name'] + '.git')
+    # if gitrb is dying on the following line, you need this fix:
+    #   http://github.com/bronson/gitrb/commit/ae931ad7fe8309bcd2c4b9cc582c1500fa152e8d
     $repo = Gitrb::Repository.new(:path => $repo_path, :bare => true, :create => true)
 
     # token = File.read('token').chomp
     # github = Octopussy::Client.new(:login => 'vim-scripts', :token => token)
 
+    committer = Gitrb::User.new("vim-scripts", $vimscripts_email)
     script['versions'].reverse.each do |version|
+        author = Gitrb::User.new("#{version['author']['first_name']} #{version['author']['last_name']}",
+                                version['author']['email'], Time.new(*version['date'].split('-'), 0, 0, 0, 0))
         unless version_exists(version)
-            $repo.transaction(version['release_notes']) {
+            $repo.transaction(version['release_notes'], author, committer) {
                 add_version(version, script)
+                copy_file('README', script['description']+"\n") unless $repo.root['README']
             }
         end
-        exit
     end
 end
 
