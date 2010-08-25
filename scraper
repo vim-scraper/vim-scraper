@@ -122,6 +122,11 @@ end
 
 def scrape_script(script_id)
     doc = open(script_id_to_url(script_id)) { |f| Hpricot(f) }
+    if doc.search('title').inner_text == "Error : vim online"
+        puts "Skipped #{script_id} -- doesn't exist."
+        return nil
+    end
+
     s = {:script_id => script_id}
     s[:name], s[:summary] = doc.search('.txth1').inner_content.split(" : ", 2)
     s[:script_type] = doc.at('td[text()="script type"]').parent.next_sibling.children.first.inner_content
@@ -180,6 +185,7 @@ end
 
 
 def write_script(script)
+    return unless script
     filename = File.join($scripts_dir, "#{'%04d' % script[:script_id]} - #{script[:name]}.json")
     puts "Scraped #{filename}"
     File.open(filename, 'w') { |f|
