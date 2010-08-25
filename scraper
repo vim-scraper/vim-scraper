@@ -37,8 +37,13 @@ def scrape_author(user_id)
 end
 
 
+def script_id_to_url(script_id)
+    "http://www.vim.org/scripts/script.php?script_id=#{script_id}"
+end
+
+
 def scrape_script(script_id)
-  doc = open("http://www.vim.org/scripts/script.php?script_id=#{script_id}") { |f| Hpricot(f) }
+  doc = open(script_id_to_url(script_id)) { |f| Hpricot(f) }
   s = {:script_id => script_id}
   s[:name], s[:summary] = doc.search('.txth1').inner_text.split(" : ", 2)
   s[:script_type] = doc.at('td[text()="script type"]').parent.next_sibling.children.first.inner_text
@@ -169,7 +174,7 @@ def read_script(script)
                 # delete all existing blobs in this commit
                 $repo.root.to_a.map { |a| $repo.root.delete(a.first) }
                 add_version(version, script)
-                copy_file('README', script['description']+"\n") unless $repo.root['README']
+                copy_file('README', "This is a mirror of #{script_id_to_url(script['script_id'])}\n\n" + script['description'] + "\n") unless $repo.root['README']
             }
             tag_version(version)
             puts "  added #{version['filename']} #{version['date']} #{version['script_version']}"
