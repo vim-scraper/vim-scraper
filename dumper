@@ -57,9 +57,13 @@ def add_version(version, script)
 end
 
 
-def version_exists(version)
-    # TODO: see if this version is already in the repo
-    return false
+def find_version(version)
+    tagref = "#{$repo.path}/refs/tags/#{version['script_version']}"
+    return nil unless test ?f, tagref
+    id = File.read(tagref)
+    tag = $repo.get(id)
+    raise "not a commit tag" unless tag.tagtype == 'commit'
+    return tag
 end
 
 
@@ -74,14 +78,20 @@ def read_script(script)
     # github = Octopussy::Client.new(:login => 'vim-scripts', :token => token)
 
     committer = Gitrb::User.new("vim-scripts", $vimscripts_email)
+    puts "Processing script #{script['script_id']}: #{script['name']}"
     script['versions'].reverse.each do |version|
         author = Gitrb::User.new("#{version['author']['first_name']} #{version['author']['last_name']}",
                                 version['author']['email'], Time.new(*version['date'].split('-'), 0, 0, 0, 0))
-        unless version_exists(version)
+        if find_version(version)
+            puts "  skipped #{version['filename']} #{version['date']} #{version['script_version']}"
+        else
             $repo.transaction(version['release_notes'], author, committer) {
                 add_version(version, script)
                 copy_file('README', script['description']+"\n") unless $repo.root['README']
             }
+            # don't need to chdir before git tag since Gitrb set GIT_DIR.  :-/
+            $repo.git_tag('-a', version['script_version'], '-m', "tag #{version['script_version']}")
+            puts "  added #{version['filename']} #{version['date']} #{version['script_version']}"
         end
     end
 end
