@@ -135,7 +135,7 @@ end
 
 
 def write_script(script)
-    filename = File.join($scripts_dir, script[:name] + '.json')
+    filename = File.join($scripts_dir, "#{'%04d' % script[:script_id]} - #{script[:name]}.json")
     puts "scraped #{filename}"
     File.open(filename, 'w') { |f|
         f.write(JSON.pretty_generate(fix_encoding(script)))
