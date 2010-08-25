@@ -3,6 +3,7 @@
 require 'rubygems'
 require 'hpricot'
 require 'open-uri'
+require 'cgi'
 require 'json'
 require 'gitrb'
 require 'zip/zipfilesystem' # rubyzip gem
@@ -57,9 +58,7 @@ module Hpricot
 
     class Text
         def inner_content
-            content.to_s.
-                gsub(/\&(\w+);/) { [Hpricot::NamedCharacters[$1] || ??] }.
-                gsub(/\&\#(\d+);?/) { $1.to_i.chr }
+            CGI.unescapeHTML(content.to_s.gsub(/&nbsp;/, " "))
         end
     end
 
