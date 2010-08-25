@@ -20,17 +20,67 @@ Dir.mkdir $repos_dir unless test ?d, $repos_dir
 Dir.mkdir $packages_dir unless test ?d, $packages_dir
 
 
+
+# http://github.com/hpricot/hpricot/issues#issue/25
+# super ugly that hpricot manages to screw up charset encodings
+# apparently it also requires this patch:
+# 
+# --- /tmp/traverse.orig.rb	2010-08-25 02:07:55.288095773 -0700
+# +++ /tmp/traverse.new.rb	2010-08-25 02:08:02.403095712 -0700
+# @@ -157,7 +157,7 @@
+#      # HTML elements are removed.
+#      def inner_text
+#        if respond_to?(:children) and children
+# -        children.map { |x| x.inner_text }.join
+# +        children.map { |x| x.inner_text.dup.force_encoding("ISO-8859-1") }.join
+#        else
+#          ""
+#        end
+
+
+module Hpricot
+    module Traverse
+        def inner_content
+            if respond_to?(:children) and children
+                children.map { |x| x.inner_content }.join
+            else
+                ''
+            end
+        end
+    end
+
+    class Elements < Array
+        def inner_content
+            map { |x| x.inner_content }.join
+        end
+    end
+
+    class Text
+        def inner_content
+            content.to_s.
+                gsub(/\&(\w+);/) { [Hpricot::NamedCharacters[$1] || ??] }.
+                gsub(/\&\#(\d+);?/) { $1.to_i.chr }
+        end
+    end
+
+    class CData
+        alias_method :inner_content, :content
+    end
+end
+
+
+
 def scrape_author(user_id)
     $authors ||= []
     unless $authors[user_id.to_i]
         doc = open("http://www.vim.org/account/profile.php?user_id=#{user_id}") { |f| Hpricot(f) }
-        doc.at('td[text()="user name"]').next_sibling.inner_text
+        doc.at('td[text()="user name"]').next_sibling.inner_content
         u = { :user_id => user_id }
-        u[:user_name] = doc.at('td[text()="user name"]').next_sibling.inner_text
-        u[:first_name] = doc.at('td[text()="first name"]').next_sibling.inner_text
-        u[:last_name] = doc.at('td[text()="last name"]').next_sibling.inner_text
-        u[:email] = doc.at('td[text()="email"]').next_sibling.inner_text
-        u[:homepage] = doc.at('td[text()="homepage"]').next_sibling.inner_text
+        u[:user_name] = doc.at('td[text()="user name"]').next_sibling.inner_content
+        u[:first_name] = doc.at('td[text()="first name"]').next_sibling.inner_content
+        u[:last_name] = doc.at('td[text()="last name"]').next_sibling.inner_content
+        u[:email] = doc.at('td[text()="email"]').next_sibling.inner_content
+        u[:homepage] = doc.at('td[text()="homepage"]').next_sibling.inner_content
         $authors[user_id.to_i] = u
     end
     return $authors[user_id.to_i]
@@ -45,22 +95,43 @@ end
 def scrape_script(script_id)
     doc = open(script_id_to_url(script_id)) { |f| Hpricot(f) }
     s = {:script_id => script_id}
-    s[:name], s[:summary] = doc.search('.txth1').inner_text.split(" : ", 2)
-    s[:script_type] = doc.at('td[text()="script type"]').parent.next_sibling.children.first.inner_text
-    s[:description] = doc.at('td[text()="description"]').parent.next_sibling.children.first.inner_text.gsub("\r", "\n")
-    s[:install_details] = doc.at('td[text()="install details"]').parent.next_sibling.children.first.inner_text.gsub("\r", "\n")
+    s[:name], s[:summary] = doc.search('.txth1').inner_content.split(" : ", 2)
+    s[:script_type] = doc.at('td[text()="script type"]').parent.next_sibling.children.first.inner_content
+    s[:description] = doc.at('td[text()="description"]').parent.next_sibling.children.first.inner_content.gsub("\r", "\n")
+    s[:install_details] = doc.at('td[text()="install details"]').parent.next_sibling.children.first.inner_content.gsub("\r", "\n")
     s[:versions] = doc.search('a[@href*="download_script.php?"]').to_a.map do |a|
         v = {:url => 'http://www.vim.org/scripts/' + a.attributes['href'],
-            :filename => a.inner_text}
+            :filename => a.inner_content}
         row = a.parent
-        v[:script_version] = row.siblings_at(1).inner_text
-        v[:date] = row.siblings_at(2).inner_text
-        v[:vim_version] = row.siblings_at(3).inner_text
+        v[:script_version] = row.siblings_at(1).inner_content
+        v[:date] = row.siblings_at(2).inner_content
+        v[:vim_version] = row.siblings_at(3).inner_content
         v[:author] = scrape_author(row.siblings_at(4).at('a').attributes['href'].match(/\d+/)[0])
-        v[:release_notes] = row.siblings_at(5).inner_text.gsub("\r", "\n")
+        v[:release_notes] = row.siblings_at(5).inner_content.gsub("\r", "\n")
         v
     end
     s
+end
+
+
+def fix_encoding(h)
+    if h.kind_of? Hash
+        o = Hash.new
+        h.each_pair { |k,v| o[k] = fix_encoding(v) }
+        o
+    elsif h.kind_of? Array
+        a = Array.new
+        h.each { |v| a.push fix_encoding(v) }
+        a
+    elsif h.kind_of? String
+        s = h.dup
+        s.force_encoding('ISO-8859-1') if s.encoding == 'ASCII-8BIT'
+        s.gsub!("\xA0", " ")   # not sure why this is necessary, seems obvious?
+        s = s.encode("UTF-8")
+        s
+    else
+        h
+    end
 end
 
 
@@ -68,7 +139,7 @@ def write_script(script)
     filename = File.join($scripts_dir, script[:name] + '.json')
     puts "scraped #{filename}"
     File.open(filename, 'w') { |f|
-        f.write(JSON.pretty_generate(script))
+        f.write(JSON.pretty_generate(fix_encoding(script)))
     }
 end
 
