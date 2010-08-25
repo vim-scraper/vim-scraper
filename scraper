@@ -184,9 +184,15 @@ def check_encoding(h)
 end
 
 
+def filenameify(s)
+    # replace any unsafe path chars
+    s.gsub(/[^ A-Za-z0-9_\-!#\@\$^%&:;<?>+=(){|},.\[\]]/, '-')
+end
+
+
 def write_script(script)
     return unless script
-    filename = File.join($scripts_dir, "#{'%04d' % script[:script_id]} - #{script[:name]}.json")
+    filename = File.join($scripts_dir, "#{'%04d' % script[:script_id]} - #{filenameify(script[:name])}.json")
     puts "Scraped #{filename}"
     File.open(filename, 'w') { |f|
         farg = fix_encoding(script)
@@ -240,7 +246,7 @@ end
 
 
 def add_version(version, script)
-    pkgname = "#{version['date']} #{version['script_version']} #{version['filename']}"
+    pkgname = "#{version['date']} #{filenameify(version['script_version'])} #{filenameify(version['filename'])}"
     pkgdir = File.join($packages_dir, script['name'])
     Dir.mkdir pkgdir unless test ?d, pkgdir
     pkgfile = File.join(pkgdir, pkgname)
