@@ -168,6 +168,8 @@ def smart_copy_file(script, filename, contents)
         else
             raise "Don't know where to put #{filename} for #{script['script_type']}"
         end
+    elsif filename =~ /^[^\/]+\.txt/
+        copy_file("doc/" + filename, contents)
     else
         copy_file(filename, contents)
     end
