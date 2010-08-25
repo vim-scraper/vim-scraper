@@ -21,19 +21,19 @@ Dir.mkdir $packages_dir unless test ?d, $packages_dir
 
 
 def scrape_author(user_id)
-  $authors ||= []
-  unless $authors[user_id.to_i]
-    doc = open("http://www.vim.org/account/profile.php?user_id=#{user_id}") { |f| Hpricot(f) }
-    doc.at('td[text()="user name"]').next_sibling.inner_text
-    u = { :user_id => user_id }
-    u[:user_name] = doc.at('td[text()="user name"]').next_sibling.inner_text
-    u[:first_name] = doc.at('td[text()="first name"]').next_sibling.inner_text
-    u[:last_name] = doc.at('td[text()="last name"]').next_sibling.inner_text
-    u[:email] = doc.at('td[text()="email"]').next_sibling.inner_text
-    u[:homepage] = doc.at('td[text()="homepage"]').next_sibling.inner_text
-    $authors[user_id.to_i] = u
-  end
-  return $authors[user_id.to_i]
+    $authors ||= []
+    unless $authors[user_id.to_i]
+        doc = open("http://www.vim.org/account/profile.php?user_id=#{user_id}") { |f| Hpricot(f) }
+        doc.at('td[text()="user name"]').next_sibling.inner_text
+        u = { :user_id => user_id }
+        u[:user_name] = doc.at('td[text()="user name"]').next_sibling.inner_text
+        u[:first_name] = doc.at('td[text()="first name"]').next_sibling.inner_text
+        u[:last_name] = doc.at('td[text()="last name"]').next_sibling.inner_text
+        u[:email] = doc.at('td[text()="email"]').next_sibling.inner_text
+        u[:homepage] = doc.at('td[text()="homepage"]').next_sibling.inner_text
+        $authors[user_id.to_i] = u
+    end
+    return $authors[user_id.to_i]
 end
 
 
@@ -43,33 +43,33 @@ end
 
 
 def scrape_script(script_id)
-  doc = open(script_id_to_url(script_id)) { |f| Hpricot(f) }
-  s = {:script_id => script_id}
-  s[:name], s[:summary] = doc.search('.txth1').inner_text.split(" : ", 2)
-  s[:script_type] = doc.at('td[text()="script type"]').parent.next_sibling.children.first.inner_text
-  s[:description] = doc.at('td[text()="description"]').parent.next_sibling.children.first.inner_text.gsub("\r", "\n")
-  s[:install_details] = doc.at('td[text()="install details"]').parent.next_sibling.children.first.inner_text.gsub("\r", "\n")
-  s[:versions] = doc.search('a[@href*="download_script.php?"]').to_a.map do |a|
-    v = {:url => 'http://www.vim.org/scripts/' + a.attributes['href'],
-         :filename => a.inner_text}
-    row = a.parent
-    v[:script_version] = row.siblings_at(1).inner_text
-    v[:date] = row.siblings_at(2).inner_text
-    v[:vim_version] = row.siblings_at(3).inner_text
-    v[:author] = scrape_author(row.siblings_at(4).at('a').attributes['href'].match(/\d+/)[0])
-    v[:release_notes] = row.siblings_at(5).inner_text.gsub("\r", "\n")
-    v
-  end
-  s
+    doc = open(script_id_to_url(script_id)) { |f| Hpricot(f) }
+    s = {:script_id => script_id}
+    s[:name], s[:summary] = doc.search('.txth1').inner_text.split(" : ", 2)
+    s[:script_type] = doc.at('td[text()="script type"]').parent.next_sibling.children.first.inner_text
+    s[:description] = doc.at('td[text()="description"]').parent.next_sibling.children.first.inner_text.gsub("\r", "\n")
+    s[:install_details] = doc.at('td[text()="install details"]').parent.next_sibling.children.first.inner_text.gsub("\r", "\n")
+    s[:versions] = doc.search('a[@href*="download_script.php?"]').to_a.map do |a|
+        v = {:url => 'http://www.vim.org/scripts/' + a.attributes['href'],
+            :filename => a.inner_text}
+        row = a.parent
+        v[:script_version] = row.siblings_at(1).inner_text
+        v[:date] = row.siblings_at(2).inner_text
+        v[:vim_version] = row.siblings_at(3).inner_text
+        v[:author] = scrape_author(row.siblings_at(4).at('a').attributes['href'].match(/\d+/)[0])
+        v[:release_notes] = row.siblings_at(5).inner_text.gsub("\r", "\n")
+        v
+    end
+    s
 end
 
 
 def write_script(script)
-  filename = File.join($scripts_dir, script[:name] + '.json')
-  puts "scraped #{filename}"
-  File.open(filename, 'w') { |f|
-    f.write(JSON.pretty_generate(script))
-  }
+    filename = File.join($scripts_dir, script[:name] + '.json')
+    puts "scraped #{filename}"
+    File.open(filename, 'w') { |f|
+        f.write(JSON.pretty_generate(script))
+    }
 end
 
 
@@ -166,7 +166,7 @@ def read_script(script)
     puts "Processing script #{script['script_id']}: #{script['name']}"
     script['versions'].reverse.each do |version|
         author = Gitrb::User.new("#{version['author']['first_name']} #{version['author']['last_name']}",
-                                version['author']['email'], Time.new(*version['date'].split('-'), 0, 0, 0, 0))
+                                 version['author']['email'], Time.new(*version['date'].split('-'), 0, 0, 0, 0))
         if find_version(version)
             puts "  skipped #{version['filename']} #{version['date']} #{version['script_version']}"
         else
@@ -185,12 +185,12 @@ end
 
 raise "specify some scripts to scrape" if ARGV.empty?
 ARGV.each do |arg|
-  if arg =~ /^\d+$/
-    write_script(scrape_script(arg))
-  elsif File.exist?(arg)
-    read_script(JSON.parse(File.read(arg)))
-  else
-    raise "Could not recognize argument #{arg}"
-  end
+    if arg =~ /^\d+$/
+        write_script(scrape_script(arg))
+    elsif File.exist?(arg)
+        read_script(JSON.parse(File.read(arg)))
+    else
+        raise "Could not recognize argument #{arg}"
+    end
 end
 
