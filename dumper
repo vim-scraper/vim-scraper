@@ -11,6 +11,9 @@ $repos_dir = 'repos'
 $scripts_dir = 'scripts'
 $vimscripts_email = 'vimscripts@rinspin.com'
 
+Dir.mkdir $repos_dir unless test ?d, $repos_dir
+Dir.mkdir $scripts_dir unless test ?d, $scripts_dir
+
 
 def download(url, dest)
     puts "Downloading #{url} to #{dest}"
@@ -40,7 +43,6 @@ end
 def add_version(version, script)
     scriptname = "#{version['date']} #{version['script_version']} #{version['filename']}"
     scriptdir = File.join($scripts_dir, script['name'])
-    Dir.mkdir $scripts_dir unless test ?d, $scripts_dir
     Dir.mkdir scriptdir unless test ?d, scriptdir
     scriptfile = File.join(scriptdir, scriptname)
     download(version['url'], scriptfile) unless test ?f, scriptfile
@@ -68,7 +70,6 @@ end
 
 
 def read_script(script)
-    Dir.mkdir $repos_dir unless test ?d, $repos_dir
     $repo_path = File.join($repos_dir, script['name'] + '.git')
     # if gitrb is dying on the following line, you need this fix:
     #   http://github.com/bronson/gitrb/commit/ae931ad7fe8309bcd2c4b9cc582c1500fa152e8d

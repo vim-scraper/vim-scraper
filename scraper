@@ -6,6 +6,10 @@ require 'open-uri'
 require 'json'
 
 
+$scripts_dir = 'scripts'
+Dir.mkdir $scripts_dir unless test ?d, $scripts_dir
+
+
 def scrape_author(user_id)
   $authors ||= []
   unless $authors[user_id.to_i]
@@ -45,5 +49,13 @@ def scrape_script(script_id)
 end
 
 
-puts JSON.pretty_generate(scrape_script(1567))
+raise "specify some scripts to scrape" if ARGV.empty?
+[eval(ARGV.join(" "))].flatten.each do |script_id|
+  script = scrape_script(script_id)
+  filename = File.join($scripts_dir, script[:name] + '.json')
+  puts "scraped #{filename}"
+  File.open(filename, 'w') { |f|
+    f.write(JSON.pretty_generate(script))
+  }
+end
 
