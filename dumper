@@ -30,6 +30,22 @@ def copy_file(filename, contents)
 end
 
 
+def smart_copy_file(script, filename, contents)
+    if filename =~ /^[^\/]+\.vim/
+        # a .vim file in the root directory
+        if script['script_type'] == 'utility'
+            copy_file("plugin/" + filename, contents)
+        elsif script['script_type'] == 'syntax'
+            copy_file("syntax/" + filename, contents)
+        else
+            raise "Don't know where to put #{filename} for #{script['script_type']}"
+        end
+    else
+        copy_file(filename, contents)
+    end
+end
+
+
 def copy_zipfile(zip_path)
     Zip::ZipFile.open(zip_path) do |zipfile|
         zipfile.each do |file|
@@ -48,7 +64,7 @@ def add_version(version, script)
     download(version['url'], scriptfile) unless test ?f, scriptfile
 
     case scriptfile
-    when /\.vim$/ then copy_file(scriptfile, File.read(scriptfile))
+    when /\.vim$/ then smart_copy_file(script, version['filename'], File.read(scriptfile))
     when /\.zip$/ then copy_zipfile(scriptfile)
     when /\.tar\.gz$|\.tgz$/ then puts "can't handle .tar.gz"
     when /\.tar\.bz2?$|\.tbz2?$/ then puts "can't handle .tar.bz"
