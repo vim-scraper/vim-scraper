@@ -174,11 +174,11 @@ def smart_copy_file(script, filename, contents)
 end
 
 
-def copy_zipfile(zip_path)
+def copy_zipfile(script, zip_path)
     Zip::ZipFile.open(zip_path) do |zipfile|
         zipfile.each do |file|
             raise "add symlinks!" if file.symlink?
-            copy_file(file.name, file.get_input_stream.read)
+            smart_copy_file(script, file.name, file.get_input_stream.read)
         end
     end
 end
@@ -193,7 +193,7 @@ def add_version(version, script)
 
     case pkgfile
     when /\.vim$/ then smart_copy_file(script, version['filename'], File.read(pkgfile))
-    when /\.zip$/ then copy_zipfile(pkgfile)
+    when /\.zip$/ then copy_zipfile(script, pkgfile)
     when /\.tar\.gz$|\.tgz$/ then puts "can't handle .tar.gz"
     when /\.tar\.bz2?$|\.tbz2?$/ then puts "can't handle .tar.bz"
     when /\.gz$/ then puts "can't handle .gz"
