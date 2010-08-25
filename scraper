@@ -49,13 +49,21 @@ def scrape_script(script_id)
 end
 
 
-raise "specify some scripts to scrape" if ARGV.empty?
-[eval(ARGV.join(" "))].flatten.each do |script_id|
-  script = scrape_script(script_id)
+def write_script(script)
   filename = File.join($scripts_dir, script[:name] + '.json')
   puts "scraped #{filename}"
   File.open(filename, 'w') { |f|
     f.write(JSON.pretty_generate(script))
   }
+end
+
+
+raise "specify some scripts to scrape" if ARGV.empty?
+[eval(ARGV.join(" "))].flatten.each do |arg|
+  if arg.to_s =~ /^\d+$/
+    write_script(scrape_script(arg))
+  else
+    raise "Could not recognize argument #{arg}"
+  end
 end
 

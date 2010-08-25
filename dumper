@@ -8,12 +8,12 @@ require 'zip/zipfilesystem' # rubyzip gem
 
 
 $repos_dir = 'repos'
-$scripts_dir = 'scripts'
+$packages_dir = 'scripts'
 $vimscripts_name = "vim-scripts"
 $vimscripts_email = 'vimscripts@rinspin.com'
 
 Dir.mkdir $repos_dir unless test ?d, $repos_dir
-Dir.mkdir $scripts_dir unless test ?d, $scripts_dir
+Dir.mkdir $packages_dir unless test ?d, $packages_dir
 
 
 def download(url, dest)
@@ -59,7 +59,7 @@ end
 
 def add_version(version, script)
     scriptname = "#{version['date']} #{version['script_version']} #{version['filename']}"
-    scriptdir = File.join($scripts_dir, script['name'])
+    scriptdir = File.join($packages_dir, script['name'])
     Dir.mkdir scriptdir unless test ?d, scriptdir
     scriptfile = File.join(scriptdir, scriptname)
     download(version['url'], scriptfile) unless test ?f, scriptfile
