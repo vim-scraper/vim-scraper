@@ -31,7 +31,8 @@ def scrape_script(script_id)
   s[:description] = doc.at('td[text()="description"]').parent.next_sibling.children.first.inner_text.gsub("\r", "\n")
   s[:install_details] = doc.at('td[text()="install details"]').parent.next_sibling.children.first.inner_text.gsub("\r", "\n")
   s[:versions] = doc.search('a[@href*="download_script.php?"]').to_a.map do |a|
-    v = {:url => 'http://www.vim.org/scripts/' + a.attributes['href']}
+    v = {:url => 'http://www.vim.org/scripts/' + a.attributes['href'],
+         :filename => a.inner_text}
     row = a.parent
     v[:script_version] = row.siblings_at(1).inner_text
     v[:date] = row.siblings_at(2).inner_text
