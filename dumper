@@ -3,21 +3,13 @@
 require 'rubygems'
 require 'open-uri'
 require 'json'
-require 'grit'
+require 'gitrb'
 require 'zip/zipfilesystem' # rubyzip gem
 
 
-repos_dir = 'repos'
-scripts_dir = 'scripts'
-token = File.read('token').chomp
+$repos_dir = 'repos'
+$scripts_dir = 'scripts'
 
-Dir.mkdir repos_dir unless test ?d, repos_dir
-Dir.mkdir scripts_dir unless test ?d, scripts_dir
-
-script = JSON.parse($stdin.read)
-repo_path = File.join(repos_dir, script['name'] + '.git')
-$repo_path = repo_path
-repo = Grit::Repo.init_bare_or_open(repo_path)
 
 def download(url, dest)
     puts "Downloading #{url} to #{dest}"
@@ -28,11 +20,13 @@ def download(url, dest)
     }
 end
 
+
 def copy_file(filename, contents)
-    puts "Copying #{filename} into #{$repo_path}"
+    $repo.root[filename] = Gitrb::Blob.new(:data => contents)
 end
 
-def copy_zip(zip_path)
+
+def copy_zipfile(zip_path)
     Zip::ZipFile.open(zip_path) do |zipfile|
         zipfile.each do |file|
             raise "add symlinks!" if file.symlink?
@@ -41,27 +35,50 @@ def copy_zip(zip_path)
     end
 end
 
-# github = Octopussy::Client.new(:login => 'vim-scripts', :token => token)
 
-script['versions'].reverse.each do |version|
+def add_version(version, script)
     scriptname = "#{version['date']} #{version['script_version']} #{version['filename']}"
-    scriptdir = File.join(scripts_dir, script['name'])
+    scriptdir = File.join($scripts_dir, script['name'])
+    Dir.mkdir $scripts_dir unless test ?d, $scripts_dir
     Dir.mkdir scriptdir unless test ?d, scriptdir
     scriptfile = File.join(scriptdir, scriptname)
     download(version['url'], scriptfile) unless test ?f, scriptfile
-    # todo: might want to do a HEAD request and match file sizes
 
     case scriptfile
     when /\.vim$/ then copy_file(scriptfile, File.read(scriptfile))
-    when /\.zip$/ then copy_zip(scriptfile)
+    when /\.zip$/ then copy_zipfile(scriptfile)
     when /\.tar\.gz$|\.tgz$/ then puts "can't handle .tar.gz"
     when /\.tar\.bz2?$|\.tbz2?$/ then puts "can't handle .tar.bz"
     when /\.gz$/ then puts "can't handle .gz"
     when /\.bz2?$/ then puts "can't handle .bz"
     when /\.vba$/ then puts "can't handle .vba"
     end
-
-    exit
 end
 
 
+def version_exists(version)
+    # TODO: see if this version is already in the repo
+    return false
+end
+
+
+def read_script(script)
+    Dir.mkdir $repos_dir unless test ?d, $repos_dir
+    $repo_path = File.join($repos_dir, script['name'] + '.git')
+    $repo = Gitrb::Repository.new(:path => $repo_path, :bare => true, :create => true)
+
+    # token = File.read('token').chomp
+    # github = Octopussy::Client.new(:login => 'vim-scripts', :token => token)
+
+    script['versions'].reverse.each do |version|
+        unless version_exists(version)
+            $repo.transaction(version['release_notes']) {
+                add_version(version, script)
+            }
+        end
+        exit
+    end
+end
+
+
+read_script(JSON.parse($stdin.read))
