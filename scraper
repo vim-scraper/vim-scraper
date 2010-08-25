@@ -148,15 +148,15 @@ def fix_encoding(h)
     # ugly!!
     if h.kind_of? Hash
         o = Hash.new
-        h.each_pair { |k,v| o[k] = fix_encoding(v) }
+        h.each_pair { |k,v| o[fix_encoding(k)] = fix_encoding(v) }
         o
     elsif h.kind_of? Array
         a = Array.new
         h.each { |v| a.push fix_encoding(v) }
         a
     elsif h.kind_of? String
-        if h.encoding.to_s == 'ASCII-8BIT'
-            h = h.dup.force_encoding('ISO-8859-1').encode("UTF-8")
+        if h.encoding.to_s == 'ASCII-8BIT' || h.encoding.to_s == 'ISO-8859-1'
+            h = h.dup.force_encoding('ISO-8859-1').encode('UTF-8')
         end
         h
     else
@@ -289,6 +289,7 @@ def read_script(script)
         if find_version(version)
             puts "  skipped #{version['filename']} #{version['date']} #{version['script_version']}"
         else
+            puts "  adding #{version['filename']} #{version['date']} #{version['script_version']}"
             $repo.transaction(version['release_notes'], author, committer) {
                 # delete all existing blobs in this commit
                 $repo.root.to_a.map { |a| $repo.root.delete(a.first) }
@@ -296,7 +297,6 @@ def read_script(script)
                 copy_file('README', "This is a mirror of #{script_id_to_url(script['script_id'])}\n\n" + script['description'] + "\n") unless $repo.root['README']
             }
             tag_version(version)
-            puts "  added #{version['filename']} #{version['date']} #{version['script_version']}"
         end
     end
 end
