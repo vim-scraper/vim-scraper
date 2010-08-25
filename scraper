@@ -13,6 +13,8 @@ require 'cgi'
 require 'json'
 require 'gitrb'
 require 'zip/zipfilesystem' # rubyzip gem
+require 'archive/tar/minitar' # minitar gem
+require 'zlib'
 
 
 $vimscripts_name = "vim-scripts"
@@ -246,6 +248,26 @@ def copy_zipfile(script, zip_path)
 end
 
 
+def copy_tarfile(script, tarfile)
+    Archive::Tar::Minitar::Input.open(tarfile) do |tf|
+        tf.each do |entry|
+            next unless entry.file?
+            smart_copy_file(script, entry.full_name, entry.read)
+        end
+    end
+end
+
+
+def ungzip(file)
+    Zlib::GzipReader.open(file) { |gz| yield(gz) }
+end
+
+
+def unbzip2(file)
+    Bzip2::Reader.open(file) { |bz| yield(bz) }
+end
+
+
 def add_version(version, script)
     pkgname = "#{version['date']} #{filenameify(version['script_version'])} #{filenameify(version['filename'])}"
     pkgdir = File.join($packages_dir, script['name'])
@@ -256,10 +278,11 @@ def add_version(version, script)
     case pkgfile
     when /\.vim$/ then smart_copy_file(script, version['filename'], File.read(pkgfile))
     when /\.zip$/ then copy_zipfile(script, pkgfile)
-    when /\.tar\.gz$|\.tgz$/ then raise "can't handle .tar.gz"
-    when /\.tar\.bz2?$|\.tbz2?$/ then raise "can't handle .tar.bz"
-    when /\.gz$/ then raise "can't handle .gz"
-    when /\.bz2?$/ then raise "can't handle .bz"
+    when /\.tar$/ then raise "check tar"; File.open(pkgfile, 'r') { |file| copy_tarfile(script, file.read) }
+    when /\.tar\.gz$|\.tgz$/ then ungzip(pkgfile) { |tarfile| copy_tarfile(script, tarfile) }
+    when /\.tar\.bz2?$|\.tbz2?$/ then raise "check tbz"; unbzip2(pkgfile) { |tarfile| copy_tarfile(script, tarfile) }
+    when /\.gz$/ then raise "check gz"; ungzip(pkgfile) { |contents| smart_copy_file(script, version['filename'].sub(/\.gz$/, ''), contents) }
+    when /\.bz2?$/ then raise "check bz"; unbzip2(pkgfile) { |contents| smart_copy_file(script, version['filename'].sub(/\.bz2?$/, ''), contents) }
     when /\.vba$/ then raise "can't handle .vba"
     end
 end
@@ -286,7 +309,7 @@ end
 
 
 def read_script(script)
-    $repo_path = File.join($repos_dir, script['name'] + '.git')
+    $repo_path = File.join($repos_dir, "#{'%04d' % script['script_id']} - #{script['name']}.git")
     # if gitrb is dying on the following line, you need this fix:
     #   http://github.com/bronson/gitrb/commit/ae931ad7fe8309bcd2c4b9cc582c1500fa152e8d
     $repo = Gitrb::Repository.new(:path => $repo_path, :bare => true, :create => true)
@@ -323,7 +346,7 @@ def dump_repo(repo)
     log = log.each_line.reduce([]) { |a,v| a.push(v) unless v =~ /^CommitDate: /; a }.join
     ENV.delete('GIT_DIR')
     filename = File.join($repostats_dir, File.basename(repo).gsub(/\.git$/, '') + '.stats')
-    puts "Stats for #{filename}"
+    puts "Stats in #{filename}"
     File.open(filename, 'w') { |f|
         f.write log
     }
