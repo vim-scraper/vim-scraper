@@ -9,6 +9,7 @@ require 'zip/zipfilesystem' # rubyzip gem
 
 $repos_dir = 'repos'
 $scripts_dir = 'scripts'
+$vimscripts_name = "vim-scripts"
 $vimscripts_email = 'vimscripts@rinspin.com'
 
 Dir.mkdir $repos_dir unless test ?d, $repos_dir
@@ -75,6 +76,16 @@ def add_version(version, script)
 end
 
 
+def tag_version(version)
+    ENV['GIT_COMMITTER_NAME'] = $vimscripts_name
+    ENV['GIT_COMMITTER_EMAIL'] = $vimscripts_email
+    # don't need to chdir before git tag since Gitrb set GIT_DIR.  :-/
+    $repo.git_tag('-a', version['script_version'], '-m', "tag #{version['script_version']}")
+    ENV.delete('GIT_COMMITTER_NAME')
+    ENV.delete('GIT_COMMITTER_EMAIL')
+end
+
+
 def find_version(version)
     tagref = "#{$repo.path}/refs/tags/#{version['script_version']}"
     return nil unless test ?f, tagref
@@ -94,7 +105,7 @@ def read_script(script)
     # token = File.read('token').chomp
     # github = Octopussy::Client.new(:login => 'vim-scripts', :token => token)
 
-    committer = Gitrb::User.new("vim-scripts", $vimscripts_email)
+    committer = Gitrb::User.new($vimscripts_name, $vimscripts_email)
     puts "Processing script #{script['script_id']}: #{script['name']}"
     script['versions'].reverse.each do |version|
         author = Gitrb::User.new("#{version['author']['first_name']} #{version['author']['last_name']}",
@@ -106,8 +117,7 @@ def read_script(script)
                 add_version(version, script)
                 copy_file('README', script['description']+"\n") unless $repo.root['README']
             }
-            # don't need to chdir before git tag since Gitrb set GIT_DIR.  :-/
-            $repo.git_tag('-a', version['script_version'], '-m', "tag #{version['script_version']}")
+            tag_version(version)
             puts "  added #{version['filename']} #{version['date']} #{version['script_version']}"
         end
     end
