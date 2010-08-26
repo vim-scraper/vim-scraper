@@ -503,7 +503,7 @@ end
 
 
 def read_script(script)
-    $repo_path = File.join($repos_dir, "#{'%04d' % script['script_id']} - #{script['name']}.git")
+    $repo_path = File.join($repos_dir, "#{'%04d' % script['script_id']} - #{filenameify(script['name'])}.git")
     # if gitrb is dying on the following line, you need this fix:
     #   http://github.com/bronson/gitrb/commit/ae931ad7fe8309bcd2c4b9cc582c1500fa152e8d
     $repo = Gitrb::Repository.new(:path => $repo_path, :bare => true, :create => true)
