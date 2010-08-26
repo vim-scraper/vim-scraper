@@ -18,6 +18,8 @@ require 'zlib'
 require 'bzip2'
 require 'mime/types'
 require 'mimemagic'
+require 'tmpdir'
+require 'find'
 
 # thoughts:
 # We do everything we can to make it so you can drop the repo in bundles and just have it work.
@@ -263,6 +265,21 @@ def smart_copy_file(script, filename, contents)
 end
 
 
+def unvimball(script, vimball)
+    Dir.mktmpdir($vimscripts_name) do |tmpdir|
+        cmd = ['/usr/bin/vim', vimball, '-X', '-n', '-c', ":set runtimepath=#{tmpdir},$VIMRUNTIME", '-c', ':so %', '-c', ':q']
+        raise "couldn't run #{cmd.join(' ')}: #{$?}" unless system(*cmd)
+        Find.find(tmpdir) do |path|
+            next if test(?d, path)
+            localpath = path.sub(tmpdir, '').sub(/^\/+/, '')
+            next if localpath == '.VimballRecord' || localpath == 'doc/tags'
+            smart_copy_file(script, localpath, File.read(path))
+        end
+        # mktmpdir automatically blows everything away
+    end
+end
+
+
 def copy_zipfile(script, zip_path)
     Zip::ZipFile.open(zip_path) do |zipfile|
         zipfile.each do |entry|
@@ -314,7 +331,8 @@ def download_package(version, script)
 end
 
 
-$textext = %w{vim txt tcl}.map { |x| "\\.#{x}$" }.join('|')
+# .set?!  http://www.vim.org/scripts/script.php?script_id=45
+$textext = %w{c cpp h pl pm py rb set tcl txt vim}.map { |x| "\\.#{x}$" }.join('|')
 
 def sense_file(actual_name, pkgfile)
     # some files lie about their type (claim to be .zips but are just .vim files).  fix em.
@@ -324,8 +342,10 @@ def sense_file(actual_name, pkgfile)
         # we're good, extension and magic match up
     else
         # need to figure out what's going on and fix it.
-        if (magic_type.nil? || magic_type.text?) && actual_name =~ /#{$textext}/
+        if (magic_type.nil? && actual_name =~ /#{$textext}/) || magic_type.text?
             # no problem, it's a textfile
+        elsif actual_name =~ /\.vba$/
+            # arg, a vimball.  let it through.
         elsif extension_type.include? 'application/zip' then
             if magic_type.nil?
                 # extension claims zipfile but magic disagrees.  assume it's a vimfile.
@@ -356,7 +376,7 @@ def add_version(version, script)
     when /\.tar$/ then File.open(pkgfile, 'r') { |file| copy_tarfile(script, file) }
     when /\.t?gz$/ then ungzip(pkgfile) { |contents| sense_tarfile(script, version['filename'].sub(/\.gz$/, ''), contents) }
     when /\.t?bz2?$/ then raise "check bz"; unbzip2(pkgfile) { |contents| sense_tarfile(script, version['filename'].sub(/\.bz2?$/, ''), contents) }
-    when /\.vba$/ then raise "can't handle .vba"
+    when /\.vba$/ then unvimball(script, pkgfile)
     else raise "unknown filetype: #{actual_name}"
     end
 end
