@@ -4,7 +4,7 @@
 # This command takes any mixture of arguments:
 # - decimal number: the script id to scrape and save as a json file
 # - .json file: the script to convert into a git repo
-# - .git directory: the bare repo to dump into repostats
+# - bare .git repo dir: the git repo to push to github
 
 require 'rubygems'
 require 'hpricot'
@@ -31,7 +31,6 @@ $vimscripts_name = "vim-scripts"
 $vimscripts_email = 'vimscripts@rinspin.com'
 
 $repos_dir = 'repos'
-$repostats_dir = 'repostats'
 $scripts_dir = 'scripts'
 $packages_dir = 'packages'
 
@@ -41,7 +40,6 @@ $textext = %w{c cpp h pl pm ps py rb set sh tcl txt vim}.map { |x| "\\.#{x}$" }.
 
 Dir.mkdir $scripts_dir unless test ?d, $scripts_dir
 Dir.mkdir $repos_dir unless test ?d, $repos_dir
-Dir.mkdir $repostats_dir unless test ?d, $repostats_dir
 Dir.mkdir $packages_dir unless test ?d, $packages_dir
 
 
@@ -553,21 +551,8 @@ def read_script(script)
 end
 
 
-def dump_repo(repo)
-    repo = repo.gsub /\/$/, ''
-    ENV['GIT_DIR'] = repo
-    log = `git log --pretty=fuller --decorate=full --stat`
-    # remove every line with a CommitDate since that's horribly variable
-    log = log.each_line.reduce([]) { |a,v|
-        v.gsub!(/^commit\s+[0-9A-Fa-f]*/, 'commit SHA1SHA1SHA1');
-        a.push(v) unless v =~ /^CommitDate: /;
-        a }.join
-    ENV.delete('GIT_DIR')
-    filename = File.join($repostats_dir, File.basename(repo).gsub(/\.git$/, '') + '.stats')
-    puts "Stats in #{filename}"
-    File.open(filename, 'w') { |f|
-        f.write log
-    }
+def push_repo(repo)
+    raise "not yet"
 end
 
 
@@ -578,7 +563,7 @@ ARGV.each do |arg|
     elsif test ?f, arg
         read_script(JSON.parse(File.read(arg)))
     elsif test ?d, arg
-        dump_repo(arg)
+        push_repo(arg)
     else
         raise "Could not recognize argument #{arg}"
     end

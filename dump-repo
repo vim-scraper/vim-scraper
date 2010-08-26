@@ -1,0 +1,39 @@
+#!/bin/env ruby
+
+
+# dumps a summary of the repo into the repostats dir.
+# since repostats is under git revision control, it's
+# easy to watch for regressions as the scraper changes.
+
+
+$repostats_dir = 'repostats'
+Dir.mkdir $repostats_dir unless test ?d, $repostats_dir
+
+
+def dump_repo(repo)
+    repo = repo.gsub /\/$/, ''
+    ENV['GIT_DIR'] = repo
+    log = `git log --pretty=fuller --decorate=full --stat`
+    # remove every line with a CommitDate since that's horribly variable
+    log = log.each_line.reduce([]) { |a,v|
+        v.gsub!(/^commit\s+[0-9A-Fa-f]*/, 'commit SHA1SHA1SHA1');
+        a.push(v) unless v =~ /^CommitDate: /;
+        a }.join
+    ENV.delete('GIT_DIR')
+    filename = File.join($repostats_dir, File.basename(repo).gsub(/\.git$/, '') + '.stats')
+    puts "Stats in #{filename}"
+    File.open(filename, 'w') { |f|
+        f.write log
+    }
+end
+
+
+raise "specify some repos to dump" if ARGV.empty?
+ARGV.each do |arg|
+    if test ?d, arg
+        dump_repo(arg)
+    else
+        raise "Could not recognize argument #{arg}"
+    end
+end
+
