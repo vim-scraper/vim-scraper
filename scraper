@@ -249,10 +249,11 @@ def smart_copy_file(script, filename, contents)
     if filename =~ /^[^\/]+\.vim/
         # a .vim file in the root directory
         case script['script_type']
-        when 'utility' then copy_file("plugin/" + filename, contents)
-        when 'syntax' then copy_file("syntax/" + filename, contents)
-        when 'ftplugin' then copy_file("ftplugin/" + filename, contents)
         when 'color scheme' then copy_file("colors/" + filename, contents)
+        when 'ftplugin' then copy_file("ftplugin/" + filename, contents)
+        when 'indent' then copy_file("indent/" + filename, contents)
+        when 'syntax' then copy_file("syntax/" + filename, contents)
+        when 'utility' then copy_file("plugin/" + filename, contents)
         else raise "Don't know where to put #{filename} for #{script['script_type']}"
         end
     elsif filename =~ /^[^\/]+\.txt/
