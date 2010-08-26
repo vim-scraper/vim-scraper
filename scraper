@@ -474,6 +474,17 @@ def check_for_lone_dir(script)
 end
 
 
+def check_for_readme_file
+    # we drop a README file into each repo.  don't want to conflict with one already there.
+    $repo.root.to_a.each { |name, value|
+        if name =~ /^README$/i
+            raise "already have a readme.orig!" if $repo.root.to_a.find { |n,v| n =~ /^readme\.orig$/i }
+            $repo.root[name + '.orig'] = $repo.root.delete(name)
+        end
+    }
+end
+
+
 def read_script(script)
     $repo_path = File.join($repos_dir, "#{'%04d' % script['script_id']} - #{script['name']}.git")
     # if gitrb is dying on the following line, you need this fix:
@@ -497,6 +508,7 @@ def read_script(script)
                 $repo.root.to_a.map { |name,value| $repo.root.delete(name) }
                 add_version(version, script)
                 check_for_lone_dir(script)
+                check_for_readme_file
                 copy_file('README', "This is a mirror of #{script_id_to_url(script['script_id'])}\n\n" + script['description'] + "\n") unless $repo.root['README']
             }
             tag_version(version)

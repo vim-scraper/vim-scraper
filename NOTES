@@ -1,6 +1,5 @@
 Probably todo:
     if a dir only contains a /license|readme/i file, move the file to the root dir
-        if the file is /^readme$/i then rename it to readme.orig
     0023, 0096
 
 
