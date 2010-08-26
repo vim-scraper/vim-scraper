@@ -37,7 +37,7 @@ $packages_dir = 'packages'
 
 $vimdirs = %w{after autoload bin colors doc ftdetect ftplugin indent plugin syntax}
 # .set?!  used by http://www.vim.org/scripts/script.php?script_id=45
-$textext = %w{c cpp h pl pm ps py rb set tcl txt vim}.map { |x| "\\.#{x}$" }.join('|')
+$textext = %w{c cpp h pl pm ps py rb set sh tcl txt vim}.map { |x| "\\.#{x}$" }.join('|')
 
 Dir.mkdir $scripts_dir unless test ?d, $scripts_dir
 Dir.mkdir $repos_dir unless test ?d, $repos_dir
