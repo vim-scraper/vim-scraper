@@ -207,6 +207,14 @@ def gittagify(s)
 end
 
 
+def script_version(version)
+    # some scripts don't assign a version so just use the date
+    s = version['script_version']
+    s = version['date'] if s =~ /^\s*$/
+    s
+end
+
+
 def write_script(script)
     return unless script
     filename = File.join($scripts_dir, "#{'%04d' % script[:script_id]} - #{filenameify(script[:name])}.json")
@@ -297,7 +305,7 @@ end
 
 
 def download_package(version, script)
-    pkgname = "#{version['date']} #{filenameify(version['script_version'])} #{filenameify(version['filename'])}"
+    pkgname = "#{version['date']} #{filenameify(script_version(version))} #{filenameify(version['filename'])}"
     pkgdir = File.join($packages_dir, "#{'%04d' % script['script_id']} - #{script['name']}")
     Dir.mkdir pkgdir unless test ?d, pkgdir
     pkgfile = File.join(pkgdir, pkgname)
@@ -358,14 +366,15 @@ def tag_version(version)
     ENV['GIT_COMMITTER_NAME'] = $vimscripts_name
     ENV['GIT_COMMITTER_EMAIL'] = $vimscripts_email
     # don't need to chdir before git tag since Gitrb set GIT_DIR.  :-/
-    $repo.git_tag('-a', gittagify(version['script_version']), '-m', "tag #{version['script_version']}")
+    sver = script_version(version)
+    $repo.git_tag('-a', gittagify(sver), '-m', "tag #{sver}")
     ENV.delete('GIT_COMMITTER_NAME')
     ENV.delete('GIT_COMMITTER_EMAIL')
 end
 
 
 def find_version(version)
-    tagname = gittagify(version['script_version'])
+    tagname = gittagify(script_version(version))
     tagref = "#{$repo.path}/refs/tags/#{tagname}"
     return nil unless test ?f, tagref
     id = File.read(tagref)
@@ -390,9 +399,9 @@ def read_script(script)
         author = Gitrb::User.new("#{version['author']['first_name']} #{version['author']['last_name']}",
                                  version['author']['email'], Time.new(*version['date'].split('-'), 0, 0, 0, 0))
         if find_version(version)
-            puts "  skipped #{version['filename']} #{version['date']} #{version['script_version']}"
+            puts "  skipped #{version['filename']} #{version['date']} #{script_version(version)}"
         else
-            puts "  adding #{version['filename']} #{version['date']} #{version['script_version']}"
+            puts "  adding #{version['filename']} #{version['date']} #{script_version(version)}"
             $repo.transaction(version['release_notes'], author, committer) {
                 # delete all existing blobs in this commit
                 $repo.root.to_a.map { |a| $repo.root.delete(a.first) }
