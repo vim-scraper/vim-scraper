@@ -245,7 +245,30 @@ def copy_file(filename, contents)
 end
 
 
+def cleanpath(path)     # lifted from git-wiki
+    path.gsub! /^[\/\s]*/, ''
+    names = path.split('/').reject { |str| str =~ /^\s*$/ }
+    i = 0
+    while i < names.length
+        case names[i]
+        when '..'
+            names.delete_at(i)
+            if i>0
+                names.delete_at(i-1)
+                i-=1
+            end
+        when '.'
+            names.delete_at(i)
+        else
+            i+=1
+        end
+    end
+    names.join('/')
+end
+
+
 def smart_copy_file(script, filename, contents)
+    filename = cleanpath(filename)
     if filename =~ /^[^\/]+\.vim/
         # a .vim file in the root directory
         case script['script_type']
