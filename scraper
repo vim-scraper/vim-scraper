@@ -267,8 +267,8 @@ end
 
 
 def copy_tarfile(script, tarfile)
-    Archive::Tar::Minitar::Input.open(tarfile) do |tf|
-        tf.each do |entry|
+    Archive::Tar::Minitar::Reader.open(tarfile) do |tf|
+        tf.each_entry do |entry|
             next unless entry.file?
             smart_copy_file(script, entry.full_name, entry.read)
         end
@@ -283,6 +283,16 @@ end
 
 def unbzip2(file)
     Bzip2::Reader.open(file) { |bz| yield(bz) }
+end
+
+
+def sense_tarfile(script, filename, infile)
+    contents = infile.read
+    if MimeMagic.by_magic(contents) == 'application/x-tar'
+        copy_tarfile(script, StringIO.new(contents))
+    else
+        smart_copy_file(script, filename, contents)
+    end
 end
 
 
@@ -314,6 +324,10 @@ def sense_file(actual_name, pkgfile)
             else
                 raise "unknown failed zip type for #{actual_name}: #{magic_type}"
             end
+        elsif magic_type == 'application/zip'
+            actual_name += '.zip'
+        elsif magic_type == 'application/x-gzip'
+            actual_name += '.gz'
         else raise "differing mime types for #{actual_name}, ext claims #{extension_type} but magic is #{magic_type}"
         end
     end
@@ -329,11 +343,9 @@ def add_version(version, script)
     case actual_name
     when /\.vim$/ then smart_copy_file(script, actual_name, File.read(pkgfile))
     when /\.zip$/ then copy_zipfile(script, pkgfile)
-    when /\.tar$/ then File.open(pkgfile, 'r') { |file| copy_tarfile(script, file.read) }
-    when /\.tar\.gz$|\.tgz$/ then ungzip(pkgfile) { |tarfile| copy_tarfile(script, tarfile) }
-    when /\.tar\.bz2?$|\.tbz2?$/ then raise "check tbz"; unbzip2(pkgfile) { |tarfile| copy_tarfile(script, tarfile) }
-    when /\.gz$/ then raise "check gz"; ungzip(pkgfile) { |contents| smart_copy_file(script, version['filename'].sub(/\.gz$/, ''), contents) }
-    when /\.bz2?$/ then raise "check bz"; unbzip2(pkgfile) { |contents| smart_copy_file(script, version['filename'].sub(/\.bz2?$/, ''), contents) }
+    when /\.tar$/ then File.open(pkgfile, 'r') { |file| copy_tarfile(script, file) }
+    when /\.t?gz$/ then ungzip(pkgfile) { |contents| sense_tarfile(script, version['filename'].sub(/\.gz$/, ''), contents) }
+    when /\.t?bz2?$/ then raise "check bz"; unbzip2(pkgfile) { |contents| sense_tarfile(script, version['filename'].sub(/\.bz2?$/, ''), contents) }
     when /\.vba$/ then raise "can't handle .vba"
     else raise "unknown filetype: #{actual_name}"
     end
