@@ -417,6 +417,8 @@ def sense_file(actual_name, pkgfile)
                 actual_name += '.py'
             elsif magic_type.nil? || magic_type.text?   # chances are it's a vimscript...?
                 actual_name += '.vim'   # http://www.vim.org/scripts/script.php?script_id=29
+            elsif magic_type == 'application/x-tar'
+                actual_name += '.tar'
             else
                 raise "unknown failed zip type for #{actual_name}: #{magic_type}"
             end
