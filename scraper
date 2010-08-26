@@ -343,7 +343,7 @@ end
 
 def download_package(version, script)
     pkgname = "#{version['date']} #{filenameify(script_version(version))} #{filenameify(version['filename'])}"
-    pkgdir = File.join($packages_dir, "#{'%04d' % script['script_id']} - #{script['name']}")
+    pkgdir = File.join($packages_dir, "#{'%04d' % script['script_id']} - #{filenameify(script['name'])}")
     Dir.mkdir pkgdir unless test ?d, pkgdir
     pkgfile = File.join(pkgdir, pkgname)
     download_file(version['url'], pkgfile) unless test ?f, pkgfile
