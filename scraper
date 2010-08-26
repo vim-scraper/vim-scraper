@@ -295,7 +295,7 @@ def smart_copy_file(script, filename, contents)
 end
 
 
-def unvimball(script, vimball)
+def extract_vimball(script, vimball)
     Dir.mktmpdir($vimscripts_name) do |tmpdir|
         cmd = ['/usr/bin/vim', vimball, '-X', '-n', '-c', ":set runtimepath=#{tmpdir},$VIMRUNTIME", '-c', ':so %', '-c', ':q']
         raise "couldn't run #{cmd.join(' ')}: #{$?}" unless system(*cmd)
@@ -306,6 +306,23 @@ def unvimball(script, vimball)
             smart_copy_file(script, localpath, File.read(path))
         end
         # mktmpdir automatically blows everything away
+    end
+end
+
+
+def unvimball(script, vimball)
+    if script['script_id'].to_i == 293
+        # special case to not have to hit return when unpacking.  vimballs suck bad.
+        Tempfile.open($vimscripts_name) do |ttfile|
+            ball = File.read(vimball)
+            ball.force_encoding("ASCII-8BIT")
+            ball.gsub!(/call input\(\"\<Hit Return to continue\>\"\)/, '')
+            ttfile.write(ball)
+            ttfile.close
+            extract_vimball(script, ttfile.path)
+        end
+    else
+        extract_vimball(script, vimball)
     end
 end
 
