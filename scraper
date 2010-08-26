@@ -356,7 +356,7 @@ def sense_zipped_file(script, filename, infile)
     contents = infile.read
     if MimeMagic.by_magic(contents) == 'application/x-tar'
         copy_tarfile(script, StringIO.new(contents))
-    elsif contents[0..512] =~ /^\s*UseVimball\s*$/
+    elsif contents[0..512] =~ /^\bUseVimball\s*$/
         Tempfile.open($vimscripts_name) do |ttfile|
             ttfile.write(contents)
             ttfile.close
