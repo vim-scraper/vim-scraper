@@ -250,7 +250,7 @@ end
 
 
 def cleanpath(path)     # lifted from git-wiki
-    path.gsub! /^[\/\s]*/, ''
+    path = path.gsub /^[\/\s]*/, ''
     names = path.split('/').reject { |str| str =~ /^\s*$/ }
     i = 0
     while i < names.length
