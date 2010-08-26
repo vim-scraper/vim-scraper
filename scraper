@@ -347,6 +347,7 @@ def sense_file(actual_name, pkgfile)
     # some files lie about their type (claim to be .zips but are just .vim files).  fix em.
     extension_type = MIME::Types.type_for(actual_name)
     magic_type = File.open(pkgfile) { |f| MimeMagic.by_magic(f) }
+    magic_type = 'application/x-bzip2' if magic_type == 'application/x-bzip' # Mime::Types and MimeMagic disagree
     if extension_type.include? magic_type
         # we're good, extension and magic match up
     else
@@ -388,8 +389,8 @@ def add_version(version, script)
     when /#{$textext}/ then smart_copy_file(script, actual_name, File.read(pkgfile))
     when /\.zip$/ then copy_zipfile(script, pkgfile)
     when /\.tar$/ then File.open(pkgfile, 'r') { |file| copy_tarfile(script, file) }
-    when /\.t?gz$/ then ungzip(pkgfile) { |contents| sense_zipped_file(script, version['filename'].sub(/\.gz$/, ''), contents) }
-    when /\.t?bz2?$/ then raise "check bz"; unbzip2(pkgfile) { |contents| sense_zipped_file(script, version['filename'].sub(/\.bz2?$/, ''), contents) }
+    when /\.t?gz$/ then ungzip(pkgfile) { |contents| sense_zipped_file(script, version['filename'].sub(/\.t?gz$/, ''), contents) }
+    when /\.t?bz2?$/ then unbzip2(pkgfile) { |contents| sense_zipped_file(script, version['filename'].sub(/\.t?bz2?$/, ''), contents) }
     when /\.vba$/ then unvimball(script, pkgfile)
     else raise "unknown filetype: #{actual_name}"
     end
