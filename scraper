@@ -205,8 +205,8 @@ end
 
 def gittagify(s)
     # replace any chars git might take issue with (space, backslash, ^:)?]
-    # interesting, git doesn't like it when a tag ends with a period
-    s.gsub(/[^A-Za-z0-9_\-!#\@\$%&;<>+=(){|},.\]]/, '-').gsub(/\.$/, '.-')
+    # git doesn't like it when a tag begins or ends with a period
+    s.gsub(/[^A-Za-z0-9_\-!#\@\$%&;<>+=(){|},.\]]/, '-').gsub(/^\./, '0.').gsub(/\.$/, '.0')
 end
 
 
