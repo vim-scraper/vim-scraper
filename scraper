@@ -421,6 +421,9 @@ def sense_file(actual_name, pkgfile)
             actual_name += '.zip'
         elsif magic_type == 'application/x-gzip'
             actual_name += '.gz'
+        elsif magic_type == 'application/x-macbinary'
+            copy_file(actual_name + '.macbinary', File.read(pkgfile))
+            actual_name = nil
         else raise "differing mime types for #{actual_name}, ext claims #{extension_type} but magic is #{magic_type}"
         end
     end
