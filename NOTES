@@ -1,0 +1,17 @@
+This ain't good: 0040 - DrawIt!      think the vba is checked right in
+    2006-04-13 7 DrawIt.vba.gz
+        vimballs have '^UseVimball$' on the first 3 lines
+
+Probably todo:
+    if a dir only contains a /^license|^readme/i file, move the file to the root dir
+    0023, 0096
+
+
+Possibly bad (probably doesn't matter):
+    0067 - nqc.vim         -- just a lot of weird files
+    0070 - pt.vim.gz       -- not sure pt.dict is in the right place
+    0071 - dctl.vim.gz     -- not sure dctl.dict is in the right place
+    0084 - gdbvim.tar.gz   -- plugin is in /gdbvim/gdbvim.vim, not /plugin
+
+
+http://raphaelhertzog.com/2010/08/12/how-to-make-110-eur-in-one-month-with-flattr-foss/

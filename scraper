@@ -342,7 +342,7 @@ def sense_file(actual_name, pkgfile)
         # we're good, extension and magic match up
     else
         # need to figure out what's going on and fix it.
-        if (magic_type.nil? && actual_name =~ /#{$textext}/) || magic_type.text?
+        if (magic_type.nil? || magic_type.text?) && actual_name =~ /#{$textext}/
             # no problem, it's a textfile
         elsif actual_name =~ /\.vba$/
             # arg, a vimball.  let it through.
