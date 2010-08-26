@@ -386,9 +386,9 @@ def sense_file(actual_name, pkgfile)
             # no problem, it's a textfile
         elsif actual_name =~ /\.vba$/
             # arg, a vimball.  let it through.  sense_zipped_file senses vimballs by file magic.
-        elsif actual_name == 'dtags' && magic_type == 'application/x-perl'
-            # it's a Perl file: http://www.vim.org/scripts/script.php?script_id=59
-            copy_file('dtags', File.read(pkgfile))
+        elsif (actual_name == 'dtags' && magic_type == 'application/x-perl') || actual_name == 'zshrc'
+            # special case some filenames, don't think it's worth making this generic
+            copy_file(actual_name, File.read(pkgfile))
             actual_name = nil
         elsif is_some_sort_of_zipfile(extension_type)
             # extension claims zipfile but magic disagrees
