@@ -37,6 +37,7 @@ $packages_dir = 'packages'
 $vimdirs = %w{after autoload bin colors doc ftdetect ftplugin indent plugin syntax}
 # .set?!  used by http://www.vim.org/scripts/script.php?script_id=45
 $textext = %w{c cpp diff h patch pl pm ps py rb set sh tcl txt vim}.map { |x| "\\.#{x}$" }.join('|')
+$deleted_scripts = %w{548 549 550 762 1032 1129 1669 2861}
 
 Dir.mkdir $scripts_dir unless test ?d, $scripts_dir
 Dir.mkdir $repos_dir unless test ?d, $repos_dir
@@ -136,7 +137,7 @@ end
 
 def scrape_script(script_id)
     # hard-code the scripts that claim to be deleted
-    if %w{548 549 550 762 1129 1669 2861}.include? script_id.to_s
+    if $deleted_scripts.include? script_id.to_s
         puts "Skipped #{script_id} -- deleted."
         return nil
     end
