@@ -401,8 +401,7 @@ def sense_file(actual_name, pkgfile)
     # some files lie about their type (claim to be .zips but are just .vim files).  fix em.
     extension_type = MIME::Types.type_for(actual_name)
     magic_type = File.open(pkgfile) { |f| MimeMagic.by_magic(f) }
-    magic_type = 'application/x-bzip2' if magic_type == 'application/x-bzip' # Mime::Types and MimeMagic disagree
-    if extension_type.include? magic_type
+    if extension_type.include?(magic_type) || (extension_type.include?('application/x-bzip2') && magic_type == 'application/x-bzip')
         # we're good, extension and magic match up
     else
         # need to figure out what's going on and fix it.
