@@ -245,6 +245,7 @@ end
 
 
 def copy_file(filename, contents)
+    raise "no data in #{filename}: #{contents.inspect}" unless contents
     $repo.root[filename] = Gitrb::Blob.new(:data => contents)
 end
 
@@ -342,7 +343,7 @@ def copy_tarfile(script, tarfile)
     Archive::Tar::Minitar::Reader.open(tarfile) do |tf|
         tf.each_entry do |entry|
             next unless entry.file?
-            smart_copy_file(script, entry.full_name, entry.read)
+            smart_copy_file(script, entry.full_name, entry.read || '')
         end
     end
 end
