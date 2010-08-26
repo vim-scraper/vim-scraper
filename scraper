@@ -435,6 +435,8 @@ def sense_file(actual_name, pkgfile)
             actual_name += '.zip'
         elsif magic_type == 'application/x-gzip'
             actual_name += '.gz'
+        elsif magic_type == 'application/x-bzip'
+            actual_name += '.bz2'
         elsif magic_type == 'application/x-macbinary'
             copy_file(actual_name + '.macbinary', File.read(pkgfile))
             actual_name = nil
