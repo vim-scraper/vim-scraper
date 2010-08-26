@@ -304,7 +304,9 @@ def sense_file(actual_name, pkgfile)
         # we're good, extension and magic match up
     else
         # need to figure out what's going on and fix it.
-        if extension_type.include? 'application/zip' then
+        if extension_type.empty? && (magic_type.nil? || magic_type.text?) && actual_name =~ /\.vim$/
+            # no problem, it's a vimfile
+        elsif extension_type.include? 'application/zip' then
             if magic_type.nil?
                 # extension claims zipfile but magic disagrees.  assume it's a vimfile.
                 # http://www.vim.org/scripts/script.php?script_id=29
