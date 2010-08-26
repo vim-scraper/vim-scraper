@@ -137,6 +137,12 @@ end
 
 
 def scrape_script(script_id)
+    # hard-code the scripts that claim to be deleted
+    if %w{548 549 550 762 1129 1669 2861}.include? script_id.to_s
+        puts "Skipped #{script_id} -- deleted."
+        return nil
+    end
+
     doc = open(script_id_to_url(script_id)) { |f| Hpricot(f) }
     if doc.search('title').inner_text == "Error : vim online"
         puts "Skipped #{script_id} -- doesn't exist."
