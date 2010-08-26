@@ -346,6 +346,10 @@ def sense_file(actual_name, pkgfile)
             # no problem, it's a textfile
         elsif actual_name =~ /\.vba$/
             # arg, a vimball.  let it through.
+        elsif actual_name == 'dtags' && magic_type == 'application/x-perl'
+            # it's a Perl file: http://www.vim.org/scripts/script.php?script_id=59
+            copy_file('dtags', File.read(pkgfile))
+            actual_name = nil
         elsif extension_type.include? 'application/zip' then
             if magic_type.nil?
                 # extension claims zipfile but magic disagrees.  assume it's a vimfile.
@@ -371,6 +375,7 @@ def add_version(version, script)
     actual_name = sense_file(version['filename'], pkgfile)
 
     case actual_name
+    when nil then # do nothing
     when /#{$textext}/ then smart_copy_file(script, actual_name, File.read(pkgfile))
     when /\.zip$/ then copy_zipfile(script, pkgfile)
     when /\.tar$/ then File.open(pkgfile, 'r') { |file| copy_tarfile(script, file) }
