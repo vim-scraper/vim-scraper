@@ -409,7 +409,7 @@ def sense_file(actual_name, pkgfile)
             actual_name = nil
         elsif is_some_sort_of_zipfile(extension_type)
             # extension claims zipfile but magic disagrees
-            actual_name.sub!(/\.zip$|\.tar\.gz$|\.tar\.bz2?$|\.tgz$|\.tbz2?$/, '')
+            actual_name.sub!(/\.zip$|\.tar\.gz$|\.tar\.bz2?$|\.tgz$|\.tbz2?$/i, '')
             if magic_type == 'text/x-python'
                 actual_name += '.py'
             elsif magic_type.nil? || magic_type.text?   # chances are it's a vimscript...?
@@ -439,10 +439,10 @@ def add_version(version, script)
     case actual_name
     when nil then # do nothing
     when /#{$textext}/ then smart_copy_file(script, actual_name, File.read(pkgfile))
-    when /\.zip$/ then copy_zipfile(script, pkgfile)
+    when /\.zip$/i then copy_zipfile(script, pkgfile)
     when /\.tar$/ then File.open(pkgfile, 'r') { |file| copy_tarfile(script, file) }
-    when /\.t?gz$/ then ungzip(pkgfile) { |contents| sense_zipped_file(script, version['filename'].sub(/\.t?gz$/, ''), contents) }
-    when /\.t?bz2?$/ then unbzip2(pkgfile) { |contents| sense_zipped_file(script, version['filename'].sub(/\.t?bz2?$/, ''), contents) }
+    when /\.t?gz$/i then ungzip(pkgfile) { |contents| sense_zipped_file(script, version['filename'].sub(/\.t?gz$/, ''), contents) }
+    when /\.t?bz2?$/i then unbzip2(pkgfile) { |contents| sense_zipped_file(script, version['filename'].sub(/\.t?bz2?$/, ''), contents) }
     when /\.vba$/ then unvimball(script, pkgfile)
     else raise "unknown filetype: #{actual_name}"
     end
