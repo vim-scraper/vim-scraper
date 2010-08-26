@@ -11,4 +11,8 @@ Possibly bad (probably doesn't matter):
     0084 - gdbvim.tar.gz   -- plugin is in /gdbvim/gdbvim.vim, not /plugin
 
 
+Definitely bad but definitely doesn't matter:
+    0016: 0.2 tarfile is broken, doesn't include plugin.vim
+
+
 http://raphaelhertzog.com/2010/08/12/how-to-make-110-eur-in-one-month-with-flattr-foss/

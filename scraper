@@ -451,6 +451,20 @@ def find_version(version)
 end
 
 
+def check_for_lone_dir(script)
+    return unless $repo.root.count == 1
+    loner = $repo.root.first.first
+    return if $vimdirs.include? loner
+    if $repo.root[loner].type == :tree
+        # copy contents of the directory into the root
+        $repo.root.delete(loner).to_a.each { |name, value|
+            # $repo.root[name] = value
+            smart_copy_file(script, name, value.data)
+        }
+    end
+end
+
+
 def read_script(script)
     $repo_path = File.join($repos_dir, "#{'%04d' % script['script_id']} - #{script['name']}.git")
     # if gitrb is dying on the following line, you need this fix:
@@ -470,9 +484,10 @@ def read_script(script)
         else
             puts "  adding #{version['filename']} #{version['date']} #{script_version(version)}"
             $repo.transaction(version['release_notes'], author, committer) {
-                # delete all existing blobs in this commit
-                $repo.root.to_a.map { |a| $repo.root.delete(a.first) }
+                # delete all existing blobs since we replace everything with the new commit
+                $repo.root.to_a.map { |name,value| $repo.root.delete(name) }
                 add_version(version, script)
+                check_for_lone_dir(script)
                 copy_file('README', "This is a mirror of #{script_id_to_url(script['script_id'])}\n\n" + script['description'] + "\n") unless $repo.root['README']
             }
             tag_version(version)
