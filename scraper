@@ -409,7 +409,10 @@ def sense_file(actual_name, pkgfile)
         if (magic_type.nil? || magic_type.text?) && actual_name =~ /#{$textext}/
             # no problem, it's a textfile
         elsif actual_name =~ /\.vba$/
-            # arg, a vimball.  let it through.  sense_zipped_file senses vimballs by file magic.
+            # arg, a vimball.  let it through.  see sense_zipped_file for vimball sensing.
+        elsif actual_name =~ /^[^a-z]*\.VIM$/
+            # i guess dos users might do everything in caps
+            actual_name.downcase!
         elsif   (actual_name == 'dtags' && magic_type == 'application/x-perl') ||
                 (actual_name == 'colorize' && magic_type == 'application/x-ruby') ||
                 %{zshrc vimrc PHP.dict ttcn.dict}.include?(actual_name) ||
