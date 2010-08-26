@@ -411,11 +411,11 @@ def sense_file(actual_name, pkgfile)
         elsif actual_name =~ /^[^a-z]*\.VIM$/
             # i guess dos users might do everything in caps
             actual_name.downcase!
-        elsif   ((actual_name == 'dtags' || actual_name == 'qt2vimsyntax') && magic_type == 'application/x-perl') ||
-                (actual_name == 'colorize' && magic_type == 'application/x-ruby') ||
+        elsif ( (magic_type == 'application/x-perl' && %w{dtags qt2vimsyntax multiAPIsyntax}.include?(actual_name)) ||
+                (magic_type == 'application/x-ruby' && %w{colorize}.include?(actual_name)) ||
                 %w{zshrc vimrc PHP.dict ttcn.dict pydiction}.include?(actual_name) ||
-                magic_type == 'application/x-ms-dos-executable'
-            # special case some filenames, don't think it's worth making this generic
+                magic_type == 'application/x-ms-dos-executable' )
+            # names and magic have failed us, copy these files over raw
             copy_file(actual_name, File.read(pkgfile))
             actual_name = nil
         elsif is_some_sort_of_zipfile(extension_type)
