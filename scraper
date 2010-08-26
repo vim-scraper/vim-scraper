@@ -19,6 +19,7 @@ require 'bzip2'
 require 'mime/types'
 require 'mimemagic'
 require 'tmpdir'
+require 'tempfile'
 require 'find'
 
 # thoughts:
@@ -311,16 +312,6 @@ def unbzip2(file)
 end
 
 
-def sense_tarfile(script, filename, infile)
-    contents = infile.read
-    if MimeMagic.by_magic(contents) == 'application/x-tar'
-        copy_tarfile(script, StringIO.new(contents))
-    else
-        smart_copy_file(script, filename, contents)
-    end
-end
-
-
 def download_package(version, script)
     pkgname = "#{version['date']} #{filenameify(script_version(version))} #{filenameify(version['filename'])}"
     pkgdir = File.join($packages_dir, "#{'%04d' % script['script_id']} - #{script['name']}")
@@ -331,8 +322,26 @@ def download_package(version, script)
 end
 
 
-# .set?!  http://www.vim.org/scripts/script.php?script_id=45
+# .set?!  used by http://www.vim.org/scripts/script.php?script_id=45
 $textext = %w{c cpp h pl pm py rb set tcl txt vim}.map { |x| "\\.#{x}$" }.join('|')
+
+
+def sense_zipped_file(script, filename, infile)
+    # sense the payload of a gz or bz2 file.  don't want to recurse into sense_file: too complex.
+    contents = infile.read
+    if MimeMagic.by_magic(contents) == 'application/x-tar'
+        copy_tarfile(script, StringIO.new(contents))
+    elsif contents[0..512] =~ /^\s*UseVimball\s*$/
+        Tempfile.open($vimscripts_name) do |ttfile|
+            ttfile.write(contents)
+            ttfile.close
+            unvimball(script, ttfile.path)
+        end
+    else
+        smart_copy_file(script, filename, contents)
+    end
+end
+
 
 def sense_file(actual_name, pkgfile)
     # some files lie about their type (claim to be .zips but are just .vim files).  fix em.
@@ -345,7 +354,7 @@ def sense_file(actual_name, pkgfile)
         if (magic_type.nil? || magic_type.text?) && actual_name =~ /#{$textext}/
             # no problem, it's a textfile
         elsif actual_name =~ /\.vba$/
-            # arg, a vimball.  let it through.
+            # arg, a vimball.  let it through.  sense_zipped_file senses vimballs by file magic.
         elsif actual_name == 'dtags' && magic_type == 'application/x-perl'
             # it's a Perl file: http://www.vim.org/scripts/script.php?script_id=59
             copy_file('dtags', File.read(pkgfile))
@@ -379,8 +388,8 @@ def add_version(version, script)
     when /#{$textext}/ then smart_copy_file(script, actual_name, File.read(pkgfile))
     when /\.zip$/ then copy_zipfile(script, pkgfile)
     when /\.tar$/ then File.open(pkgfile, 'r') { |file| copy_tarfile(script, file) }
-    when /\.t?gz$/ then ungzip(pkgfile) { |contents| sense_tarfile(script, version['filename'].sub(/\.gz$/, ''), contents) }
-    when /\.t?bz2?$/ then raise "check bz"; unbzip2(pkgfile) { |contents| sense_tarfile(script, version['filename'].sub(/\.bz2?$/, ''), contents) }
+    when /\.t?gz$/ then ungzip(pkgfile) { |contents| sense_zipped_file(script, version['filename'].sub(/\.gz$/, ''), contents) }
+    when /\.t?bz2?$/ then raise "check bz"; unbzip2(pkgfile) { |contents| sense_zipped_file(script, version['filename'].sub(/\.bz2?$/, ''), contents) }
     when /\.vba$/ then unvimball(script, pkgfile)
     else raise "unknown filetype: #{actual_name}"
     end

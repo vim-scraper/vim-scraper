@@ -1,9 +1,6 @@
-This ain't good: 0040 - DrawIt!      think the vba is checked right in
-    2006-04-13 7 DrawIt.vba.gz
-        vimballs have '^UseVimball$' on the first 3 lines
-
 Probably todo:
-    if a dir only contains a /^license|^readme/i file, move the file to the root dir
+    if a dir only contains a /license|readme/i file, move the file to the root dir
+        if the file is /^readme$/i then rename it to readme.orig
     0023, 0096
 
 
