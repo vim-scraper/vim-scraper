@@ -208,8 +208,8 @@ end
 
 
 def filenameify(s)
-    # replace any unsafe path chars
-    s.gsub(/[^ A-Za-z0-9_\-!#\@\$^%&:;<?>+=(){|},.\[\]]/, '-')
+    # replace unsafe path chars.  keep posessive Michaels, not Michael-s
+    s.gsub(/'s/i, 's').gsub(/[^ A-Za-z0-9_\-!#\@\$^%&:;<?>+=(){|},.\[\]]/, '-')
 end
 
 
