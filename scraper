@@ -412,7 +412,7 @@ def sense_file(actual_name, pkgfile)
             # arg, a vimball.  let it through.  sense_zipped_file senses vimballs by file magic.
         elsif   (actual_name == 'dtags' && magic_type == 'application/x-perl') ||
                 (actual_name == 'colorize' && magic_type == 'application/x-ruby') ||
-                %{zshrc vimrc PHP.dict}.include?(actual_name) ||
+                %{zshrc vimrc PHP.dict ttcn.dict}.include?(actual_name) ||
                 magic_type == 'application/x-ms-dos-executable'
             # special case some filenames, don't think it's worth making this generic
             copy_file(actual_name, File.read(pkgfile))
