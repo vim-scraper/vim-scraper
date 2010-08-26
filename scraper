@@ -451,16 +451,25 @@ def find_version(version)
 end
 
 
+def copy_tree(script, tree, inpath=[])
+    tree.to_a.each { |name, value|
+        path = inpath + [name]
+        if value.type == :blob
+            smart_copy_file(script, path.join('/'), value.data)
+        else
+            copy_tree(script, value, path)
+        end
+    }
+end
+
+
 def check_for_lone_dir(script)
     return unless $repo.root.count == 1
     loner = $repo.root.first.first
     return if $vimdirs.include? loner
     if $repo.root[loner].type == :tree
         # copy contents of the directory into the root
-        $repo.root.delete(loner).to_a.each { |name, value|
-            # $repo.root[name] = value
-            smart_copy_file(script, name, value.data)
-        }
+        copy_tree script, $repo.root.delete(loner)
     end
 end
 
