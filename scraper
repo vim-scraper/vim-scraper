@@ -300,17 +300,21 @@ def smart_copy_file(script, filename, contents)
 end
 
 
+def copy_filesystem(script, dir)
+    Find.find(dir) do |path|
+        next if test(?d, path)
+        localpath = path.sub(dir, '').sub(/^\/+/, '')
+        next if block_given? && yield(localpath)
+        smart_copy_file(script, localpath, File.read(path))
+    end
+end
+
+
 def extract_vimball(script, vimball)
     Dir.mktmpdir($vimscripts_name) do |tmpdir|
         cmd = ['/usr/bin/vim', vimball, '-X', '-n', '-c', ':set nomore', '-c', ":set runtimepath=#{tmpdir},$VIMRUNTIME", '-c', ':so %', '-c', ':q']
         raise "couldn't run #{cmd.join(' ')}: #{$?}" unless system(*cmd)
-        Find.find(tmpdir) do |path|
-            next if test(?d, path)
-            localpath = path.sub(tmpdir, '').sub(/^\/+/, '')
-            next if localpath == '.VimballRecord' || localpath == 'doc/tags'
-            smart_copy_file(script, localpath, File.read(path))
-        end
-        # mktmpdir automatically blows everything away
+        copy_filesystem(script, tmpdir) { |path| next if path == '.VimballRecord' || path == 'doc/tags' }
     end
 end
 
@@ -338,6 +342,18 @@ def unvimball(script, vimball)
         end
     else
         extract_vimball(script, vimball)
+    end
+end
+
+
+def unrar(script, rarpath)
+    Dir.mktmpdir($vimscripts_name) do |tmpdir|
+        fullpath = File.expand_path(rarpath)
+        Dir.chdir(tmpdir) {
+            cmd = ['/usr/bin/unrar', 'x', fullpath]
+            raise "couldn't run #{cmd.join(' ')}: #{$?}" unless system(*cmd)
+        }
+        copy_filesystem(script, tmpdir)
     end
 end
 
@@ -409,7 +425,9 @@ def sense_file(actual_name, pkgfile)
     # some files lie about their type (claim to be .zips but are just .vim files).  fix em.
     extension_type = MIME::Types.type_for(actual_name)
     magic_type = File.open(pkgfile) { |f| MimeMagic.by_magic(f) }
-    if extension_type.include?(magic_type) || (extension_type.include?('application/x-bzip2') && magic_type == 'application/x-bzip')
+    if ( extension_type.include?(magic_type) ||
+        (extension_type.include?('application/x-bzip2') && magic_type == 'application/x-bzip') ||
+        (extension_type.include?('application/x-rar-compressed') && magic_type == 'application/x-rar') )
         # we're good, extension and magic match up
     else
         # need to figure out what's going on and fix it.
@@ -468,6 +486,7 @@ def add_version(version, script)
     when /\.tar$/ then File.open(pkgfile, 'r') { |file| copy_tarfile(script, file) }
     when /\.t?gz$/i then ungzip(pkgfile) { |contents| sense_zipped_file(script, version['filename'].sub(/\.t?gz$/, ''), contents) }
     when /\.t?bz2?$/i then unbzip2(pkgfile) { |contents| sense_zipped_file(script, version['filename'].sub(/\.t?bz2?$/, ''), contents) }
+    when /\.rar$/ then unrar(script, pkgfile)
     when /\.vba$/ then unvimball(script, pkgfile)
     else raise "unknown filetype: #{actual_name}"
     end
