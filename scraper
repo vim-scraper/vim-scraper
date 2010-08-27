@@ -419,6 +419,7 @@ end
 def sense_zipped_file(script, filename, infile)
     # sense the payload of a gz or bz2 file.  don't want to recurse into sense_file: too complex.
     contents = infile.read
+    contents.force_encoding('ASCII-8BIT')
     if MimeMagic.by_magic(contents) == 'application/x-tar'
         copy_tarfile(script, StringIO.new(contents))
     elsif contents[0..512] =~ /^\bUseVimball\s*$/
