@@ -468,7 +468,7 @@ def sense_file(actual_name, pkgfile)
             actual_name = "#{$1}.vim"
         elsif ( %w{application/x-awk application/x-perl application/x-ruby application/x-shellscript application/xml}.include?(magic_type.to_s) ||
                 (magic_type == nil && %w{vimopen cleanswap cvsvimdiff vmake vim_menu_HTMLpol}.include?(actual_name)) ||
-                %w{zshrc vimrc _vimrc}.include?(actual_name) ||
+                %w{zshrc vimrc _vimrc .vimrc}.include?(actual_name) ||
                 actual_name =~ /\.dict$/ || %w{pydiction xdebug2}.include?(actual_name) ||  # dictionaries
                 actual_name =~ /\.applescript$/ ||
                 magic_type == 'application/x-java' ||
