@@ -36,7 +36,7 @@ $packages_dir = 'packages'
 
 $vimdirs = %w{after autoload bin colors doc ftdetect ftplugin indent plugin syntax}
 # .set?!  used by http://www.vim.org/scripts/script.php?script_id=45
-$textext = %w{c cpp diff h patch pl pm ps py rb set sh tcl txt vim}.map { |x| "\\.#{x}$" }.join('|')
+$textext = %w{c cpp csh diff h patch pl pm ps py rb set sh tcl txt vim}.map { |x| "\\.#{x}$" }.join('|')
 $deleted_scripts = %w{548 549 550 762 1032 1129 1669 2861}
 
 Dir.mkdir $scripts_dir unless test ?d, $scripts_dir
@@ -413,7 +413,7 @@ def sense_file(actual_name, pkgfile)
             actual_name.downcase!
         elsif ( (magic_type == 'application/x-perl' && %w{dtags qt2vimsyntax multiAPIsyntax}.include?(actual_name)) ||
                 (magic_type == 'application/x-ruby' && %w{colorize}.include?(actual_name)) ||
-                %w{zshrc vimrc PHP.dict ttcn.dict pydiction}.include?(actual_name) ||
+                %w{zshrc vimrc _vimrc PHP.dict ttcn.dict pydiction cleanswap cvsvimdiff}.include?(actual_name) ||
                 magic_type == 'application/x-ms-dos-executable' )
             # names and magic have failed us, copy these files over raw
             copy_file(actual_name, File.read(pkgfile))
