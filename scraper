@@ -330,7 +330,7 @@ def unvimball(script, vimball)
             ttfile.close
             extract_vimball(script, ttfile.path)
         end
-    elsif script['script_id'].to_i == 1318
+    elsif %w{1318 1609}.include? script['script_id'].to_s
         # apparently vimball dies badly if called on a file with the wrong line endings
         Tempfile.open($vimscripts_name) do |ttfile|
             ball = File.read(vimball)
@@ -441,6 +441,8 @@ def sense_file(actual_name, pkgfile)
         elsif ( (magic_type == 'application/x-perl' && %w{dtags qt2vimsyntax multiAPIsyntax colortest dtd2vim}.include?(actual_name)) ||
                 (magic_type == 'application/x-ruby' && %w{colorize}.include?(actual_name)) ||
                 (magic_type == 'application/x-shellscript' && %w{vimd}.include?(actual_name)) ||
+                (magic_type == 'application/x-gmc-link' && %w{TimeIt.vim}.include?(actual_name)) ||   # huge magic miss
+                (magic_type == nil && %w{vimopen}.include?(actual_name)) ||
                 %w{zshrc vimrc _vimrc PHP.dict ttcn.dict pydiction cleanswap cvsvimdiff}.include?(actual_name) ||
                 magic_type == 'application/x-ms-dos-executable' )
             # names and magic have failed us, copy these files over raw
