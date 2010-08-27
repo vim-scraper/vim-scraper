@@ -35,7 +35,7 @@ $scripts_dir = 'scripts'
 $packages_dir = 'packages'
 
 $vimdirs = %w{after autoload bin colors doc ftdetect ftplugin indent plugin syntax}
-$textext = %w{bat c cpp csh diff h klip patch pl pm ps py rb set sh tcl txt xml vim}.map { |x| "\\.#{x}$" }.join('|')
+$textext = %w{bat c cpp csh diff h klip patch pl pm ps py rb set sh tcl txt xml vim vim.orig}.map { |x| "\\.#{x}$" }.join('|')
 $deleted_scripts = %w{548 549 550 762 1032 1129 1295 1301 1669 1789 2056 2172 2456 2664 2861}
 
 Dir.mkdir $scripts_dir unless test ?d, $scripts_dir
@@ -458,7 +458,7 @@ def sense_file(actual_name, pkgfile)
         elsif actual_name =~ /^(.*)\.VIM$/
             actual_name = "#{$1}.vim"
         elsif ( %w{application/x-awk application/x-perl application/x-ruby application/x-shellscript application/xml}.include?(magic_type.to_s) ||
-                (magic_type == nil && %w{vimopen cleanswap cvsvimdiff vmake}.include?(actual_name)) ||
+                (magic_type == nil && %w{vimopen cleanswap cvsvimdiff vmake vim_menu_HTMLpol}.include?(actual_name)) ||
                 %w{zshrc vimrc _vimrc}.include?(actual_name) ||
                 actual_name =~ /\.dict$/ || %w{pydiction xdebug2}.include?(actual_name) ||  # dictionaries
                 actual_name =~ /\.applescript$/ ||
