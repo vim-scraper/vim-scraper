@@ -586,7 +586,6 @@ end
 def tag_version(version)
     ENV['GIT_COMMITTER_NAME'] = $vimscripts_name
     ENV['GIT_COMMITTER_EMAIL'] = $vimscripts_email
-    # don't need to chdir before git tag since Gitrb set GIT_DIR.  :-/
     sver = script_version(version)
     $repo.git_tag('-a', gittagify(sver), '-m', "tag #{sver}")
     ENV.delete('GIT_COMMITTER_NAME')
@@ -596,11 +595,18 @@ end
 
 def find_version(version)
     tagname = gittagify(script_version(version))
-    tagref = "#{$repo.path}/refs/tags/#{tagname}"
-    return nil unless test ?f, tagref
-    id = File.read(tagref)
-    tag = $repo.get(id)
-    raise "not a commit tag" unless tag.tagtype == 'commit'
+    # gitrb doesn't handle annotated tags so we call git directly
+    tag = Dir.chdir($repo.path) {
+        begin
+            # Gitrb doesn't clean GIT_DIR.  :(
+            old_dir = ENV['GIT_DIR']
+            ENV.delete('GIT_DIR')
+            `git tag -l #{tagname}`.chomp
+        ensure
+            ENV['GIT_DIR'] = old_dir
+        end
+    }
+    tag = nil if tag =~ /^\s*$/
     return tag
 end
 
