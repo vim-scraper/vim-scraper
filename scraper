@@ -332,6 +332,7 @@ def copy_filesystem(script, dir)
     Find.find(dir) do |path|
         next if test(?d, path)
         localpath = path.sub(dir, '').sub(/^\/+/, '')
+        next if localpath =~ /^\s*$/
         next if block_given? && yield(localpath)
         smart_copy_file(script, localpath, File.read(path))
     end
