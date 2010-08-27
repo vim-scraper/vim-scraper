@@ -2,5 +2,5 @@
 
 find . -type d -name "*.git" | while read dir; do
   echo "$dir"
-  (cd "$dir" && git gc --prune)
+  (cd "$dir" && exec git gc --prune)
 done

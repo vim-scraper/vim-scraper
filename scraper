@@ -127,10 +127,27 @@ end
 MimeMagic.remove('application/x-gmc-link')
 
 
+# http://blog.codefront.net/2008/01/14/retrying-code-blocks-in-ruby-on-exceptions-whatever/
+def retryable(options = {}, &block)
+    opts = { :tries => 1, :on => Exception }.merge(options)
+    retry_exception, retries = opts[:on], opts[:tries]
+
+    begin
+        return yield
+    rescue retry_exception
+        retry if (retries -= 1) > 0
+    end
+
+    yield
+end
+
+
 def scrape_author(user_id)
     $authors ||= []
     unless $authors[user_id.to_i]
-        doc = open("http://www.vim.org/account/profile.php?user_id=#{user_id}") { |f| Hpricot(f) }
+        doc = retryable(:tries => 2, :on => OpenURI::HTTPError) do
+            open("http://www.vim.org/account/profile.php?user_id=#{user_id}") { |f| Hpricot(f) }
+        end
         doc.at('td[text()="user name"]').next_sibling.inner_content
         u = { :user_id => user_id }
         u[:user_name] = doc.at('td[text()="user name"]').next_sibling.inner_content
@@ -156,7 +173,9 @@ def scrape_script(script_id)
         return nil
     end
 
-    doc = open(script_id_to_url(script_id)) { |f| Hpricot(f) }
+    doc = retryable(:tries => 2, :on => OpenURI::HTTPError) do
+        open(script_id_to_url(script_id)) { |f| Hpricot(f) }
+    end
     if doc.search('title').inner_text == "Error : vim online"
         puts "Skipped #{script_id} -- doesn't exist."
         return nil
@@ -252,21 +271,6 @@ def write_script(script)
         # check_encoding(farg)
         f.write(JSON.pretty_generate(farg))
     }
-end
-
-
-# http://blog.codefront.net/2008/01/14/retrying-code-blocks-in-ruby-on-exceptions-whatever/
-def retryable(options = {}, &block)
-    opts = { :tries => 1, :on => Exception }.merge(options)
-    retry_exception, retries = opts[:on], opts[:tries]
-
-    begin
-        return yield
-    rescue retry_exception
-        retry if (retries -= 1) > 0
-    end
-
-    yield
 end
 
 
