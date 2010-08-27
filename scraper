@@ -314,7 +314,7 @@ def extract_vimball(script, vimball)
     Dir.mktmpdir($vimscripts_name) do |tmpdir|
         cmd = ['/usr/bin/vim', vimball, '-X', '-n', '-c', ':set nomore', '-c', ":set runtimepath=#{tmpdir},$VIMRUNTIME", '-c', ':so %', '-c', ':q']
         raise "couldn't run #{cmd.join(' ')}: #{$?}" unless system(*cmd)
-        copy_filesystem(script, tmpdir) { |path| next if path == '.VimballRecord' || path == 'doc/tags' }
+        copy_filesystem(script, tmpdir) { |path| path == '.VimballRecord' || path == 'doc/tags' }
     end
 end
 
