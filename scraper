@@ -346,7 +346,7 @@ def unvimball(script, vimball)
         Tempfile.open($vimscripts_name) do |ttfile|
             ball = File.read(vimball)
             ball.force_encoding("ASCII-8BIT")
-            ball.gsub!("\r", '')
+            ball.gsub!("\r\n", "\n")
             ttfile.write(ball)
             ttfile.close
             extract_vimball(script, ttfile.path)
