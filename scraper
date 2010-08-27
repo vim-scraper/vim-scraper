@@ -303,7 +303,7 @@ end
 
 def extract_vimball(script, vimball)
     Dir.mktmpdir($vimscripts_name) do |tmpdir|
-        cmd = ['/usr/bin/vim', vimball, '-X', '-n', '-c', ":set runtimepath=#{tmpdir},$VIMRUNTIME", '-c', ':so %', '-c', ':q']
+        cmd = ['/usr/bin/vim', vimball, '-X', '-n', '-c', ':set nomore', '-c', ":set runtimepath=#{tmpdir},$VIMRUNTIME", '-c', ':so %', '-c', ':q']
         raise "couldn't run #{cmd.join(' ')}: #{$?}" unless system(*cmd)
         Find.find(tmpdir) do |path|
             next if test(?d, path)
