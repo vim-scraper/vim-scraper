@@ -37,7 +37,6 @@ $packages_dir = 'packages'
 $vimdirs = %w{after autoload bin colors doc ftdetect ftplugin indent plugin syntax}
 $textext = %w{bat c cpp csh diff h klip patch pl pm ps py rb set sh tcl txt xml vim}.map { |x| "\\.#{x}$" }.join('|')
 $deleted_scripts = %w{548 549 550 762 1032 1129 1295 1301 1669 1789 2056 2172 2861}
-$dos_vimballs = %w{1318 1609 1952 2004 2204}    # vimball barfs if files aren't converted to native newlines
 
 Dir.mkdir $scripts_dir unless test ?d, $scripts_dir
 Dir.mkdir $repos_dir unless test ?d, $repos_dir
@@ -332,28 +331,17 @@ end
 
 
 def unvimball(script, vimball)
-    if script['script_id'].to_i == 293
-        # special case to not have to hit return when unpacking.  vimballs suck bad.
-        Tempfile.open($vimscripts_name) do |ttfile|
-            ball = File.read(vimball)
-            ball.force_encoding("ASCII-8BIT")
-            ball.gsub!(/call input\(\"\<Hit Return to continue\>\"\)/, '')
-            ttfile.write(ball)
-            ttfile.close
-            extract_vimball(script, ttfile.path)
-        end
-    elsif $dos_vimballs.include? script['script_id'].to_s
-        # vimball dies badly if called on a file with the wrong line endings
-        Tempfile.open($vimscripts_name) do |ttfile|
-            ball = File.read(vimball)
-            ball.force_encoding("ASCII-8BIT")
-            ball.gsub!("\r\n", "\n")
-            ttfile.write(ball)
-            ttfile.close
-            extract_vimball(script, ttfile.path)
-        end
-    else
-        extract_vimball(script, vimball)
+    # vimball dies badly if called on a file with the wrong line endings
+    # probably 10% of line endings are dos so we always perform the correction
+    Tempfile.open($vimscripts_name) do |ttfile|
+        ball = File.read(vimball)
+        ball.force_encoding("ASCII-8BIT")
+        ball.gsub!("\r\n", "\n")
+        # get rid of a useless "hit return to continue" prompt.  vimballs suck.
+        ball.gsub!(/call input\(\"\<Hit Return to continue\>\"\)/, '') if script['script_id'].to_i == 293
+        ttfile.write(ball)
+        ttfile.close
+        extract_vimball(script, ttfile.path)
     end
 end
 
