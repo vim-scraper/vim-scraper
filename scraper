@@ -35,7 +35,7 @@ $scripts_dir = 'scripts'
 $packages_dir = 'packages'
 
 $vimdirs = %w{after autoload bin colors doc ftdetect ftplugin indent plugin syntax}
-$textext = %w{c cpp csh diff h klip patch pl pm ps py rb set sh tcl txt xml vim}.map { |x| "\\.#{x}$" }.join('|')
+$textext = %w{bat c cpp csh diff h klip patch pl pm ps py rb set sh tcl txt xml vim}.map { |x| "\\.#{x}$" }.join('|')
 $deleted_scripts = %w{548 549 550 762 1032 1129 1295 1301 1669 1789 2056 2172 2861}
 $dos_vimballs = %w{1318 1609 1952 2004 2204}    # vimball barfs if files aren't converted to native newlines
 
@@ -450,6 +450,8 @@ def sense_file(actual_name, pkgfile)
         elsif actual_name =~ /^[^a-z]*\.VIM$/
             # i guess dos users might do everything in caps
             actual_name.downcase!
+        elsif actual_name =~ /^(.*)\.VIM$/
+            actual_name = "#{$1}.vim"
         elsif ( (magic_type == 'application/x-perl' && %w{dtags qt2vimsyntax multiAPIsyntax colortest dtd2vim}.include?(actual_name)) ||
                 (magic_type == 'application/x-ruby' && %w{colorize}.include?(actual_name)) ||
                 magic_type == 'application/x-shellscript' ||
