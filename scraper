@@ -185,7 +185,7 @@ def scrape_script(script_id)
     s[:name], s[:summary] = doc.search('.txth1').inner_content.split(" : ", 2)
     s[:script_type] = doc.at('td[text()="script type"]').parent.next_sibling.children.first.inner_content
     s[:description] = doc.at('td[text()="description"]').parent.next_sibling.children.first.inner_content.gsub("\r", "\n")
-    raise 'no rating?' unless doc.search('td.lightbg~td').find { |e| e.inner_text =~ /Rating[^\d]*(\d+)\/(\d+),.*Downloaded[^\d]*(\d+)/m }
+    raise 'no rating?' unless doc.search('td.lightbg~td').find { |e| e.inner_text =~ /Rating.*\s(-?\d+)\/(\d+),.*Downloaded[^\d]*(\d+)/m }
     s[:rating_total], s[:rating_votes], s[:downloads] = $1, $2, $3      # http://www.vim.org/karma.php
     s[:install_details] = doc.at('td[text()="install details"]').parent.next_sibling.children.first.inner_content.gsub("\r", "\n")
     # reject links with targets so download links in the description don't appear to be a version (script 1843)
