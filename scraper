@@ -450,7 +450,7 @@ def sense_file(actual_name, pkgfile)
         # need to figure out what's going on and fix it.
         if (magic_type.nil? || magic_type.text?) && actual_name =~ /#{$textext}/
             # no problem, it's a textfile
-        elsif actual_name =~ /\.vba$/
+        elsif actual_name =~ /\.vba$|\.vimball$/
             # arg, a vimball.  let it through.  see sense_zipped_file for vimball sensing.
         elsif actual_name =~ /^[^a-z]*\.VIM$/
             # i guess dos users might do everything in caps
@@ -523,7 +523,7 @@ def add_version(version, script)
     when /\.t?bz2?$/i then unbzip2(pkgfile) { |contents| sense_zipped_file(script, version['filename'].sub(/\.t?bz2?$/, ''), contents) }
     when /\.7z$/ then uncrapformat(script, pkgfile, ['/usr/bin/7za', 'x'])
     when /\.rar$/ then uncrapformat(script, pkgfile, ['/usr/bin/unrar', 'x'])
-    when /\.vba$/ then unvimball(script, pkgfile)
+    when /\.vba$|\.vimball$/ then unvimball(script, pkgfile)
     else raise "unknown filetype: #{actual_name}"
     end
 end
