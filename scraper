@@ -474,6 +474,9 @@ def sense_file(actual_name, pkgfile)
             actual_name = nil
         elsif !magic_type && actual_name =~ /^exUtility-[0-9.]*.tar$/
             # odd that magic couldn't sense this valid tarfile.  owell, process it as normal.
+        elsif extension_type.include?('application/x-tar') && magic_type == nil
+            # magic has a bug where tarfiles are missed: http://github.com/minad/mimemagic/issues/#issue/1
+            # if this happens, we just blindly trust the extension.
         else raise "differing mime types for #{actual_name}, ext claims #{extension_type} but magic is #{magic_type.inspect}"
         end
     end
