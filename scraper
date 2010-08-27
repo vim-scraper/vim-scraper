@@ -36,7 +36,7 @@ $packages_dir = 'packages'
 
 $vimdirs = %w{after autoload bin colors doc ftdetect ftplugin indent plugin syntax}
 $textext = %w{c cpp csh diff h klip patch pl pm ps py rb set sh tcl txt vim}.map { |x| "\\.#{x}$" }.join('|')
-$deleted_scripts = %w{548 549 550 762 1032 1129 1295 1301 1669 2056 2861}
+$deleted_scripts = %w{548 549 550 762 1032 1129 1295 1301 1669 1789 2056 2861}
 
 Dir.mkdir $scripts_dir unless test ?d, $scripts_dir
 Dir.mkdir $repos_dir unless test ?d, $repos_dir
@@ -330,7 +330,7 @@ def unvimball(script, vimball)
             ttfile.close
             extract_vimball(script, ttfile.path)
         end
-    elsif %w{1318 1609}.include? script['script_id'].to_s
+    elsif %w{1318 1609 1952}.include? script['script_id'].to_s
         # apparently vimball dies badly if called on a file with the wrong line endings
         Tempfile.open($vimscripts_name) do |ttfile|
             ball = File.read(vimball)
@@ -443,8 +443,9 @@ def sense_file(actual_name, pkgfile)
                 (magic_type == 'application/x-shellscript' && %w{vimd}.include?(actual_name)) ||
                 (magic_type == 'application/x-gmc-link' && %w{TimeIt.vim}.include?(actual_name)) ||   # huge magic miss
                 (magic_type == nil && %w{vimopen}.include?(actual_name)) ||
-                %w{zshrc vimrc _vimrc cleanswap cvsvimdiff}.include?(actual_name) ||
-                actual_name =~ /\.dict$/ || actual_name == 'pydiction' ||
+                %w{zshrc vimrc _vimrc cleanswap cvsvimdiff vmake}.include?(actual_name) ||
+                actual_name =~ /\.dict$/ || %w{pydiction xdebug2}.include?(actual_name) ||  # dictionaries
+                actual_name =~ /\.applescript$/ ||
                 magic_type == 'application/x-ms-dos-executable' )
             # names and magic have failed us, copy these files over raw
             copy_file(actual_name, File.read(pkgfile))
