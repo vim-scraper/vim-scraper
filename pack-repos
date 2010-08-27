@@ -1,0 +1,6 @@
+#!/bin/bash
+
+find . -type d -name "*.git" | while read dir; do
+  echo "$dir"
+  (cd "$dir" && git gc --prune)
+done
