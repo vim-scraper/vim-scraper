@@ -420,8 +420,9 @@ def sense_file(actual_name, pkgfile)
         elsif actual_name =~ /^[^a-z]*\.VIM$/
             # i guess dos users might do everything in caps
             actual_name.downcase!
-        elsif ( (magic_type == 'application/x-perl' && %w{dtags qt2vimsyntax multiAPIsyntax}.include?(actual_name)) ||
+        elsif ( (magic_type == 'application/x-perl' && %w{dtags qt2vimsyntax multiAPIsyntax colortest dtd2vim}.include?(actual_name)) ||
                 (magic_type == 'application/x-ruby' && %w{colorize}.include?(actual_name)) ||
+                (magic_type == 'application/x-shellscript' && %w{vimd}.include?(actual_name)) ||
                 %w{zshrc vimrc _vimrc PHP.dict ttcn.dict pydiction cleanswap cvsvimdiff}.include?(actual_name) ||
                 magic_type == 'application/x-ms-dos-executable' )
             # names and magic have failed us, copy these files over raw
