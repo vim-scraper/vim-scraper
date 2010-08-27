@@ -110,6 +110,17 @@ module Hpricot
 end
 
 
+# monkeypatch remove into mimemagic, hopefully this gets pulled upstream.
+# http://github.com/bronson/mimemagic/commit/e1860b1fac0187c638569bc45833adc2ca521661
+class MimeMagic
+    def self.remove(type)
+        obj = new(type)
+        obj.extensions.each { |ext| EXTENSIONS.delete(ext) }
+        MAGIC.delete_if { |t, m| t == type }
+        TYPES.delete(type)
+    end
+end
+MimeMagic.remove('application/x-gmc-link')
 
 
 def scrape_author(user_id)
@@ -440,8 +451,8 @@ def sense_file(actual_name, pkgfile)
             actual_name.downcase!
         elsif ( (magic_type == 'application/x-perl' && %w{dtags qt2vimsyntax multiAPIsyntax colortest dtd2vim}.include?(actual_name)) ||
                 (magic_type == 'application/x-ruby' && %w{colorize}.include?(actual_name)) ||
-                (magic_type == 'application/x-shellscript' && %w{vimd}.include?(actual_name)) ||
-                (magic_type == 'application/x-gmc-link' && %w{TimeIt.vim}.include?(actual_name)) ||   # huge magic miss
+                magic_type == 'application/x-shellscript' ||
+                magic_type == 'application/xml' ||
                 (magic_type == nil && %w{vimopen}.include?(actual_name)) ||
                 %w{zshrc vimrc _vimrc cleanswap cvsvimdiff vmake}.include?(actual_name) ||
                 actual_name =~ /\.dict$/ || %w{pydiction xdebug2}.include?(actual_name) ||  # dictionaries
