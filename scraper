@@ -406,6 +406,13 @@ def unbzip2(file)
 end
 
 
+def unxz(file)
+      IO.popen(['/usr/bin/xz', '-d', '--to-stdout', file]) do |contents|
+          yield(contents)
+      end
+end
+
+
 def download_package(version, script)
     pkgname = "#{version['date']} #{filenameify(script_version(version))} #{filenameify(version['filename'])}"
     pkgdir = File.join($packages_dir, "#{'%04d' % script['script_id']} - #{filenameify(script['name'])}")
@@ -476,6 +483,8 @@ def sense_file(actual_name, pkgfile)
             actual_name += '.bz2'
         elsif magic_type == 'application/x-7z-compressed'
             actual_name += '.7z'
+        elsif magic_type == 'application/x-xz'
+            actual_name += '.xz'
         elsif is_some_sort_of_zipfile(extension_type)
             # extension claims zipfile but magic disagrees
             actual_name.sub!(/\.zip$|\.tar\.gz$|\.tar\.bz2?$|\.tgz$|\.tbz2?$/i, '')
@@ -522,6 +531,7 @@ def add_version(version, script)
     when /\.tar$/ then File.open(pkgfile, 'r') { |file| copy_tarfile(script, file) }
     when /\.t?gz$/i then ungzip(pkgfile) { |contents| sense_zipped_file(script, version['filename'].sub(/\.t?gz$/, ''), contents) }
     when /\.t?bz2?$/i then unbzip2(pkgfile) { |contents| sense_zipped_file(script, version['filename'].sub(/\.t?bz2?$/, ''), contents) }
+    when /\.xz$/ then unxz(pkgfile) { |contents| sense_zipped_file(script, version['filename'].sub(/\.xz$/, ''), contents) }
     when /\.7z$/ then uncrapformat(script, pkgfile, ['/usr/bin/7za', 'x'])
     when /\.rar$/ then uncrapformat(script, pkgfile, ['/usr/bin/unrar', 'x'])
     when /\.vba$|\.vimball$/ then unvimball(script, pkgfile)
