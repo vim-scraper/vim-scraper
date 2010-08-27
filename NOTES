@@ -16,4 +16,7 @@ Definitely bad but definitely doesn't matter:
     0016: 0.2 tarfile is broken, doesn't include plugin.vim
 
 
+ColorSchemeMenuMaker.vba drops a .VimballRecord in the wrong dir.
+
+
 http://raphaelhertzog.com/2010/08/12/how-to-make-110-eur-in-one-month-with-flattr-foss/
