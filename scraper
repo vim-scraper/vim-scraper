@@ -449,6 +449,14 @@ def sense_file(actual_name, pkgfile)
             # names and magic have failed us, copy these files over raw
             copy_file(actual_name, File.read(pkgfile))
             actual_name = nil
+        elsif magic_type == 'application/zip'
+            actual_name += '.zip'
+        elsif magic_type == 'application/x-gzip'
+            actual_name += '.gz'
+        elsif magic_type == 'application/x-bzip'
+            actual_name += '.bz2'
+        elsif magic_type == 'application/x-7z-compressed'
+            actual_name += '.7z'
         elsif is_some_sort_of_zipfile(extension_type)
             # extension claims zipfile but magic disagrees
             actual_name.sub!(/\.zip$|\.tar\.gz$|\.tar\.bz2?$|\.tgz$|\.tbz2?$/i, '')
@@ -461,12 +469,6 @@ def sense_file(actual_name, pkgfile)
             else
                 raise "unknown failed zip type for #{actual_name}: #{magic_type}"
             end
-        elsif magic_type == 'application/zip'
-            actual_name += '.zip'
-        elsif magic_type == 'application/x-gzip'
-            actual_name += '.gz'
-        elsif magic_type == 'application/x-bzip'
-            actual_name += '.bz2'
         elsif magic_type == 'application/x-macbinary'
             copy_file(actual_name + '.macbinary', File.read(pkgfile))
             actual_name = nil
