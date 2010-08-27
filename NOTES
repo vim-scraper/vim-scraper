@@ -1,5 +1,7 @@
 0990 0991 0992: all have the same name
 
+2393: remove top-level dir named 'vimfiles'?
+
 Probably todo:
     if a dir only contains a /license|readme/i file, move the file to the root dir
     0023, 0096

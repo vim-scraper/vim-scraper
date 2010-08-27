@@ -346,11 +346,11 @@ def unvimball(script, vimball)
 end
 
 
-def unrar(script, rarpath)
+def uncrapformat(script, rarpath, cmd)
     Dir.mktmpdir($vimscripts_name) do |tmpdir|
         fullpath = File.expand_path(rarpath)
         Dir.chdir(tmpdir) {
-            cmd = ['/usr/bin/unrar', 'x', fullpath]
+            cmd = [cmd, 'x', fullpath]
             raise "couldn't run #{cmd.join(' ')}: #{$?}" unless system(*cmd)
         }
         copy_filesystem(script, tmpdir)
@@ -491,7 +491,8 @@ def add_version(version, script)
     when /\.tar$/ then File.open(pkgfile, 'r') { |file| copy_tarfile(script, file) }
     when /\.t?gz$/i then ungzip(pkgfile) { |contents| sense_zipped_file(script, version['filename'].sub(/\.t?gz$/, ''), contents) }
     when /\.t?bz2?$/i then unbzip2(pkgfile) { |contents| sense_zipped_file(script, version['filename'].sub(/\.t?bz2?$/, ''), contents) }
-    when /\.rar$/ then unrar(script, pkgfile)
+    when /\.7z$/ then uncrapformat(script, pkgfile, '/usr/bin/7za')
+    when /\.rar$/ then uncrapformat(script, pkgfile, '/usr/bin/unrar')
     when /\.vba$/ then unvimball(script, pkgfile)
     else raise "unknown filetype: #{actual_name}"
     end
