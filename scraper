@@ -443,7 +443,8 @@ def sense_file(actual_name, pkgfile)
                 (magic_type == 'application/x-shellscript' && %w{vimd}.include?(actual_name)) ||
                 (magic_type == 'application/x-gmc-link' && %w{TimeIt.vim}.include?(actual_name)) ||   # huge magic miss
                 (magic_type == nil && %w{vimopen}.include?(actual_name)) ||
-                %w{zshrc vimrc _vimrc PHP.dict ttcn.dict pydiction cleanswap cvsvimdiff}.include?(actual_name) ||
+                %w{zshrc vimrc _vimrc cleanswap cvsvimdiff}.include?(actual_name) ||
+                actual_name =~ /\.dict$/ || actual_name == 'pydiction' ||
                 magic_type == 'application/x-ms-dos-executable' )
             # names and magic have failed us, copy these files over raw
             copy_file(actual_name, File.read(pkgfile))
