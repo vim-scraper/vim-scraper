@@ -40,7 +40,7 @@ $packages_dir = 'packages'
 
 $vimdirs = %w{after autoload bin colors doc ftdetect ftplugin indent plugin syntax}
 $textext = %w{bat c cpp csh diff h klip patch pl pm ps py rb set sh tcl txt xml vim vim.orig}.map { |x| "\\.#{x}$" }.join('|')
-$deleted_scripts = %w{548 549 550 762 1032 1129 1263 1295 1301 1452 1669 1789 2056 2172 2306 2309 2313 2316 2318 2323 2352 2456 2498 2664 2861 3076}
+$deleted_scripts = %w{364 548 549 550 762 1032 1129 1263 1280 1295 1301 1436 1452 1509 1562 1669 1789 1824 2056 2172 2306 2309 2313 2316 2318 2323 2352 2456 2498 2664 2861 3076}
 
 Dir.mkdir $scripts_dir unless test ?d, $scripts_dir
 Dir.mkdir $repos_dir unless test ?d, $repos_dir
