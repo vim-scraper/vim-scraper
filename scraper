@@ -170,7 +170,8 @@ end
 def cached_open(url)
     # todo: turn this off once we roll to production
     path = File.join($webcache_dir, filenameify(url))
-    unless File.exist?(path)
+    unless File.exist?(path) && File.size(path) > 0
+        puts "  downloading #{url}"
         File.open(path, 'w') { |f| open(url) { |u| f.write(u.read) }}
     end
     File.open(path) { |f| yield f }
