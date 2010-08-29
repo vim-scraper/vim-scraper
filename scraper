@@ -37,6 +37,7 @@ $vimscripts_email = 'vimscripts@rinspin.com'
 $repos_dir = 'repos'
 $scripts_dir = 'scripts'
 $packages_dir = 'packages'
+$webcache_dir = 'webcache'
 
 $vimdirs = %w{after autoload bin colors doc ftdetect ftplugin indent plugin syntax}
 $textext = %w{bat c cpp csh diff h klip patch pl pm ps py rb set sh tcl txt xml vim vim.orig}.map { |x| "\\.#{x}$" }.join('|')
@@ -45,7 +46,7 @@ $deleted_scripts = %w{364 548 549 550 762 1032 1129 1263 1280 1295 1301 1436 145
 Dir.mkdir $scripts_dir unless test ?d, $scripts_dir
 Dir.mkdir $repos_dir unless test ?d, $repos_dir
 Dir.mkdir $packages_dir unless test ?d, $packages_dir
-
+Dir.mkdir $webcache_dir unless test ?d, $webcache_dir
 
 
 # http://github.com/hpricot/hpricot/issues#issue/25
@@ -166,6 +167,16 @@ def script_id_to_url(script_id)
 end
 
 
+def cached_open(url)
+    # todo: turn this off once we roll to production
+    path = File.join($webcache_dir, filenameify(url))
+    unless File.exist?(path)
+        File.open(path, 'w') { |f| open(url) { |u| f.write(u.read) }}
+    end
+    File.open(path) { |f| yield f }
+end
+
+
 def scrape_script(script_id)
     # hard-code the scripts that claim to be deleted
     if $deleted_scripts.include? script_id.to_s
@@ -174,7 +185,7 @@ def scrape_script(script_id)
     end
 
     doc = retryable(:tries => 2, :on => OpenURI::HTTPError) do
-        open(script_id_to_url(script_id)) { |f| Hpricot(f) }
+        cached_open(script_id_to_url(script_id)) { |f| Hpricot(f) }
     end
     if doc.search('title').inner_text == "Error : vim online"
         puts "Skipped #{script_id} -- doesn't exist."
