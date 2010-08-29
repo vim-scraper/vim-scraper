@@ -280,7 +280,7 @@ def write_script(script)
     File.open(filename, 'w') { |f|
         farg = fix_encoding(script)
         # check_encoding(farg)
-        f.write(JSON.pretty_generate(farg))
+        f.write(JSON.pretty_generate(farg)+"\n")
     }
 end
 
@@ -631,7 +631,7 @@ def read_script(script)
     # if gitrb is dying on the following line, you need this fix:
     #   http://github.com/bronson/gitrb/commit/ae931ad7fe8309bcd2c4b9cc582c1500fa152e8d
     $repo = Gitrb::Repository.new(:path => $repo_path, :bare => true, :create => true)
-    File.open(File.join($repo_path, "vim-script.json"), 'w') { |f| f.write(JSON.pretty_generate(script)) }
+    File.open(File.join($repo_path, "vim-script.json"), 'w') { |f| f.write(JSON.pretty_generate(script)+"\n") }
 
     # token = File.read('token').chomp
     # github = Octopussy::Client.new(:login => 'vim-scripts', :token => token)
