@@ -150,12 +150,12 @@ def scrape_author(user_id)
             cached_open("http://www.vim.org/account/profile.php?user_id=#{user_id}") { |f| Hpricot(f) }
         end
         doc.at('td[text()="user name"]').next_sibling.inner_content
-        u = { :user_id => user_id }
-        u[:user_name] = doc.at('td[text()="user name"]').next_sibling.inner_content
-        u[:first_name] = doc.at('td[text()="first name"]').next_sibling.inner_content
-        u[:last_name] = doc.at('td[text()="last name"]').next_sibling.inner_content
-        u[:email] = doc.at('td[text()="email"]').next_sibling.inner_content
-        u[:homepage] = doc.at('td[text()="homepage"]').next_sibling.inner_content
+        u = {'user_id' => user_id }
+        u['user_name'] = doc.at('td[text()="user name"]').next_sibling.inner_content
+        u['first_name'] = doc.at('td[text()="first name"]').next_sibling.inner_content
+        u['last_name'] = doc.at('td[text()="last name"]').next_sibling.inner_content
+        u['email'] = doc.at('td[text()="email"]').next_sibling.inner_content
+        u['homepage'] = doc.at('td[text()="homepage"]').next_sibling.inner_content
         $authors[user_id.to_i] = u
     end
     return $authors[user_id.to_i]
@@ -193,23 +193,23 @@ def scrape_script(script_id)
         return nil
     end
 
-    s = {:script_id => script_id}
-    s[:name], s[:summary] = doc.search('.txth1').inner_content.split(" : ", 2)
-    s[:script_type] = doc.at('td[text()="script type"]').parent.next_sibling.children.first.inner_content
-    s[:description] = doc.at('td[text()="description"]').parent.next_sibling.children.first.inner_content.gsub("\r", "\n")
+    s = {'script_id' => script_id}
+    s['name'], s['summary'] = doc.search('.txth1').inner_content.split(" : ", 2)
+    s['script_type'] = doc.at('td[text()="script type"]').parent.next_sibling.children.first.inner_content
+    s['description'] = doc.at('td[text()="description"]').parent.next_sibling.children.first.inner_content.gsub("\r", "\n")
     raise 'no rating?' unless doc.search('td.lightbg~td').find { |e| e.inner_text =~ /Rating.*\s(-?\d+)\/(\d+),.*Downloaded[^\d]*(\d+)/m }
-    s[:rating_total], s[:rating_votes], s[:downloads] = $1, $2, $3      # http://www.vim.org/karma.php
-    s[:install_details] = doc.at('td[text()="install details"]').parent.next_sibling.children.first.inner_content.gsub("\r", "\n")
+    s['rating_total'], s['rating_votes'], s['downloads'] = $1, $2, $3      # http://www.vim.org/karma.php
+    s['install_details'] = doc.at('td[text()="install details"]').parent.next_sibling.children.first.inner_content.gsub("\r", "\n")
     # reject links with targets so download links in the description don't appear to be a version (script 1843)
-    s[:versions] = doc.search('a[@href*="download_script.php?"]').select { |e| e.attributes['target'].empty? }.to_a.map do |a|
-        v = {:url => 'http://www.vim.org/scripts/' + a.attributes['href'],
-            :filename => a.inner_content}
+    s['versions'] = doc.search('a[@href*="download_script.php?"]').select { |e| e.attributes['target'].empty? }.to_a.map do |a|
+        v = {'url' => 'http://www.vim.org/scripts/' + a.attributes['href'],
+            'filename' => a.inner_content}
         row = a.parent
-        v[:script_version] = row.siblings_at(1).inner_content
-        v[:date] = row.siblings_at(2).inner_content
-        v[:vim_version] = row.siblings_at(3).inner_content
-        v[:author] = scrape_author(row.siblings_at(4).at('a').attributes['href'].match(/\d+/)[0])
-        v[:release_notes] = row.siblings_at(5).inner_content.gsub("\r", "\n")
+        v['script_version'] = row.siblings_at(1).inner_content
+        v['date'] = row.siblings_at(2).inner_content
+        v['vim_version'] = row.siblings_at(3).inner_content
+        v['author'] = scrape_author(row.siblings_at(4).at('a').attributes['href'].match(/\d+/)[0])
+        v['release_notes'] = row.siblings_at(5).inner_content.gsub("\r", "\n")
         v
     end
     s
@@ -276,7 +276,7 @@ end
 
 def write_script(script)
     return unless script
-    filename = File.join($scripts_dir, "#{'%04d' % script[:script_id]} - #{filenameify(script[:name])}.json")
+    filename = File.join($scripts_dir, "#{'%04d' % script['script_id']} - #{filenameify(script['name'])}.json")
     puts "Scraped #{filename}"
     File.open(filename, 'w') { |f|
         farg = fix_encoding(script)
