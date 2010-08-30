@@ -128,6 +128,14 @@ end
 MimeMagic.remove('application/x-gmc-link')
 
 
+class Array
+    def to_hash_keys
+        # converts ['a,:b'] to {:a=>1,:b=>1}
+        Hash[*zip([1]*size)]
+    end
+end
+
+
 # http://blog.codefront.net/2008/01/14/retrying-code-blocks-in-ruby-on-exceptions-whatever/
 def retryable(options = {}, &block)
     opts = { :tries => 1, :on => Exception }.merge(options)
@@ -274,9 +282,82 @@ def script_version(version)
 end
 
 
+def script_filename(script)
+    # if you change this, also change the regex in list_existing_scripts
+    File.join($scripts_dir, "#{'%04d' % script['script_id']} - #{filenameify(script['name'])}.json")
+end
+
+
+def script_contents(filename)
+    JSON.parse(File.read(File.join($scripts_dir, filename)))
+end
+
+
+def list_existing_scripts
+    # returns a hash of key=script name, value=filename
+    Hash[Dir.entries($scripts_dir).reject { |e| %w{. .. .git}.include?(e) }.
+        map { |e| e =~ /[0-9]* - (.*)\.json$/ or raise "can't match #{e}"; [$1, e]}]
+end
+
+
+def author(script)
+    # can't just check author id because a number of authors have abandoned old accounts and created new ones
+    first_name = script['versions'][0]['author']['first_name']
+    last_name  = script['versions'][0]['author']['last_name']
+    script['versions'][1..-1].each { |v|
+        return nil unless v['author']['first_name'] == first_name && v['author']['last_name'] == last_name
+    }
+    return [first_name, last_name]
+end
+
+
+def resolve_name_conflicts(script)
+    return nil unless script
+    all_scripts = list_existing_scripts
+
+    return script unless all_scripts[script['name']]
+    existing_script = script_contents(all_scripts[script['name']])
+    return script if existing_script['script_id'] == script['script_id']
+
+    script_author = author(script)
+
+    # if the author is different, try that first
+    last_name  = script['versions'][0]['author']['last_name']
+    if script_author && script_author != author(existing_script)
+        script['name'] += ' - ' + script_author[1]
+    end
+    unless all_scripts[script['name']]
+        puts "  authors differ, renamed new #{existing_script['name']} to #{script['name']}"
+        return script
+    end
+
+    existing_script = script_contents(all_scripts[script['name']])
+    # otherwise, see if we can differentiate by type
+    if script['script_type'] != existing_script['script_type']
+        script['name'] += ' ' + script['script_type']
+    end
+    unless all_scripts[script['name']]
+        puts "  types differ, renamed new #{existing_script['name']} to #{script['name']}"
+        return script
+    end
+
+    script['name'] += ' B'
+    # otherwise, just tack a sequence letter on the end. didn't want to use a
+    # number because "php.vim 2" looks like a newer release of "php.vim")
+    while all_scripts[script['name']]
+        # script['name'].sub!(/(.)$/, ($1.ord + 1).chr)    # exposes some sort of 1.9.2 bug?
+        script['name'][-1] = (script['name'][-1].ord + 1).chr
+        raise "what the heck?" if script['name'][-1] > 'Z'
+    end
+
+    puts "  nothing differs, renamed new #{existing_script['name']} to #{script['name']}"
+    script
+end
+
+
 def write_script(script)
     return unless script
-    filename = File.join($scripts_dir, "#{'%04d' % script['script_id']} - #{filenameify(script['name'])}.json")
+    filename = script_filename(script)
     puts "Scraped #{filename}"
     File.open(filename, 'w') { |f|
         farg = fix_encoding(script)
@@ -668,7 +749,7 @@ end
 raise "specify some scripts to scrape" if ARGV.empty?
 ARGV.each do |arg|
     if arg =~ /^\d+$/
-        write_script(scrape_script(arg))
+        write_script(resolve_name_conflicts(scrape_script(arg)))
     elsif test ?f, arg
         read_script(JSON.parse(File.read(arg)))
     elsif test ?d, arg
