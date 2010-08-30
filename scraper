@@ -146,9 +146,7 @@ end
 def scrape_author(user_id)
     $authors ||= []
     unless $authors[user_id.to_i]
-        doc = retryable(:tries => 2, :on => OpenURI::HTTPError) do
-            cached_open("http://www.vim.org/account/profile.php?user_id=#{user_id}") { |f| Hpricot(f) }
-        end
+        doc = cached_open("http://www.vim.org/account/profile.php?user_id=#{user_id}") { |f| Hpricot(f) }
         doc.at('td[text()="user name"]').next_sibling.inner_content
         u = {'user_id' => user_id }
         u['user_name'] = doc.at('td[text()="user name"]').next_sibling.inner_content
@@ -172,7 +170,11 @@ def cached_open(url)
     path = File.join($webcache_dir, filenameify(url))
     unless File.exist?(path) && File.size(path) > 0
         puts "  downloading #{url}"
-        File.open(path, 'w') { |f| open(url) { |u| f.write(u.read) }}
+        File.open(path, 'w') do |f|
+            retryable(:tries => 2, :on => [OpenURI::HTTPError, Timeout::Error]) do
+                open(url) { |u| f.write(u.read) }
+            end
+        end
     end
     File.open(path) { |f| yield f }
 end
@@ -185,9 +187,7 @@ def scrape_script(script_id)
         return nil
     end
 
-    doc = retryable(:tries => 2, :on => OpenURI::HTTPError) do
-        cached_open(script_id_to_url(script_id)) { |f| Hpricot(f) }
-    end
+    doc = cached_open(script_id_to_url(script_id)) { |f| Hpricot(f) }
     if doc.search('title').inner_text == "Error : vim online"
         puts "Skipped #{script_id} -- doesn't exist."
         return nil
@@ -287,7 +287,7 @@ end
 
 
 def download_file(url, dest)
-    retryable(:tries => 2, :on => OpenURI::HTTPError) do
+    retryable(:tries => 2, :on => [OpenURI::HTTPError, Timeout::Error]) do
         puts "  downloading #{url} to #{dest}"
         open(url, 'rb') do |u|
             File.open(dest, 'wb') { |f|
