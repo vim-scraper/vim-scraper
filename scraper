@@ -147,7 +147,7 @@ def scrape_author(user_id)
     $authors ||= []
     unless $authors[user_id.to_i]
         doc = retryable(:tries => 2, :on => OpenURI::HTTPError) do
-            open("http://www.vim.org/account/profile.php?user_id=#{user_id}") { |f| Hpricot(f) }
+            cached_open("http://www.vim.org/account/profile.php?user_id=#{user_id}") { |f| Hpricot(f) }
         end
         doc.at('td[text()="user name"]').next_sibling.inner_content
         u = { :user_id => user_id }
