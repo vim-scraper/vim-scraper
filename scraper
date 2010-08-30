@@ -311,46 +311,48 @@ def author(script)
 end
 
 
+def name_conflict_exists(all_scripts, script)
+    # if the script's name doesn't conflict with any script in all_scripts,
+    return nil unless all_scripts[script['name']]
+
+    # or if it's the same script, then that's OK.
+    existing_script = script_contents(all_scripts[script['name']])
+    return nil if existing_script['script_id'] == script['script_id']
+    return existing_script
+end
+
+
 def resolve_name_conflicts(script)
     return nil unless script
     all_scripts = list_existing_scripts
 
-    return script unless all_scripts[script['name']]
-    existing_script = script_contents(all_scripts[script['name']])
-    return script if existing_script['script_id'] == script['script_id']
-
-    script_author = author(script)
+    existing_script = name_conflict_exists(all_scripts, script)
+    return script unless existing_script
 
     # if the author is different, try that first
+    script_author = author(script)
     last_name  = script['versions'][0]['author']['last_name']
     if script_author && script_author != author(existing_script)
         script['name'] += ' - ' + script_author[1]
     end
-    unless all_scripts[script['name']]
-        puts "  authors differ, renamed new #{existing_script['name']} to #{script['name']}"
-        return script
-    end
+    existing_script = name_conflict_exists(all_scripts, script)
+    return script unless existing_script
 
-    existing_script = script_contents(all_scripts[script['name']])
     # otherwise, see if we can differentiate by type
     if script['script_type'] != existing_script['script_type']
         script['name'] += ' ' + script['script_type']
     end
-    unless all_scripts[script['name']]
-        puts "  types differ, renamed new #{existing_script['name']} to #{script['name']}"
-        return script
-    end
+    existing_script = name_conflict_exists(all_scripts, script)
+    return script unless existing_script
 
     script['name'] += ' B'
     # otherwise, just tack a sequence letter on the end. didn't want to use a
     # number because "php.vim 2" looks like a newer release of "php.vim")
-    while all_scripts[script['name']]
-        # script['name'].sub!(/(.)$/, ($1.ord + 1).chr)    # exposes some sort of 1.9.2 bug?
+    while existing_script = name_conflict_exists(all_scripts, script)
         script['name'][-1] = (script['name'][-1].ord + 1).chr
         raise "what the heck?" if script['name'][-1] > 'Z'
     end
 
-    puts "  nothing differs, renamed new #{existing_script['name']} to #{script['name']}"
     script
 end
 
