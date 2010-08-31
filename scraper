@@ -301,12 +301,26 @@ end
 
 
 def author(script)
+    # returns the author's first and last name or nil if this script has multiple authors.
     # can't just check author id because a number of authors have abandoned old accounts and created new ones
     first_name = script['versions'][0]['author']['first_name']
     last_name  = script['versions'][0]['author']['last_name']
-    script['versions'][1..-1].each { |v|
-        return nil unless v['author']['first_name'] == first_name && v['author']['last_name'] == last_name
-    }
+    if first_name =~ /^\s*$/ && last_name =~ /^\s*$/
+        # user declined to state first and last name so we're forced to check by login
+        last_name = script['versions'][0]['author']['user_name']
+        script['versions'][1..-1].each { |v|
+            return nil unless v['author']['user_name'] == last_name
+        }
+    else
+        if last_name =~ /^\s*$/
+            # if author states first name but not last name, we swap em.
+            last_name = first_name
+            first_name = ""
+        end
+        script['versions'][1..-1].each { |v|
+            return nil unless v['author']['first_name'] == first_name && v['author']['last_name'] == last_name
+        }
+    end
     return [first_name, last_name]
 end
 
@@ -331,7 +345,6 @@ def resolve_name_conflicts(script)
 
     # if the author is different, try that first
     script_author = author(script)
-    last_name  = script['versions'][0]['author']['last_name']
     if script_author && script_author != author(existing_script)
         script['name'] += ' - ' + script_author[1]
     end
