@@ -11,24 +11,26 @@
 # and you're done!
 
 require 'rubygems'
-require 'hpricot'
+require 'hpricot'             # hpricot gem
 require 'open-uri'
 require 'cgi'
-require 'json'
-require 'gitrb'
-require 'zip/zipfilesystem' # rubyzip gem
+require 'json'                # json gem
+require 'gitrb'               # gitrb gem
+require 'zip/zipfilesystem'   # rubyzip gem
 require 'archive/tar/minitar' # minitar gem
 require 'zlib'
-require 'bzip2'
+require 'bzip2'               # bzip2-ruby gem
 require 'mime/types'
-require 'mimemagic'
+require 'mimemagic'           # mimemagic gem
 require 'tmpdir'
 require 'tempfile'
 require 'find'
+require 'octopussy'           # octopussy gem
 
 # thoughts:
 # We do everything we can to make it so you can drop the repo in bundles and just have it work.
 # We reset permissions on extracted files -- usually when they're different it's a mistake.
+# wish I had used Hashie instead of plain hashes to store the script: http://github.com/intridea/hashie
 
 
 $vimscripts_name = "vim-scripts"
@@ -38,6 +40,7 @@ $repos_dir = 'repos'
 $scripts_dir = 'scripts'
 $packages_dir = 'packages'
 $webcache_dir = 'webcache'
+$git_script_file = 'vim-script.json"
 
 $vimdirs = %w{after autoload bin colors doc ftdetect ftplugin indent plugin syntax}
 $textext = %w{bat c cpp csh diff h klip patch pl pm ps py rb set sh tcl txt xml vim vim.orig}.map { |x| "\\.#{x}$" }.join('|')
@@ -263,7 +266,7 @@ end
 
 def filenameify(s)
     # replace unsafe path chars.  keep posessive Michaels, not Michael-s
-    s.gsub(/'s/i, 's').gsub(/[^ A-Za-z0-9_\-!#\@\$^%&:;<?>+=(){|},.\[\]]/, '-')
+    s.gsub(/^\s*|\s*$/, '').gsub(/'s/i, 's').gsub(/[^ A-Za-z0-9_\-!#\@\$^%&:;<?>+=(){|},.\[\]]/, '-')
 end
 
 
@@ -271,6 +274,12 @@ def gittagify(s)
     # replace any chars git might take issue with (space, backslash, ^:)?]
     # git doesn't like it when a tag begins or ends with periods or dashes
     s.gsub(/^\s*|\s*$/, '').gsub(/[^A-Za-z0-9_\-!#\@\$%&;<>+=(){|},.\]]/, '-').gsub(/^\./, '0.').gsub(/\.$/, '.0').gsub(/^-*|-*$/, '').gsub(/^\./, '0.').gsub(/\.$/, '.0')
+end
+
+
+def githubify(s)
+    # these guys only allow A-Za-z0-9._- yet we need to try to keep the name readable.
+    s.gsub(/^\s*|\s*$/, '').gsub(/\s+-|-\s+/, '-').gsub(/\+\+/, 'pp').gsub(/([CF])#/i, "#{$1}sharp").gsub('::', '.').gsub('&', 'and').gsub(/\s+|:|\+/, '-').gsub(/[^A-Za-z0-9_.-]/, '')
 end
 
 
@@ -728,10 +737,7 @@ def read_script(script)
     # if gitrb is dying on the following line, you need this fix:
     #   http://github.com/bronson/gitrb/commit/ae931ad7fe8309bcd2c4b9cc582c1500fa152e8d
     $repo = Gitrb::Repository.new(:path => $repo_path, :bare => true, :create => true)
-    File.open(File.join($repo_path, "vim-script.json"), 'w') { |f| f.write(JSON.pretty_generate(script)+"\n") }
-
-    # token = File.read('token').chomp
-    # github = Octopussy::Client.new(:login => 'vim-scripts', :token => token)
+    File.open(File.join($repo_path, $git_script_file), 'w') { |f| f.write(JSON.pretty_generate(script)+"\n") }
 
     committer = Gitrb::User.new($vimscripts_name, $vimscripts_email)
     puts "Processing script #{script['script_id']}: #{script['name']}"
@@ -757,7 +763,41 @@ end
 
 
 def push_repo(repo)
-    raise "not yet"
+    token = File.read('token').chomp
+    github = Octopussy::Client.new(:login => 'vim-scripts', :token => token)
+    $repo = Gitrb::Repository.new(:path => repo, :bare => true)
+    script = JSON.parse(File.read(File.join(repo, $git_script_file)))
+
+    ghname = githubize(script.NAME)
+    fullname = "vim-scripts/#{ghname}"
+    remote = begin
+        github.repo(fullname)
+    rescue Octopussy::NotFound
+    end
+
+    unless remote
+        remote = github.create(
+            :name => ghname,
+            :description => script['summary'],
+            :homepage => script_id_to_url(script['script_id']),
+            :public => true)
+    end
+
+    # we don't want any provision for forcing pushes.  if you delete
+    # and recreate a repo, you must manually delete and recreate it
+    # on github.  forcing is bad, avoid at all costs.
+
+    # we should have a script that will compare the full list of
+    # repos on github and here and print any differences.  that is
+    # not a part of this script's job.
+
+    # no need to reset the remote because presumably we created this
+    # repo and the remote is already set correctly.
+
+    push master branch and tags
+
+    # Octopussy.list_repos('vim-scripts')
+    # Octopussy.delete("vim-scripts/#{ghname}")
 end
 
 
