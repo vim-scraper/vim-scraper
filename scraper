@@ -205,7 +205,8 @@ def scrape_script(script_id)
     end
 
     s = {'script_id' => script_id}
-    s['name'], s['summary'] = doc.search('.txth1').inner_content.split(" : ", 2)
+    s['display_name'], s['summary'] = doc.search('.txth1').inner_content.split(" : ", 2)
+    s['name'] = githubify(s['display_name'])
     s['script_type'] = doc.at('td[text()="script type"]').parent.next_sibling.children.first.inner_content
     s['description'] = doc.at('td[text()="description"]').parent.next_sibling.children.first.inner_content.gsub("\r", "\n")
     raise 'no rating?' unless doc.search('td.lightbg~td').find { |e| e.inner_text =~ /Rating.*\s(-?\d+)\/(\d+),.*Downloaded[^\d]*(\d+)/m }
@@ -304,7 +305,7 @@ end
 
 def hashkeyify(name)
     # converts a repo name into something worthy of matching against
-    githubify(name).downcase
+    name.downcase
 end
 
 
@@ -361,23 +362,27 @@ def resolve_name_conflicts(script)
     # if the author is different, try that first
     script_author = author(script)
     if script_author && script_author != author(existing_script)
-        script['name'] += ' - ' + script_author[1]
+        script['display_name'] += ' -- ' + script_author[1]
+        script['name'] += '--' + githubify(script_author[1])
     end
     existing_script = name_conflict_exists(all_scripts, script)
     return script unless existing_script
 
     # otherwise, see if we can differentiate by type
     if script['script_type'] != existing_script['script_type']
-        script['name'] += ' ' + script['script_type']
+        script['display_name'] += ' ' + script['script_type']
+        script['name'] += '-' + githubify(script['script_type'])
     end
     existing_script = name_conflict_exists(all_scripts, script)
     return script unless existing_script
 
-    script['name'] += ' B'
+    script['display_name'] += ' B'
+    script['name'] += '-B'
     # otherwise, just tack a sequence letter on the end. didn't want to use a
     # number because "php.vim 2" looks like a newer release of "php.vim")
     while existing_script = name_conflict_exists(all_scripts, script)
         script['name'][-1] = (script['name'][-1].ord + 1).chr
+        script['display_name'][-1] = (script['name'][-1].ord + 1).chr
         raise "what the heck?" if script['name'][-1] > 'Z'
     end
 
