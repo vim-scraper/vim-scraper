@@ -40,7 +40,7 @@ $repos_dir = 'repos'
 $scripts_dir = 'scripts'
 $packages_dir = 'packages'
 $webcache_dir = 'webcache'
-$git_script_file = 'vim-script.json"
+$git_script_file = 'vim-script.json'
 
 $vimdirs = %w{after autoload bin colors doc ftdetect ftplugin indent plugin syntax}
 $textext = %w{bat c cpp csh diff h klip patch pl pm ps py rb set sh tcl txt xml vim vim.orig}.map { |x| "\\.#{x}$" }.join('|')
@@ -302,10 +302,16 @@ def script_contents(filename)
 end
 
 
+def hashkeyify(name)
+    # converts a repo name into something worthy of matching against
+    githubify(name).downcase
+end
+
+
 def list_existing_scripts
     # returns a hash of key=script name, value=filename
     Hash[Dir.entries($scripts_dir).reject { |e| %w{. .. .git}.include?(e) }.
-        map { |e| e =~ /[0-9]* - (.*)\.json$/ or raise "can't match #{e}"; [$1.downcase, e]}]
+        map { |e| e =~ /[0-9]* - (.*)\.json$/ or raise "can't match #{e}"; [hashkeyify($1), e]}]
 end
 
 
@@ -336,10 +342,10 @@ end
 
 def name_conflict_exists(all_scripts, script)
     # if the script's name doesn't conflict with any script in all_scripts,
-    return nil unless all_scripts[script['name'].downcase]
+    return nil unless all_scripts[hashkeyify(script['name'])]
 
     # or if it's the same script, then that's OK.
-    existing_script = script_contents(all_scripts[script['name'].downcase])
+    existing_script = script_contents(all_scripts[hashkeyify(script['name'])])
     return nil if existing_script['script_id'] == script['script_id']
     return existing_script
 end
