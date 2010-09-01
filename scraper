@@ -27,6 +27,7 @@ require 'tempfile'
 require 'find'
 require 'octopussy'           # octopussy gem
 require 'hashie'              # hashie gem
+require 'htmlentities'        # htmlentities gem
 
 # thoughts:
 # We do everything we can to make it so you can drop the repo in bundles and just have it work.
@@ -109,7 +110,9 @@ module Hpricot
 
     class Text
         def inner_content
-            CGI.unescapeHTML(content.to_s.gsub(/&nbsp;/, " "))
+            str = content.to_s
+            str = str.force_encoding('ISO-8859-1').encode("UTF-8") if str.encoding.to_s == 'ASCII-8BIT'
+            CGI.unescapeHTML(HTMLEntities.new.decode(str.gsub(/&nbsp;/, " ")))
         end
     end
 

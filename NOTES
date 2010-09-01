@@ -1,15 +1,11 @@
-- make sure the foreign chars in 2194 come through
-
 790 has a funny thing where it's jumping back and forth between python and python3.0.
-    it should have been two separate scripts.
-
-0990 0991 0992: all have the same name
+    it should have been two separate scripts.  not sure we can do anything about that.
 
 2393: remove top-level dir named 'vimfiles'?
 
 Probably todo:
     if a dir only contains a /license|readme/i file, move the file to the root dir
-    0023, 0096
+    0023
 
 
 Possibly bad (probably doesn't matter):
