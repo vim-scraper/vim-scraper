@@ -1,12 +1,3 @@
-- make sure the repo with the same name on github that we want to push
-  to is actually is the same script.  probably easiest to check the url.
-
-- put the id in the description anyway, makes it easy to search?  probably the date too!
-
-- when creating a script file, make sure a script with the same name
-  doesn't already exist.  if it does, rename the one we're pulling.
-
-- check status and die on failure every time we shell out
 - make sure the foreign chars in 2194 come through
 
 790 has a funny thing where it's jumping back and forth between python and python3.0.

@@ -26,6 +26,7 @@ require 'tmpdir'
 require 'tempfile'
 require 'find'
 require 'octopussy'           # octopussy gem
+require 'hashie'              # hashie gem
 
 # thoughts:
 # We do everything we can to make it so you can drop the repo in bundles and just have it work.
@@ -774,25 +775,35 @@ end
 
 
 def push_repo(repo)
-    token = File.read('token').chomp
-    github = Octopussy::Client.new(:login => 'vim-scripts', :token => token)
-    $repo = Gitrb::Repository.new(:path => repo, :bare => true)
+    creds = Hashie::Mash.new(JSON.parse(File.read('creds.json')))
+    github = Octopussy::Client.new(creds)
+    $repo = Gitrb::Repository.new(:path => repo.dup, :bare => true)
     script = JSON.parse(File.read(File.join(repo, $git_script_file)))
 
-    ghname = githubize(script.NAME)
-    fullname = "vim-scripts/#{ghname}"
-    remote = begin
-        github.repo(fullname)
-    rescue Octopussy::NotFound
+    fullname = "vim-scripts/#{script['name']}"
+    remote = github.repo(fullname) rescue nil
+
+    if remote
+        # make sure this actually is the same repo
+        remote.homepage =~ /script_id=(\d+)$/
+        raise "bad url on github repo #{fullname}" unless $1
+        raise "remote #{fullname} exists but id is #{$1}" if script['script_id'] != $1
     end
 
     unless remote
+        puts "Creating #{fullname}"
         remote = github.create(
-            :name => ghname,
-            :description => script['summary'],
+            :name => script['name'],
+            :description => "#{script['summary']}",
             :homepage => script_id_to_url(script['script_id']),
             :public => true)
     end
+
+    $repo.git_remote('rm', 'origin') rescue nil
+    # http://help.github.com/multiple-keys
+    $repo.git_remote('add', 'origin', "git@vim-scripts.github.com:vim-scripts/#{script['name']}")
+    puts "Pushing #{fullname}"
+    $repo.git_push('--tags', 'origin', 'master')
 
     # we don't want any provision for forcing pushes.  if you delete
     # and recreate a repo, you must manually delete and recreate it
@@ -801,14 +812,11 @@ def push_repo(repo)
     # we should have a script that will compare the full list of
     # repos on github and here and print any differences.  that is
     # not a part of this script's job.
+    # Octopussy.list_repos('vim-scripts')
+    # Octopussy.delete("vim-scripts/#{ghname}")
 
     # no need to reset the remote because presumably we created this
     # repo and the remote is already set correctly.
-
-    push master branch and tags
-
-    # Octopussy.list_repos('vim-scripts')
-    # Octopussy.delete("vim-scripts/#{ghname}")
 end
 
 

@@ -1,9 +1,10 @@
 #!/bin/env ruby
 
-
 # dumps a summary of the repo into the repostats dir.
 # since repostats is under git revision control, it's
 # easy to watch for regressions as the scraper changes.
+#
+# usage: ./dump-repo repos/*
 
 
 $repostats_dir = 'repostats'
