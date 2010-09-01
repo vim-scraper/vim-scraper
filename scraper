@@ -160,7 +160,7 @@ def retryable(options = {}, &block)
     end
 
     # last try will throw an exception
-    yield tries
+    yield tries+1
 end
 
 
@@ -810,7 +810,7 @@ def push_repo(repo)
     $repo.git_remote('rm', 'origin') rescue nil
     # http://help.github.com/multiple-keys
     $repo.git_remote('add', 'origin', "git@vim-scripts.github.com:vim-scripts/#{script['name']}")
-    retryable(:tries => 3, :on => [Gitrb::CommandError]) do |retries|
+    retryable(:tries => 6, :on => Gitrb::CommandError) do |retries|
         # Gitrb::CommandError is as close to a network timeout error as we're going to get
         puts "Pushing #{script['script_id']} - #{script['name']}#{retries > 0 ? "  TRY 2" : ""}"
         $repo.git_push('--tags', 'origin', 'master')
