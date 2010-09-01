@@ -144,17 +144,17 @@ end
 
 
 # http://blog.codefront.net/2008/01/14/retrying-code-blocks-in-ruby-on-exceptions-whatever/
+# modified to pass the number of retries in the arg (0,1,2 if :tries => 3)
 def retryable(options = {}, &block)
     opts = { :tries => 1, :on => Exception }.merge(options)
-    retry_exception, retries = opts[:on], opts[:tries]
+    retry_exception = opts[:on]
+    tries = 0
 
     begin
-        return yield
+        return yield tries
     rescue retry_exception
-        retry if (retries -= 1) > 0
+        retry if (tries += 1) < opts[:tries]
     end
-
-    yield
 end
 
 
@@ -805,8 +805,11 @@ def push_repo(repo)
     $repo.git_remote('rm', 'origin') rescue nil
     # http://help.github.com/multiple-keys
     $repo.git_remote('add', 'origin', "git@vim-scripts.github.com:vim-scripts/#{script['name']}")
-    puts "Pushing #{fullname}"
-    $repo.git_push('--tags', 'origin', 'master')
+    retryable(:tries => 3, :on => [Gitrb::CommandError]) do |retries|
+        # Gitrb::CommandError is as close to a network timeout error as we're going to get
+        puts "Pushing #{script['script_id']} - #{script['name']}#{retries > 0 ? "  TRY 2" : ""}"
+        $repo.git_push('--tags', 'origin', 'master')
+    end
 
     # we don't want any provision for forcing pushes.  if you delete
     # and recreate a repo, you must manually delete and recreate it
