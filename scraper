@@ -794,7 +794,11 @@ def push_repo(repo)
     $repo = Gitrb::Repository.new(:path => repo.dup, :bare => true)
     script = JSON.parse(File.read(File.join(repo, $git_script_file)))
 
+    start = Time.now
+    api_calls = 0
+
     remote = github.repo("vim-scripts/#{script['name']}") rescue nil
+    api_calls += 1
 
     if remote
         # make sure this actually is the same repo
@@ -810,11 +814,18 @@ def push_repo(repo)
             :description => "#{script['summary']}",
             :homepage => script_id_to_url(script['script_id']),
             :public => true)
+        api_calls += 1
+        # turn off the issues and wiki tabs (wish 'create' would do that)
         github.set_repo_info(
             # http://support.github.com/discussions/api/97-api-requires-that-dots-be-escaped
-            :name => script['name'].gsub('.', '%2E'),
+            'vim-scripts/' + script['name'].gsub('.', '%2E'),
             :has_issues => false, :has_wiki => false)
+        api_calls += 1
     end
+
+    # sleep to avoid bumping into github's 60-per-minute API limit
+    stop = Time.now
+    sleep api_calls-(stop-start) if stop-start < api_calls
 
     $repo.git_remote('rm', 'origin') rescue nil
     # http://help.github.com/multiple-keys
