@@ -18,6 +18,7 @@ def dump_repo(repo)
     # remove every line with a CommitDate since that's horribly variable
     log = log.each_line.reduce([]) { |a,v|
         v.gsub!(/^commit\s+[0-9A-Fa-f]*/, 'commit SHA1SHA1SHA1');
+        v.gsub!(/, refs\/(remotes|heads)[^,)]*\/master/, '');
         a.push(v) unless v =~ /^CommitDate: /;
         a }.join
     ENV.delete('GIT_DIR')

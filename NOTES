@@ -1,28 +1,24 @@
+Known bugs:
+
+none
+
+
+Possibly fix:
+
+ColorSchemeMenuMaker.vba drops a .VimballRecord in the wrong dir.
+
 790 has a funny thing where it's jumping back and forth between python and python3.0.
     it should have been two separate scripts.  not sure we can do anything about that.
-
-2393: remove top-level dir named 'vimfiles'?
 
 Probably todo:
     if a dir only contains a /license|readme/i file, move the file to the root dir
     0023
-
 
 Possibly bad (probably doesn't matter):
     0067 - nqc.vim         -- just a lot of weird files
     0070 - pt.vim.gz       -- not sure pt.dict is in the right place
     0071 - dctl.vim.gz     -- not sure dctl.dict is in the right place
     0084 - gdbvim.tar.gz   -- plugin is in /gdbvim/gdbvim.vim, not /plugin
-
-
-Definitely bad but definitely doesn't matter:
-    0016: 0.2 tarfile is broken, doesn't include plugin.vim
-
-
-ColorSchemeMenuMaker.vba drops a .VimballRecord in the wrong dir.
-
-
-http://raphaelhertzog.com/2010/08/12/how-to-make-110-eur-in-one-month-with-flattr-foss/
 
 
 To check for duplicate names:
