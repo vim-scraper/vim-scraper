@@ -783,18 +783,17 @@ def push_repo(repo)
     $repo = Gitrb::Repository.new(:path => repo.dup, :bare => true)
     script = JSON.parse(File.read(File.join(repo, $git_script_file)))
 
-    fullname = "vim-scripts/#{script['name']}"
-    remote = github.repo(fullname) rescue nil
+    remote = github.repo("vim-scripts/#{script['name']}") rescue nil
 
     if remote
         # make sure this actually is the same repo
         remote.homepage =~ /script_id=(\d+)$/
-        raise "bad url on github repo #{fullname}" unless $1
-        raise "remote #{fullname} exists but id is #{$1}" if script['script_id'] != $1
+        raise "bad url on github repo #{script['name']}" unless $1
+        raise "remote #{script['name']} exists but id is #{$1}" if script['script_id'] != $1
     end
 
     unless remote
-        puts "Creating #{fullname}"
+        puts "Creating #{script['script_id']} - #{script['name']}"
         remote = github.create(
             :name => script['name'],
             :description => "#{script['summary']}",
