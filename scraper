@@ -147,14 +147,20 @@ end
 # modified to pass the number of retries in the arg (0,1,2 if :tries => 3)
 def retryable(options = {}, &block)
     opts = { :tries => 1, :on => Exception }.merge(options)
+    return if opts[:tries] < 1
     retry_exception = opts[:on]
     tries = 0
 
-    begin
-        return yield tries
-    rescue retry_exception
-        retry if (tries += 1) < opts[:tries]
+    if opts[:tries] > 1
+        begin
+            return yield tries
+        rescue retry_exception
+            retry if (tries += 1) < opts[:tries] - 1
+        end
     end
+
+    # last try will throw an exception
+    yield tries
 end
 
 
