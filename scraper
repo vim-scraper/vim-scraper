@@ -146,7 +146,7 @@ end
 # http://blog.codefront.net/2008/01/14/retrying-code-blocks-in-ruby-on-exceptions-whatever/
 # modified to pass the number of retries in the arg (0,1,2 if :tries => 3)
 def retryable(options = {}, &block)
-    opts = { :tries => 1, :on => Exception }.merge(options)
+    opts = { :tries => 1, :on => Exception, :sleep => 1 }.merge(options)
     return if opts[:tries] < 1
     retry_exception = opts[:on]
     tries = 0
@@ -155,6 +155,7 @@ def retryable(options = {}, &block)
         begin
             return yield tries
         rescue retry_exception
+            sleep opts[:sleep]
             retry if (tries += 1) < opts[:tries] - 1
         end
     end
@@ -810,9 +811,9 @@ def push_repo(repo)
     $repo.git_remote('rm', 'origin') rescue nil
     # http://help.github.com/multiple-keys
     $repo.git_remote('add', 'origin', "git@vim-scripts.github.com:vim-scripts/#{script['name']}")
-    retryable(:tries => 6, :on => Gitrb::CommandError) do |retries|
+    retryable(:tries => 6, :on => Gitrb::CommandError, :sleep => 15) do |retries|
         # Gitrb::CommandError is as close to a network timeout error as we're going to get
-        puts "Pushing #{script['script_id']} - #{script['name']}#{retries > 0 ? "  TRY 2" : ""}"
+        puts "Pushing #{script['script_id']} - #{script['name']}#{retries > 0 ? "  TRY #{retries}" : ""}"
         $repo.git_push('--tags', 'origin', 'master')
     end
 
