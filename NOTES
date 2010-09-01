@@ -3,6 +3,10 @@ Known bugs:
 Get rid of all the raises when creating a repo
 Add RSS parsing
 
+http://github.com/schwern/gitpan/issues#issue/47
+    make it clearer in the description that this is not the dev repository
+    "Archive of Foo-Bar releases. NOT THE DEVELOPMENT REPOSITORY."
+
 
 none
 

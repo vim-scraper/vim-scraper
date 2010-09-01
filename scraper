@@ -810,6 +810,10 @@ def push_repo(repo)
             :description => "#{script['summary']}",
             :homepage => script_id_to_url(script['script_id']),
             :public => true)
+        github.set_repo_info(
+            # http://support.github.com/discussions/api/97-api-requires-that-dots-be-escaped
+            :name => script['name'].gsub('.', '%2E'),
+            :has_issues => false, :has_wiki => false)
     end
 
     $repo.git_remote('rm', 'origin') rescue nil
