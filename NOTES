@@ -8,9 +8,6 @@ http://github.com/schwern/gitpan/issues#issue/47
     "Archive of Foo-Bar releases. NOT THE DEVELOPMENT REPOSITORY."
 
 
-none
-
-
 Possibly fix:
 
 ColorSchemeMenuMaker.vba drops a .VimballRecord in the wrong dir.

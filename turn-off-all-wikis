@@ -1,0 +1,27 @@
+#!/usr/bin/env ruby
+
+# turns off the issues and wiki tabs for the named repos
+# usage: ./turn-off-all-wikis repos/*
+
+
+require 'json'
+require 'octopussy'
+
+$git_script_file = 'vim-script.json'
+creds = Hashie::Mash.new(JSON.parse(File.read('creds.json')))
+github = Octopussy::Client.new(creds)
+
+ARGV.each do |arg|
+    puts "Turning off #{arg}"
+    script = JSON.parse(File.read(File.join(arg, $git_script_file)))
+
+    start = Time.now
+    github.set_repo_info(
+        # http://support.github.com/discussions/api/97-api-requires-that-dots-be-escap
+        'vim-scripts/' + script['name'].gsub('.', '%2E'),
+        :has_issues => false, :has_wiki => false)
+
+    stop = Time.now
+    sleep 1-(stop-start) if stop-start < 1
+end
+
