@@ -206,9 +206,9 @@ def cached_open(url)
     # todo: turn this off once we roll to production
     path = File.join($webcache_dir, filenameify(url))
     unless File.exist?(path) && File.size(path) > 0
-        puts "  downloading #{url}"
         File.open(path, 'w') do |f|
-            retryable(:tries => 2, :on => [OpenURI::HTTPError, Timeout::Error]) do
+            retryable(:tries => 2, :on => [OpenURI::HTTPError, Timeout::Error]) do |retries|
+                puts "  downloading #{url}#{retries > 0 ? "  TRY #{retries}" : ""}"
                 open(url) { |u| f.write(u.read) }
             end
         end
@@ -433,8 +433,8 @@ end
 
 
 def download_file(url, dest)
-    retryable(:tries => 2, :on => [OpenURI::HTTPError, Timeout::Error]) do
-        puts "  downloading #{url} to #{dest}"
+    retryable(:tries => 2, :on => [OpenURI::HTTPError, Timeout::Error]) do |retries|
+        puts "  downloading #{url} to #{dest}#{retries > 0 ? "  TRY #{retries}" : ""}"
         open(url, 'rb') do |u|
             File.open(dest, 'wb') { |f|
                 f.write(u.read)
@@ -823,8 +823,8 @@ def push_repo(repo)
     end
 
     unless remote
-        puts "Creating #{script['script_id']} - #{script['name']}"
         retryable(:tries => 4, :on => Timeout::Error, :sleep => 10) do |retries|
+            puts "Creating #{script['script_id']} - #{script['name']}#{retries > 0 ? "  TRY #{retries}" : ""}"
             remote = github.create(
                 :name => script['name'],
                 :description => "#{script['summary']}",
@@ -834,6 +834,7 @@ def push_repo(repo)
         api_calls += 1
         # turn off the issues and wiki tabs (wish 'create' would do that)
         retryable(:tries => 4, :on => Timeout::Error, :sleep => 10) do |retries|
+            puts "  disabling wiki/issues for #{script['script_id']} - #{script['name']}#{retries > 0 ? "  TRY #{retries}" : ""}"
             github.set_repo_info(
                 # http://support.github.com/discussions/api/97-api-requires-that-dots-be-escaped
                 'vim-scripts/' + script['name'].gsub('.', '%2E'),
