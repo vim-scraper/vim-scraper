@@ -722,16 +722,7 @@ end
 def find_version(version)
     tagname = gittagify(script_version(version))
     # gitrb doesn't handle annotated tags so we call git directly
-    tag = Dir.chdir($repo.path) do
-        begin
-            # Gitrb doesn't clean GIT_DIR.  :(
-            old_dir = ENV['GIT_DIR']
-            ENV.delete('GIT_DIR')
-            `git tag -l #{tagname}`.chomp
-        ensure
-            ENV['GIT_DIR'] = old_dir
-        end
-    end
+    tag = $repo.git_tag('-l', tagname).chomp
     tag = nil if tag =~ /^\s*$/
     return tag
 end
