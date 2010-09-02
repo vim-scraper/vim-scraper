@@ -436,9 +436,7 @@ def download_file(url, dest)
     retryable(:tries => 2, :on => [OpenURI::HTTPError, Timeout::Error]) do |retries|
         puts "  downloading #{url} to #{dest}#{retries > 0 ? "  TRY #{retries}" : ""}"
         open(url, 'rb') do |u|
-            File.open(dest, 'wb') { |f|
-                f.write(u.read)
-            }
+            File.open(dest, 'wb') { |f| f.write(u.read) }
         end
     end
 end
@@ -535,10 +533,10 @@ end
 def unshell(script, localpath, cmd)
     Dir.mktmpdir($vimscripts_name) do |tmpdir|
         fullpath = File.expand_path(localpath)
-        Dir.chdir(tmpdir) {
+        Dir.chdir(tmpdir) do
             cmd = [*cmd, fullpath]
             raise "couldn't run #{cmd.join(' ')}: #{$?}" unless system(*cmd)
-        }
+        end
         copy_filesystem(script, tmpdir)
     end
 end
@@ -724,7 +722,7 @@ end
 def find_version(version)
     tagname = gittagify(script_version(version))
     # gitrb doesn't handle annotated tags so we call git directly
-    tag = Dir.chdir($repo.path) {
+    tag = Dir.chdir($repo.path) do
         begin
             # Gitrb doesn't clean GIT_DIR.  :(
             old_dir = ENV['GIT_DIR']
@@ -733,21 +731,21 @@ def find_version(version)
         ensure
             ENV['GIT_DIR'] = old_dir
         end
-    }
+    end
     tag = nil if tag =~ /^\s*$/
     return tag
 end
 
 
 def copy_tree(script, tree, inpath=[])
-    tree.to_a.each { |name, value|
+    tree.to_a.each do |name, value|
         path = inpath + [name]
         if value.type == :blob
             smart_copy_file(script, path.join('/'), value.data)
         else
             copy_tree(script, value, path)
         end
-    }
+    end
 end
 
 
@@ -764,12 +762,12 @@ end
 
 def check_for_readme_file
     # we drop a README file into each repo.  don't want to conflict with one already there.
-    $repo.root.to_a.each { |name, value|
+    $repo.root.to_a.each do |name, value|
         if name =~ /^README$/i
             raise "already have a readme.orig!" if $repo.root.to_a.find { |n,v| n =~ /^readme\.orig$/i }
             $repo.root[name + '.orig'] = $repo.root.delete(name)
         end
-    }
+    end
 end
 
 
@@ -789,14 +787,14 @@ def read_script(script)
             puts "  skipped #{version['filename']} #{version['date']} #{script_version(version)}"
         else
             puts "  adding #{version['filename']} #{version['date']} #{script_version(version)}"
-            $repo.transaction(version['release_notes'], author, committer) {
+            $repo.transaction(version['release_notes'], author, committer) do
                 # delete all existing blobs since we replace everything with the new commit
                 $repo.root.to_a.map { |name,value| $repo.root.delete(name) }
                 add_version(version, script)
                 check_for_lone_dir(script)
                 check_for_readme_file
                 copy_file('README', "This is a mirror of #{script_id_to_url(script['script_id'])}\n\n" + script['description'] + "\n") unless $repo.root['README']
-            }
+            end
             tag_version(version)
         end
     end
