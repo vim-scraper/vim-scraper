@@ -7,6 +7,22 @@
 require 'json'
 require 'octopussy'
 
+
+# monkeypatch set_repo_info into octopussy.  Dunno why they missed this call.
+# http://github.com/pengwynn/octopussy/pull/2
+module Octopussy
+  class Client
+    def set_repo_info(repo, options)
+      repo = Repo.new(repo)
+      # post body needs to be "values[has_wiki]=false"
+      response = self.class.post("/repos/show/#{repo.username}/#{repo.name}",
+        :body => options.keys.reduce({}) { |a,v| a["values[#{v}]"] = options[v]; a }.merge(auth_params))
+      Hashie::Mash.new(response).repository
+    end
+  end
+end
+
+
 $git_script_file = 'vim-script.json'
 creds = Hashie::Mash.new(JSON.parse(File.read('creds.json')))
 github = Octopussy::Client.new(creds)
