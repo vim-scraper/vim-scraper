@@ -824,17 +824,21 @@ def push_repo(repo)
 
     unless remote
         puts "Creating #{script['script_id']} - #{script['name']}"
-        remote = github.create(
-            :name => script['name'],
-            :description => "#{script['summary']}",
-            :homepage => script_id_to_url(script['script_id']),
-            :public => true)
+        retryable(:tries => 4, :on => Timeout::Error, :sleep => 10) do |retries|
+            remote = github.create(
+                :name => script['name'],
+                :description => "#{script['summary']}",
+                :homepage => script_id_to_url(script['script_id']),
+                :public => true)
+        end
         api_calls += 1
         # turn off the issues and wiki tabs (wish 'create' would do that)
-        github.set_repo_info(
-            # http://support.github.com/discussions/api/97-api-requires-that-dots-be-escaped
-            'vim-scripts/' + script['name'].gsub('.', '%2E'),
-            :has_issues => false, :has_wiki => false)
+        retryable(:tries => 4, :on => Timeout::Error, :sleep => 10) do |retries|
+            github.set_repo_info(
+                # http://support.github.com/discussions/api/97-api-requires-that-dots-be-escaped
+                'vim-scripts/' + script['name'].gsub('.', '%2E'),
+                :has_issues => false, :has_wiki => false)
+        end
         api_calls += 1
     end
 
