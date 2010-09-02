@@ -823,10 +823,6 @@ def push_repo(repo)
         api_calls += 1
     end
 
-    # sleep to avoid bumping into github's 60-per-minute API limit
-    stop = Time.now
-    sleep api_calls-(stop-start) if stop-start < api_calls
-
     $repo.git_remote('rm', 'origin') rescue nil
     # http://help.github.com/multiple-keys
     $repo.git_remote('add', 'origin', "git@vim-scripts.github.com:vim-scripts/#{script['name']}")
@@ -835,6 +831,11 @@ def push_repo(repo)
         puts "Pushing #{script['script_id']} - #{script['name']}#{retries > 0 ? "  TRY #{retries}" : ""}"
         $repo.git_push('--tags', 'origin', 'master')
     end
+
+    # sleep to avoid bumping into github's 60-per-minute API limit
+    # the push doesn't count toward the API limit
+    stop = Time.now
+    sleep api_calls-(stop-start) if stop-start < api_calls
 
     # we don't want any provision for forcing pushes.  if you delete
     # and recreate a repo, you must manually delete and recreate it
