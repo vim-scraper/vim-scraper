@@ -23,19 +23,43 @@ module Octopussy
 end
 
 
+# http://blog.codefront.net/2008/01/14/retrying-code-blocks-in-ruby-on-exceptions-whatever/
+# modified to pass the number of retries in the arg (0,1,2 if :tries => 3)
+def retryable(options = {}, &block)
+    opts = { :tries => 1, :on => Exception, :sleep => 1 }.merge(options)
+    return if opts[:tries] < 1
+    retry_exception = opts[:on]
+    tries = 0
+
+    if opts[:tries] > 1
+        begin
+            return yield tries
+        rescue retry_exception
+            sleep opts[:sleep]
+            retry if (tries += 1) < opts[:tries] - 1
+        end
+    end
+
+    # last try will throw an exception
+    yield tries+1
+end
+
+
 $git_script_file = 'vim-script.json'
 creds = Hashie::Mash.new(JSON.parse(File.read('creds.json')))
 github = Octopussy::Client.new(creds)
 
 ARGV.each do |arg|
-    puts "Turning off #{arg}"
     script = JSON.parse(File.read(File.join(arg, $git_script_file)))
 
     start = Time.now
-    github.set_repo_info(
-        # http://support.github.com/discussions/api/97-api-requires-that-dots-be-escap
-        'vim-scripts/' + script['name'].gsub('.', '%2E'),
-        :has_issues => false, :has_wiki => false)
+    retryable(:tries => 4, :on => Timeout::Error, :sleep => 10) do |retries|
+        puts "Turning off #{arg}#{retries > 0 ? "  TRY #{retries}" : ""}"
+        github.set_repo_info(
+            # http://support.github.com/discussions/api/97-api-requires-that-dots-be-escap
+            'vim-scripts/' + script['name'].gsub('.', '%2E'),
+            :has_issues => false, :has_wiki => false)
+    end
 
     stop = Time.now
     sleep 1-(stop-start) if stop-start < 1
