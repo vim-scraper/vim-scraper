@@ -982,16 +982,17 @@ def perform_continuous(count=10)
     last_script_id = File.read(last_script_id_path).to_i rescue 0
     last_script_id += 1
 
-    if last_script_id < highest_script_id.to_i + 3
-        puts "Performing continuous scrape of #{last_script_id} through #{last_script_id+count-1}"
-        last_script_id.upto(last_script_id+count-1) do |script_id|
-            puts "Fetching script #{script_id} for continuous scrape"
-            perform_all(script_id, true)
-            File.open(last_script_id_path, 'w') { |f| f.write(script_id.to_s) }
-        end
-    else
-        puts "Count is #{last_script_id} and the highest known script id is #{highest_script_id}.  Starting continuous scrape from 0!"
-        File.open(last_script_id_path, 'w') { |f| f.write('0') }
+    # keep looking past the last known id in case rss missed new scripts
+    if last_script_id > highest_script_id.to_i + 3
+        puts "Count is #{last_script_id} and the highest known script id is #{highest_script_id}.  Starting from 0!"
+        last_script_id = 1
+    end
+
+    puts "Performing continuous scrape of #{last_script_id} through #{last_script_id+count-1}"
+    last_script_id.upto(last_script_id+count-1) do |script_id|
+        puts "Fetching script #{script_id} for continuous scrape"
+        perform_all(script_id, true)
+        File.open(last_script_id_path, 'w') { |f| f.write(script_id.to_s) }
     end
 end
 
