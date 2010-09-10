@@ -1,14 +1,20 @@
 #!/bin/env ruby
 
-# Vimscripts scraper monster
-# This command takes any mixture of arguments:
-# - decimal number: the script id to scrape, saves json in scripts dir
-#     ./scraper `seq 1 3217`
-# - .json file: the script to convert into a git repo
+# vim scripts scraping monster
+#
+# - with a decimal number, scrapes that script ID and stores the json
+#     ./scraper `seq 1 3217`     # where 3217 is the highest script id
+# - with a .json file, downloads the script and converts to a git repo
 #     ./scraper scripts/*
-# - bare .git repo dir: the git repo to push to github
+# - with a bare git repo, pushes that repo up to github
 #     ./scraper repos/*
-# and you're done!
+# When you run the above commands in that order, you perform a full scrape.
+#
+# Run with no arguments to perform an rss scrape.  It checks the feed
+# and downloads all changed scripts (it stores its state in a file).
+#     ./scraper
+#
+# Make sure to do a full scrape before setting up cron to do the rss scrape.
 
 require 'rubygems'
 require 'hpricot'             # hpricot gem
@@ -28,11 +34,11 @@ require 'find'
 require 'octopussy'           # octopussy gem
 require 'hashie'              # hashie gem
 require 'htmlentities'        # htmlentities gem
+require 'feedzirra'           # feedzirra gem
 
 # thoughts:
 # We do everything we can to make it so you can drop the repo in bundles and just have it work.
 # We reset permissions on extracted files -- usually when they're different it's a mistake.
-# wish I had used Hashie instead of plain hashes to store the script: http://github.com/intridea/hashie
 
 
 $vimscripts_name = "vim-scripts"
@@ -202,12 +208,18 @@ def script_id_to_url(script_id)
 end
 
 
+def script_id_from_url(url)
+    url =~ /[?&;]script_id=(\d+)/ or raise "Could not parse a script id from <<#{url}>>"
+    $1
+end
+
+
 def cached_open(url)
     # todo: turn this off once we roll to production
     path = File.join($webcache_dir, filenameify(url))
-    unless File.exist?(path) && File.size(path) > 0
+    if $ignore_cache || !File.exist?(path) || File.size(path) <= 0
         File.open(path, 'w') do |f|
-            retryable(:tries => 2, :on => [OpenURI::HTTPError, Timeout::Error]) do |retries|
+            retryable(:tries => 4, :on => [OpenURI::HTTPError, Timeout::Error], :sleep => 10) do |retries|
                 puts "  downloading #{url}#{retries > 0 ? "  TRY #{retries}" : ""}"
                 open(url) { |u| f.write(u.read) }
             end
@@ -434,7 +446,7 @@ end
 
 
 def download_file(url, dest)
-    retryable(:tries => 2, :on => [OpenURI::HTTPError, Timeout::Error]) do |retries|
+    retryable(:tries => 4, :on => [OpenURI::HTTPError, Timeout::Error], :sleep => 10) do |retries|
         puts "  downloading #{url} to #{dest}#{retries > 0 ? "  TRY #{retries}" : ""}"
         open(url, 'rb') do |u|
             File.open(dest, 'wb') { |f| f.write(u.read) }
@@ -820,7 +832,7 @@ def perform_push(repo_name)
         end
         api_calls += 1
         # turn off the issues and wiki tabs (wish 'create' would do that)
-        retryable(:tries => 4, :on => Timeout::Error, :sleep => 10) do |retries|
+        retryable(:tries => 4, :on => [Timeout::Error, Octopussy::Unauthorized], :sleep => 10) do |retries|
             puts "  disabling wiki/issues for #{script['script_id']} - #{script['name']}#{retries > 0 ? "  TRY #{retries}" : ""}"
             github.set_repo_info(
                 # http://support.github.com/discussions/api/97-api-requires-that-dots-be-escaped
@@ -879,22 +891,60 @@ end
 
 def perform_all(script_id)
     repo_name,count = perform_download(perform_scrape(script_id))
-    perform_push(repo_name) if count > 0
+    # only pushing if new versions were downloaded is an issue if the previous
+    # rss run bailed during the push...  next run might push again and succeed
+    # except that no new versions will be downloaded.  So, this is a good thing
+    # when doing a full scrape but not when doing the rss.
+    perform_push(repo_name) # if count > 0
 end
 
 
-raise "specify some scripts to scrape" if ARGV.empty?
-ARGV.each do |arg|
-    if arg =~ /^-(\d+)$/
-        perform_all $1
-    elsif arg =~ /^\d+$/
-        perform_scrape arg
-    elsif test ?f, arg
-        perform_download arg
-    elsif test ?d, arg
-        perform_push arg
+def perform_rss
+    url = 'http://feed43.com/vim-scripts.xml'
+    feed = Feedzirra::Feed.fetch_and_parse(url)
+
+    last_rss_id_path = 'last_rss_id'
+    last_rss_id = File.read(last_rss_id_path) rescue nil
+    entries = if last_rss_id
+        last_rss_id.gsub!(/[^A-Fa-f0-9]/, '')
+        last_index = feed.entries.index { |e| e.entry_id == last_rss_id }
+        if last_index
+            last_index == 0 ? [] : feed.entries[0..(last_index - 1)]
+        else
+            puts "#{last_rss_id.inspect} not found in feed, pulling all #{feed.entries.count} items in feed."
+            feed.entries
+        end
     else
-        raise "Could not recognize argument #{arg}"
+        puts "last_rss_id not found, pulling all #{feed.entries.count} items in feed."
+        feed.entries
+    end
+
+    entries.reverse.each do |entry|
+        script_id = script_id_from_url(entry.url)
+        puts "Fetching script #{script_id} for rss #{entry.entry_id}"
+        perform_all(script_id)
+        File.open(last_rss_id_path, 'w') { |f| f.write(entry.entry_id) }
+    end
+end
+
+
+if ARGV.empty?
+    $ignore_cache = 1
+    perform_rss
+else
+    ARGV.each do |arg|
+        if arg =~ /^-(\d+)$/
+            $ignore_cache = 1
+            perform_all $1
+        elsif arg =~ /^\d+$/
+            perform_scrape arg
+        elsif test ?f, arg
+            perform_download arg
+        elsif test ?d, arg
+            perform_push arg
+        else
+            raise "Could not recognize argument #{arg}"
+        end
     end
 end
 
