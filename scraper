@@ -253,7 +253,7 @@ def scrape_script(script_id)
     s['name'] = githubify(s['display_name'])
     s['script_type'] = doc.at('td[text()="script type"]').parent.next_sibling.children.first.inner_content
     s['description'] = doc.at('td[text()="description"]').parent.next_sibling.children.first.inner_content.gsub("\r", "\n")
-    raise 'no rating?' unless doc.search('td.lightbg~td').find { |e| e.inner_text =~ /Rating.*\s(-?\d+)\/(\d+),.*Downloaded[^\d]*(\d+)/m }
+    doc.search('td.lightbg~td').find { |e| e.inner_text =~ /Rating.*\s(-?\d+)\/(\d+),.*Downloaded[^\d]*(\d+)/m }
     s['rating_total'], s['rating_votes'], s['downloads'] = $1, $2, $3      # http://www.vim.org/karma.php
     s['install_details'] = doc.at('td[text()="install details"]').parent.next_sibling.children.first.inner_content.gsub("\r", "\n")
     # reject links with targets so download links in the description don't appear to be a version (script 1843)
@@ -453,7 +453,7 @@ end
 
 def download_file(url, dest)
     retryable(:tries => 4, :on => [OpenURI::HTTPError, Timeout::Error], :sleep => 10) do |retries|
-        puts "  downloading #{url} to #{dest}#{retries > 0 ? "  TRY #{retries}" : ""}"
+        puts "downloading #{url} to #{dest}#{retries > 0 ? "  TRY #{retries}" : ""}"
         open(url, 'rb') do |u|
             File.open(dest, 'wb') { |f| f.write(u.read) }
         end
@@ -462,6 +462,7 @@ end
 
 
 def copy_file(repo, filename, contents)
+    # an empty file is represented by the empty string.  contents==nil indicates an internal error.
     raise "no data in #{filename}: #{contents.inspect}" unless contents
     repo.root[filename] = Gitrb::Blob.new(:data => contents)
 end
@@ -500,7 +501,10 @@ def smart_copy_file(repo, script, filename, contents)
         when 'indent' then copy_file(repo, "indent/" + filename, contents)
         when 'syntax' then copy_file(repo, "syntax/" + filename, contents)
         when 'utility' then copy_file(repo, "plugin/" + filename, contents)
-        else raise "Don't know where to put #{filename} for #{script['script_type']}"
+        when 'patch' then copy_file(repo, "plugin/" + filename, contents)
+        else
+            # if this fires, they must have added more script types?!
+            raise "Don't know where to put #{filename} for #{script['script_type']}"
         end
     elsif filename =~ /^[^\/]+\.txt/
         copy_file(repo, "doc/" + filename, contents)
@@ -565,8 +569,11 @@ def copy_zipfile(repo, script, zip_path)
     Zip::ZipFile.open(zip_path) do |zipfile|
         zipfile.each do |entry|
             next unless entry.file?
-            raise "add symlinks!" if entry.symlink?
-            smart_copy_file(repo, script, entry.name, entry.get_input_stream.read)
+            if entry.symlink?
+                puts "WARNING: ignoring symlink in #{zip_path}: #{entry.name}"
+            else
+                smart_copy_file(repo, script, entry.name, entry.get_input_stream.read)
+            end
         end
     end
 end
@@ -672,7 +679,7 @@ def sense_file(repo, actual_name, pkgfile)
         elsif magic_type == 'application/x-xz'
             actual_name += '.xz'
         elsif is_some_sort_of_zipfile(extension_type)
-            # extension claims zipfile but magic disagrees
+            # extension claims zipfile but magic disagrees, this happens a lot
             actual_name.sub!(/\.zip$|\.tar\.gz$|\.tar\.bz2?$|\.tgz$|\.tbz2?$/i, '')
             if magic_type == 'text/x-python'
                 actual_name += '.py'
@@ -681,6 +688,7 @@ def sense_file(repo, actual_name, pkgfile)
             elsif magic_type == 'application/x-tar'
                 actual_name += '.tar'
             else
+                # just need to hope that nobody makes this mistake anymore.  if they do, fix this function.
                 raise "unknown failed zip type for #{actual_name}: #{magic_type}"
             end
         elsif magic_type == 'application/x-macbinary'
@@ -691,7 +699,10 @@ def sense_file(repo, actual_name, pkgfile)
         elsif extension_type.include?('application/x-tar') && magic_type == nil
             # magic has a bug where tarfiles are missed: http://github.com/minad/mimemagic/issues/#issue/1
             # if this happens, we just blindly trust the extension.
-        else raise "differing mime types for #{actual_name}, ext claims #{extension_type} but magic is #{magic_type.inspect}"
+        else
+            # there's such a range of reasons why this will happen that there's nothing to do but
+            # have a human improve this function to handle this case.  :(
+            raise "differing mime types for #{actual_name}, ext claims #{extension_type} but magic is #{magic_type.inspect}"
         end
     end
     return actual_name
@@ -723,7 +734,10 @@ def add_version(repo, version, script)
     when /\.7z$/ then unshell(repo, script, pkgfile, ['/usr/bin/7za', 'x'])
     when /\.rar$/ then unshell(repo, script, pkgfile, ['/usr/bin/unrar', 'x'])
     when /\.vba$|\.vimball$/ then unvimball(repo, script, pkgfile)
-    else raise "unknown filetype: #{actual_name}"
+    else
+        # probably need to add a new text file extension to $textext.
+        # if not, it's probably a new compression format.
+        raise "unknown filetype: #{actual_name}"
     end
 end
 
@@ -824,7 +838,7 @@ def perform_push(repo_name)
         # make sure this actually is the same repo
         remote.homepage =~ /script_id=(\d+)$/
         raise "bad url on github repo #{script['name']}" unless $1
-        raise "remote #{script['name']} exists but id is #{$1}" if script['script_id'] != $1
+        raise "remote #{script['name']} exists but id is for #{$1}" if script['script_id'] != $1
     end
 
     unless remote
