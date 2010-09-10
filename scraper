@@ -2,19 +2,25 @@
 
 # vim scripts scraping monster
 #
-# - with a decimal number, scrapes that script ID and stores the json
+# Full Scrape:
+# - to do a full scrape / download / upload cycle, pass the script ids:
 #     ./scraper `seq 1 3217`     # where 3217 is the highest script id
-# - with a .json file, downloads the script and converts to a git repo
-#     ./scraper scripts/*
-# - with a bare git repo, pushes that repo up to github
-#     ./scraper repos/*
-# When you run the above commands in that order, you perform a full scrape.
 #
-# Run with no arguments to perform an rss scrape.  It checks the feed
-# and downloads all changed scripts (it stores its state in a file).
+# RSS Scrape:
+# Now, run with no arguments to perform an rss scrape.  It downloads
+# all scripts present in the rss feed (stores its state in a file).
 #     ./scraper
+# Do a full scrape before setting up cron to do the rss scrape.
 #
-# Make sure to do a full scrape before setting up cron to do the rss scrape.
+# Debugging / manual invocation:
+# - with a negative number, scrapes that script ID and stores the json
+#     ./scraper -987
+# - with a .json file, downloads the script and converts to a git repo
+#     ./scraper scripts/0987*
+# - with a bare git repo, pushes that repo up to github
+#     ./scraper repos/0987*
+# When you run the above commands in that order, you do a full scrape
+# on script 987.
 
 require 'rubygems'
 require 'hpricot'             # hpricot gem
@@ -877,6 +883,7 @@ end
 
 
 def perform_download(script_file)
+    return [nil,-1] unless script_file
     script = JSON.parse(File.read(script_file))
     repo_path = File.join($repos_dir, "#{'%04d' % script['script_id']} - #{filenameify(script['name'])}.git")
 
@@ -889,13 +896,9 @@ def perform_download(script_file)
 end
 
 
-def perform_all(script_id)
+def perform_all(script_id, always_push=false)
     repo_name,count = perform_download(perform_scrape(script_id))
-    # only pushing if new versions were downloaded is an issue if the previous
-    # rss run bailed during the push...  next run might push again and succeed
-    # except that no new versions will be downloaded.  So, this is a good thing
-    # when doing a full scrape but not when doing the rss.
-    perform_push(repo_name) # if count > 0
+    perform_push(repo_name) if always_push or count > 0
 end
 
 
@@ -922,7 +925,12 @@ def perform_rss
     entries.reverse.each do |entry|
         script_id = script_id_from_url(entry.url)
         puts "Fetching script #{script_id} for rss #{entry.entry_id}"
-        perform_all(script_id)
+
+        # always_push=true because there's a chance the previous scrape failed due to
+        # a transient network error.  next time we run, we may find that there are
+        # no versions to download, but the repo still needs to be pushed.
+        perform_all(script_id, true)
+
         File.open(last_rss_id_path, 'w') { |f| f.write(entry.entry_id) }
     end
 end
@@ -933,10 +941,10 @@ if ARGV.empty?
     perform_rss
 else
     ARGV.each do |arg|
-        if arg =~ /^-(\d+)$/
+        if arg =~ /^\d+$/
             $ignore_cache = 1
-            perform_all $1
-        elsif arg =~ /^\d+$/
+            perform_all arg
+        elsif arg =~ /^-(\d+)$/
             perform_scrape arg
         elsif test ?f, arg
             perform_download arg
