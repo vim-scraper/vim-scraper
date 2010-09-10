@@ -429,6 +429,7 @@ def write_script(script)
         # check_encoding(farg)
         f.write(JSON.pretty_generate(farg)+"\n")
     }
+    filename
 end
 
 
@@ -789,10 +790,11 @@ def read_script(script)
             tag_version(repo, version)
         end
     end
+    repo_path
 end
 
 
-def push_repo(repo_name)
+def perform_push(repo_name)
     creds = Hashie::Mash.new(JSON.parse(File.read('creds.json')))
     github = Octopussy::Client.new(creds)
     repo = Gitrb::Repository.new(:path => repo_name.dup, :bare => true)
@@ -861,14 +863,31 @@ def push_repo(repo_name)
 end
 
 
+def perform_scrape(script_id)
+    write_script(resolve_name_conflicts(scrape_script(script_id)))
+end
+
+
+def perform_download(script_file)
+    read_script(JSON.parse(File.read(script_file)))
+end
+
+
+def perform_all(script_id)
+    perform_push(perform_download(perform_scrape(script_id)))
+end
+
+
 raise "specify some scripts to scrape" if ARGV.empty?
 ARGV.each do |arg|
-    if arg =~ /^\d+$/
-        write_script(resolve_name_conflicts(scrape_script(arg)))
+    if arg =~ /^-(\d+)$/
+        perform_all $1
+    elsif arg =~ /^\d+$/
+        perform_scrape arg
     elsif test ?f, arg
-        read_script(JSON.parse(File.read(arg)))
+        perform_download arg
     elsif test ?d, arg
-        push_repo(arg)
+        perform_push arg
     else
         raise "Could not recognize argument #{arg}"
     end

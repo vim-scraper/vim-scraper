@@ -1,0 +1,11 @@
+vim-scripts            http://github.com/vim-scripts
+
+
+Mirrors all the code on http://www.vim.org/scripts/index.php to GitHub.
+
+TODO: write up a github HTML site and link to it here.
+
+
+This repository is pretty uninteresting since it only contains the scraper.
+The fun stuff is in all the other repos in this account.
+
