@@ -919,6 +919,7 @@ end
 def perform_rss
     url = 'http://feed43.com/vim-scripts.xml'
     feed = Feedzirra::Feed.fetch_and_parse(url)
+    puts "feed contains #{feed.entries.map { |e| script_id_from_url(e.url) }.inspect}"
 
     last_rss_id_path = 'last_rss_id'
     last_rss_id = File.read(last_rss_id_path) rescue nil
@@ -936,6 +937,7 @@ def perform_rss
         feed.entries
     end
 
+    puts "   processing #{entries.map { |e| script_id_from_url(e.url) }.inspect}"
     entries.reverse.each do |entry|
         script_id = script_id_from_url(entry.url)
         puts "Fetching script #{script_id} for rss #{entry.entry_id}"
