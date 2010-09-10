@@ -863,7 +863,7 @@ def perform_push(repo_name)
         end
         api_calls += 1
         # turn off the issues and wiki tabs (wish 'create' would do that)
-        retryable(:tries => 4, :on => [Timeout::Error, Octopussy::Unauthorized], :sleep => 10) do |retries|
+        retryable(:tries => 4, :sleep => 10) do |retries|
             puts "  disabling wiki/issues for #{script['script_id']} - #{script['name']}#{retries > 0 ? "  TRY #{retries}" : ""}"
             github.set_repo_info(
                 # http://support.github.com/discussions/api/97-api-requires-that-dots-be-escaped
