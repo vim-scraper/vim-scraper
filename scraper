@@ -820,9 +820,7 @@ def store_versions_in_repo(repo, script)
     script['versions'].reverse.each do |version|
         author = Gitrb::User.new("#{version['author']['first_name']} #{version['author']['last_name']}",
                                  version['author']['email'], Time.new(*version['date'].split('-'), 0, 0, 0, 0))
-        if find_version(repo, version)
-            puts "  skipped #{version['filename']} #{version['date']} #{script_version(version)}"
-        else
+        unless find_version(repo, version)
             puts "  adding #{version['filename']} #{version['date']} #{script_version(version)}"
             repo.transaction(version['release_notes'], author, committer) do
                 # delete all existing blobs since we replace everything with the new commit
