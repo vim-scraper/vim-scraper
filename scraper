@@ -236,8 +236,9 @@ end
 
 
 def scrape_script(script_id)
-    # hard-code the scripts that claim to be deleted
-    if $deleted_scripts.include? script_id.to_s
+    script_id = script_id.to_s
+
+    if $deleted_scripts.include? script_id
         puts "Skipped #{script_id} -- deleted."
         return nil
     end
@@ -360,7 +361,13 @@ end
 def list_existing_scripts
     # returns a hash of key=script name, value=filename
     Hash[Dir.entries($scripts_dir).reject { |e| %w{. .. .git}.include?(e) }.
-        map { |e| e =~ /[0-9]* - (.*)\.json$/ or raise "can't match #{e}"; [hashkeyify($1), e]}]
+        map { |e| e =~ /^[0-9]+ - (.+)\.json$/ or raise "can't match #{e}"; [hashkeyify($1), e]}]
+end
+
+
+def highest_script_id
+    Dir.entries($scripts_dir).reject { |e| %w{. .. .git}.include?(e) }.
+        map { |e| e =~ /^([0-9]+) - .+\.json$/ or raise "can't match #{e}"; $1}.max
 end
 
 
@@ -834,6 +841,7 @@ end
 
 
 def perform_push(repo_name)
+    return unless repo_name
     creds = Hashie::Mash.new(JSON.parse(File.read('creds.json')))
     github = Octopussy::Client.new(creds)
     repo = Gitrb::Repository.new(:path => repo_name.dup, :bare => true)
@@ -965,12 +973,34 @@ def perform_rss
 
         File.open(last_rss_id_path, 'w') { |f| f.write(entry.entry_id) }
     end
+    entries.count
+end
+
+
+def perform_continuous(count=10)
+    last_script_id_path = 'last_script_id'
+    last_script_id = File.read(last_script_id_path).to_i rescue 0
+    last_script_id += 1
+
+    if last_script_id < highest_script_id.to_i + 3
+        puts "Performing continuous scrape of #{last_script_id} through #{last_script_id+count-1}"
+        last_script_id.upto(last_script_id+count-1) do |script_id|
+            puts "Fetching script #{script_id} for continuous scrape"
+            perform_all(script_id, true)
+            File.open(last_script_id_path, 'w') { |f| f.write(script_id.to_s) }
+        end
+    else
+        puts "Count is #{last_script_id} and the highest known script id is #{highest_script_id}.  Starting continuous scrape from 0!"
+        File.open(last_script_id_path, 'w') { |f| f.write('0') }
+    end
 end
 
 
 if ARGV.empty?
     $ignore_cache = 1
-    perform_rss
+    count = perform_rss
+    # also cycle through all packages in case the rss feed missed anything
+    perform_continuous(10 - count) if 10 - count > 0
 else
     ARGV.each do |arg|
         if arg =~ /^\d+$/
