@@ -929,11 +929,16 @@ def perform_rss
         if last_index
             last_index == 0 ? [] : feed.entries[0..(last_index - 1)]
         else
+            # if this happens very often, the scraper could just initiate a full scrape now.
+            # since it takes hours, however, we'd have to add locking so the cron job doesn't
+            # stomp all over itself (and worry about stalled jobs or stale pids).
+            raise "Lost feed data.  Need to perform a full scrape!"
             puts "#{last_rss_id.inspect} not found in feed, pulling all #{feed.entries.count} items in feed."
             feed.entries
         end
     else
         puts "last_rss_id not found, pulling all #{feed.entries.count} items in feed."
+        puts "WARNING: assuming you just did a full scrape.  Bad news if you didn't!"
         feed.entries
     end
 
