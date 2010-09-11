@@ -565,7 +565,10 @@ def unshell(repo, script, localpath, cmd)
         fullpath = File.expand_path(localpath)
         Dir.chdir(tmpdir) do
             cmd = [*cmd, fullpath]
-            raise "couldn't run #{cmd.join(' ')}: #{$?}" unless system(*cmd)
+            # unzip returns a 1 exit code for success with warnings
+            unless system(*cmd) || (cmd[0] == '/usr/bin/unzip' && $?.exitstatus == 1)
+                raise "couldn't run #{cmd.join(' ')}: #{$?}"
+            end
         end
         copy_filesystem(repo, script, tmpdir)
     end
