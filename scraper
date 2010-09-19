@@ -1,18 +1,20 @@
 #!/bin/env ruby
 
 # vim scripts scraping monster
+# This code is Copyright (c) 2010 Scott Bronson
+# Released under the MIT License.
 #
 # Full Scrape:
 # - to do a full scrape / download / upload cycle, pass the script ids:
 #     ./scraper `seq 1 3217`     # where 3217 is the highest script id
 #
-# RSS Scrape:
+# AUTOMATIC RSS Scrape:
 # Now, run with no arguments to perform an rss scrape.  It downloads
 # all scripts present in the rss feed (stores its state in a file).
 #     ./scraper
 # Do a full scrape before setting up cron to do the rss scrape.
 #
-# Debugging / manual invocation:
+# MANUAL Debugging:
 # - with a negative number, scrapes that script ID and stores the json
 #     ./scraper -987
 # - with a .json file, downloads the script and converts to a git repo
@@ -21,6 +23,15 @@
 #     ./scraper repos/0987*
 # When you run the above commands in that order, you do a full scrape
 # on script 987.
+#
+# TESTING:
+# You may think that this script has no tests.  Not true!  Here is
+# how to perform excellent testing:
+#   mv repos repos.orig
+#   ./scraper scripts/*
+#   ./dump-repo repos/*
+# Now, git diff repostats.  If anything's different, you'll know.
+
 
 require 'rubygems'
 require 'hpricot'             # hpricot gem
@@ -55,6 +66,7 @@ $scripts_dir = 'scripts'
 $packages_dir = 'packages'
 $webcache_dir = 'webcache'
 $git_script_file = 'vim-script.json'
+$last_script_id_file = 'last_script_id'
 
 $vimdirs = %w{after autoload bin colors doc ftdetect ftplugin indent plugin syntax}
 $textext = %w{bat c cpp csh diff h klip patch pl pm ps py rb set sh snip snippet snippets tcl txt xml vim vim.orig}.map { |x| "\\.#{x}$" }.join('|')
@@ -221,8 +233,10 @@ end
 
 
 def cached_open(url)
-    # todo: turn this off once we roll to production
     path = File.join($webcache_dir, filenameify(url))
+    # ignore_cache should be true if we're running a real scrape and should
+    # never use stale data.  Otherwise, leave it false so your testing and
+    # debugging will just use the local file system.
     if $ignore_cache || !File.exist?(path) || File.size(path) <= 0
         File.open(path, 'w') do |f|
             retryable(:tries => 4, :on => [OpenURI::HTTPError, Timeout::Error], :sleep => 10) do |retries|
@@ -367,7 +381,7 @@ end
 
 def highest_script_id
     Dir.entries($scripts_dir).reject { |e| %w{. .. .git}.include?(e) }.
-        map { |e| e =~ /^([0-9]+) - .+\.json$/ or raise "can't match #{e}"; $1}.max
+        map { |e| e =~ /^([0-9]+) - .+\.json$/ or raise "can't match #{e}"; $1.to_i }.max
 end
 
 
@@ -933,6 +947,19 @@ end
 def perform_all(script_id, always_push=false)
     repo_name,count = perform_download(perform_scrape(script_id))
     perform_push(repo_name) if always_push or count > 0
+    [repo_name, count]
+end
+
+
+def perform_full
+    highest_index = highest_script_id
+    current_index = 1
+    while true
+        repo_name,count = perform_all(current_index.to_s)
+        break if repo_name.nil? && current_index > highest_index + 4
+        current_index += 1
+    end
+    File.rm(last_rss_id_path)
 end
 
 
@@ -943,18 +970,17 @@ def perform_rss
 
     last_rss_id_path = 'last_rss_id'
     last_rss_id = File.read(last_rss_id_path) rescue nil
+
     entries = if last_rss_id
         last_rss_id.gsub!(/[^A-Fa-f0-9]/, '')
         last_index = feed.entries.index { |e| e.entry_id == last_rss_id }
         if last_index
             last_index == 0 ? [] : feed.entries[0..(last_index - 1)]
         else
-            # if this happens very often, the scraper could just initiate a full scrape now.
-            # since it takes hours, however, we'd have to add locking so the cron job doesn't
-            # stomp all over itself (and worry about stalled jobs or stale pids).
-            raise "Lost feed data.  Need to perform a full scrape!"
-            puts "#{last_rss_id.inspect} not found in feed, pulling all #{feed.entries.count} items in feed."
-            feed.entries
+            # can't find our previous location in the RSS feed.  Need to do a
+            # full scrape from the beginning
+            perform_full
+            nil
         end
     else
         puts "last_rss_id not found, pulling all #{feed.entries.count} items in feed."
@@ -962,29 +988,31 @@ def perform_rss
         feed.entries
     end
 
-    puts "   processing #{entries.map { |e| script_id_from_url(e.url) }.inspect}"
-    entries.reverse.each do |entry|
-        script_id = script_id_from_url(entry.url)
-        puts "Fetching script #{script_id} for rss #{entry.entry_id}"
+    if entries
+        puts "   processing #{entries.map { |e| script_id_from_url(e.url) }.inspect}"
+        entries.reverse.each do |entry|
+            script_id = script_id_from_url(entry.url)
+            puts "Fetching script #{script_id} for rss #{entry.entry_id}"
 
-        # always_push=true because there's a chance the previous scrape failed due to
-        # a transient network error.  next time we run, we may find that there are
-        # no versions to download, but the repo still needs to be pushed.
-        perform_all(script_id, true)
+            # always_push=true because there's a chance the previous scrape failed due to
+            # a transient network error.  next time we run, we may find that there are
+            # no versions to download, but the repo still needs to be pushed.
+            perform_all(script_id, true)
 
-        File.open(last_rss_id_path, 'w') { |f| f.write(entry.entry_id) }
+            File.open(last_rss_id_path, 'w') { |f| f.write(entry.entry_id) }
+        end
     end
-    entries.count
+
+    entries && entries.count
 end
 
 
 def perform_continuous(count=10)
-    last_script_id_path = 'last_script_id'
-    last_script_id = File.read(last_script_id_path).to_i rescue 0
+    last_script_id = File.read(last_script_id_file).to_i rescue 0
     last_script_id += 1
 
     # keep looking past the last known id in case rss missed new scripts
-    if last_script_id > highest_script_id.to_i + 3
+    if last_script_id > highest_script_id + 3
         puts "Count is #{last_script_id} and the highest known script id is #{highest_script_id}.  Starting from 0!"
         last_script_id = 1
     end
@@ -993,7 +1021,7 @@ def perform_continuous(count=10)
     last_script_id.upto(last_script_id+count-1) do |script_id|
         puts "Fetching script #{script_id} for continuous scrape"
         perform_all(script_id, true)
-        File.open(last_script_id_path, 'w') { |f| f.write(script_id.to_s) }
+        File.open(last_script_id_file, 'w') { |f| f.write(script_id.to_s) }
     end
 end
 
@@ -1005,6 +1033,9 @@ if ARGV.empty?
     count = perform_rss
     # also cycle through all packages in case the rss feed missed anything
     perform_continuous(10 - count) if 10 - count > 0
+elsif ARGV[0] == 'full'
+    $ignore_cache = 1
+    perform_full
 else
     ARGV.each do |arg|
         if arg =~ /^\d+$/
@@ -1024,3 +1055,4 @@ end
 
 stop = Time.now
 puts "done.  Run took #{'%.2f' % (stop-start)} seconds or #{ '%.3f' % ((stop-start)/60)} minutes"
+
