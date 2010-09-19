@@ -998,6 +998,8 @@ def perform_continuous(count=10)
 end
 
 
+start = Time.now
+
 if ARGV.empty?
     $ignore_cache = 1
     count = perform_rss
@@ -1020,3 +1022,5 @@ else
     end
 end
 
+stop = Time.now
+puts "done.  Run took #{'%.2f' % (stop-start)} seconds or #{ '%.3f' % ((stop-start)/60)} minutes"
