@@ -29,6 +29,7 @@
 # how to perform excellent testing:
 #   mv repos repos.orig
 #   ./scraper scripts/*
+#   rm repostats/*
 #   ./dump-repo repos/*
 # Now, git diff repostats.  If anything's different, you'll know.
 
@@ -951,7 +952,16 @@ def perform_all(script_id, always_push=false)
 end
 
 
+def fetch_rss
+    url = 'http://feed43.com/vim-scripts.xml'
+    feed = Feedzirra::Feed.fetch_and_parse(url)
+    puts "feed contains #{feed.entries.map { |e| script_id_from_url(e.url) }.inspect}"
+    feed
+end
+
+
 def perform_full
+    feed = fetch_rss
     highest_index = highest_script_id
     current_index = 1
     while true
@@ -959,15 +969,14 @@ def perform_full
         break if repo_name.nil? && current_index > highest_index + 4
         current_index += 1
     end
-    File.rm(last_rss_id_path)
+    # successful full scrape!  write the last index so the rss reader
+    # knows where to pick up next time.
+    File.open(last_rss_id_path, 'w') { |f| f.write(feed.entries.first.entry_id) }
 end
 
 
 def perform_rss
-    url = 'http://feed43.com/vim-scripts.xml'
-    feed = Feedzirra::Feed.fetch_and_parse(url)
-    puts "feed contains #{feed.entries.map { |e| script_id_from_url(e.url) }.inspect}"
-
+    feed = fetch_rss
     last_rss_id_path = 'last_rss_id'
     last_rss_id = File.read(last_rss_id_path) rescue nil
 
@@ -977,8 +986,8 @@ def perform_rss
         if last_index
             last_index == 0 ? [] : feed.entries[0..(last_index - 1)]
         else
-            # can't find our previous location in the RSS feed.  Need to do a
-            # full scrape from the beginning
+            puts "can't find  previous location #{last_rss_id} in the RSS feed."
+	    puts "Performing a full scrape from the beginning!"
             perform_full
             nil
         end
@@ -1033,7 +1042,7 @@ if ARGV.empty?
     count = perform_rss
     # also cycle through all packages in case the rss feed missed anything
     perform_continuous(10 - count) if 10 - count > 0
-elsif ARGV[0] == 'full'
+elsif ARGV[0] == '--full'
     $ignore_cache = 1
     perform_full
 else
