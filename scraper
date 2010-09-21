@@ -240,7 +240,7 @@ def cached_open(url)
     # debugging will just use the local file system.
     if $ignore_cache || !File.exist?(path) || File.size(path) <= 0
         File.open(path, 'w') do |f|
-            retryable(:tries => 4, :on => [OpenURI::HTTPError, Timeout::Error], :sleep => 10) do |retries|
+            retryable(:tries => 4, :sleep => 10) do |retries|
                 puts "downloading #{url}#{retries > 0 ? "  TRY #{retries}" : ""}"
                 open(url) { |u| f.write(u.read) }
             end
@@ -474,7 +474,7 @@ end
 
 
 def download_file(url, dest)
-    retryable(:tries => 4, :on => [OpenURI::HTTPError, Timeout::Error], :sleep => 10) do |retries|
+    retryable(:tries => 4, :sleep => 10) do |retries|
         puts "  downloading #{url} to #{dest}#{retries > 0 ? "  TRY #{retries}" : ""}"
         open(url, 'rb') do |u|
             File.open(dest, 'wb') { |f| f.write(u.read) }
@@ -877,7 +877,7 @@ def perform_push(repo_name)
     end
 
     unless remote
-        retryable(:tries => 4, :on => Timeout::Error, :sleep => 10) do |retries|
+        retryable(:tries => 4, :sleep => 10) do |retries|
             puts "Creating #{script['script_id']} - #{script['name']}#{retries > 0 ? "  TRY #{retries}" : ""}"
             remote = github.create(
                 :name => script['name'],
@@ -900,7 +900,7 @@ def perform_push(repo_name)
     repo.git_remote('rm', 'origin') rescue nil
     # http://help.github.com/multiple-keys
     repo.git_remote('add', 'origin', "git@vim-scripts.github.com:vim-scripts/#{script['name']}")
-    retryable(:tries => 6, :on => Gitrb::CommandError, :sleep => 15) do |retries|
+    retryable(:tries => 6, :sleep => 15) do |retries|
         # Gitrb::CommandError is as close to a network timeout error as we're going to get
         puts "Pushing #{script['script_id']} - #{script['name']}#{retries > 0 ? "  TRY #{retries}" : ""}"
         repo.git_push('--tags', 'origin', 'master')
