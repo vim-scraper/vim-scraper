@@ -37,6 +37,9 @@
 # todo: add pidfile when running
 
 require 'rubygems'
+require 'bundler'
+Bundler.require
+
 require 'hpricot'             # hpricot gem
 require 'open-uri'
 require 'cgi'
