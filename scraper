@@ -926,7 +926,7 @@ end
 
 
 def perform_all(script_id, always_push=false)
-    repo_name,count = perform_download(perform_scrape(script_id))
+    repo_name,count = perform_download(perform_scrape(script_id.to_s))
     perform_push(repo_name) if always_push or count > 0
     [repo_name, count]
 end
@@ -976,13 +976,17 @@ def perform_full
     if state.target_rss_id.nil? || state.mode != 'full'
         enter_full_mode
     else
-        puts "Resuming full scrape.  Target is #{state.target_rss_id}."
+        puts "Resuming full scrape from #{state.full_index}.  Target is #{state.target_rss_id}."
     end
 
     highest_index = highest_script_id
+    original_index = state.full_index
     while true
         break if timeout_expired?
-        repo_name,count = perform_all(state.full_index.to_s)
+        # Always push the first repo for the same reason as in perform_rss.
+        # Only push subsequent repos if we actually downloaded changes because
+        # pushing takes a lot of time, even if there's nothing to push.
+        repo_name,count = perform_all(state.full_index, state.full_index == original_index)
         if repo_name.nil? && state.full_index > highest_index + 4
             # full scrape succeeded!
             enter_rss_mode state
