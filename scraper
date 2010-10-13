@@ -153,34 +153,6 @@ module Hpricot
 end
 
 
-# monkeypatch remove into mimemagic, hopefully this gets pulled upstream.
-# http://github.com/bronson/mimemagic/commit/e1860b1fac0187c638569bc45833adc2ca521661
-class MimeMagic
-    def self.remove(type)
-        obj = new(type)
-        obj.extensions.each { |ext| EXTENSIONS.delete(ext) }
-        MAGIC.delete_if { |t, m| t == type }
-        TYPES.delete(type)
-    end
-end
-MimeMagic.remove('application/x-gmc-link')
-
-
-# monkeypatch set_repo_info into octopussy.  Dunno why they missed this call.
-# http://github.com/pengwynn/octopussy/pull/2
-module Octopussy
-  class Client
-    def set_repo_info(repo, options)
-      repo = Repo.new(repo)
-      # post body needs to be "values[has_wiki]=false"
-      response = self.class.post("/repos/show/#{repo.username}/#{repo.name}",
-        :body => options.keys.reduce({}) { |a,v| a["values[#{v}]"] = options[v]; a }.merge(auth_params))
-      Hashie::Mash.new(response).repository
-    end
-  end
-end
-
-
 # http://blog.codefront.net/2008/01/14/retrying-code-blocks-in-ruby-on-exceptions-whatever/
 # modified to pass the number of retries in the arg (0,1,2 if :tries => 3)
 def retryable(options = {}, &block)
