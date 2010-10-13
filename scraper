@@ -66,6 +66,7 @@ $vimscripts_email = 'vimscripts@rinspin.com'
 
 $rss_url = 'http://feed43.com/vim-scripts.xml'
 $idle_count = 10    # number of scripts to scrape when we have nothing else to do
+$max_run_time = 14.minutes
 $repos_dir = 'repos'
 $scripts_dir = 'scripts'
 $packages_dir = 'packages'
@@ -938,6 +939,34 @@ def fetch_rss
 end
 
 
+def timeout_expired?
+    if Time.now > $start_time + $max_run_time
+        puts "We are now #{Time.now - ($start_time + $max_run_time)} seconds past time to quit."
+        true
+    else
+        false
+    end
+end
+
+
+def enter_full_mode state
+    state.mode = 'full'
+    feed = fetch_rss
+    state.target_rss_id = feed.entries.first.entry_id
+    state.full_index = 1
+    puts "Entering full scrape mode!  Target is #{script_id_from_url feed.entries.first.url} / #{feed.entries.first.entry_id}."
+end
+
+
+def enter_rss_mode state
+    state.last_rss_id = state.target_rss_id
+    state.target_rss_id = nil
+    state.full_index = nil
+    state.mode = 'rss'
+    puts "Entering RSS scrape mode!"
+end
+
+
 def perform_full
     state = read_state
 
@@ -945,41 +974,32 @@ def perform_full
     # If it's still in the feed when we finish the full scrape, we're synced
     # and can return to rss mode.  If not, the full scrape must start again.
     if state.target_rss_id.nil? || state.mode != 'full'
-        state.mode = 'full'
-        feed = fetch_rss
-        state.target_rss_id = feed.entries.first.entry_id
-        state.full_index = 1
-        puts "Entering full scrape!  Target is #{script_id_from_url feed.entries.first.url} / #{feed.entries.first.entry_id}."
+        enter_full_mode
     else
         puts "Resuming full scrape.  Target is #{state.target_rss_id}."
     end
 
     highest_index = highest_script_id
     while true
+        break if timeout_expired?
         repo_name,count = perform_all(state.full_index.to_s)
-        break if repo_name.nil? && state.full_index > highest_index + 4
+        if repo_name.nil? && state.full_index > highest_index + 4
+            # full scrape succeeded!
+            enter_rss_mode state
+            write_state state
+            # do an rss scrape so we don't lose sync while waiting for the cronjob to fire
+            perform_rss false
+            break
+        end
         state.full_index += 1
         write_state state
     end
-
-    # successful full scrape!  The target_rss_id is now the last known good id
-    # and regular rss scraping can begin again.
-    puts "ENTERING RSS scrape mode!"
-    state.last_rss_id = state.target_rss_id
-    state.target_rss_id = nil
-    state.full_index = nil
-    state.mode = 'rss'
-    write_state state
-
-    # to ensure we don't lose sync while waiting for the cronjob to fire
-    perform_rss false
 end
 
 
 def perform_rss fallback=true
     state = read_state
     if state.mode != 'rss' || !state.last_rss_id
-        puts "No RSS state found, performing full scrape."
         perform_full
         return nil
     else
@@ -1009,6 +1029,7 @@ def perform_rss fallback=true
     if entries
         puts "   processing #{entries.map { |e| script_id_from_url(e.url) }.inspect}"
         entries.reverse.each do |entry|
+            break if timeout_expired?
             script_id = script_id_from_url(entry.url)
             puts "Fetching script #{script_id} for rss #{entry.entry_id}"
 
@@ -1039,6 +1060,7 @@ def perform_continuous count
 
     puts "Performing continuous scrape of #{state.last_script_id} through #{state.last_script_id+count-1}"
     state.last_script_id.upto(state.last_script_id+count-1) do |script_id|
+        break if timeout_expired?
         puts "Fetching script #{script_id} for continuous scrape"
         perform_all(script_id, true)
         write_state state
@@ -1046,7 +1068,7 @@ def perform_continuous count
 end
 
 
-start = Time.now
+$start_time = Time.now
 
 if ARGV.empty?
     $ignore_cache = 1
@@ -1074,5 +1096,5 @@ else
 end
 
 stop = Time.now
-puts "done.  Run took #{'%.2f' % (stop-start)} seconds or #{ '%.3f' % ((stop-start)/60)} minutes"
+puts "done.  Run took #{'%.2f' % (stop-$start_time)} seconds or #{ '%.3f' % ((stop-$start_time)/60)} minutes"
 
