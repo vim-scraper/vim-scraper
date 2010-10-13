@@ -1077,6 +1077,7 @@ end
 $start_time = Time.now
 
 if ARGV.empty?
+    puts "Starting scrape at #{$start_time}"
     $ignore_cache = 1
     count = perform_rss
     # also cycle through all packages in case the rss feed missed anything
