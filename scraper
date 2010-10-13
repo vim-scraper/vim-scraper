@@ -66,7 +66,7 @@ $vimscripts_email = 'vimscripts@rinspin.com'
 
 $rss_url = 'http://feed43.com/vim-scripts.xml'
 $idle_count = 10    # number of scripts to scrape when we have nothing else to do
-$max_run_time = 14.minutes
+$max_run_time = 14.minutes + 30.seconds
 $repos_dir = 'repos'
 $scripts_dir = 'scripts'
 $packages_dir = 'packages'
@@ -192,6 +192,8 @@ def scrape_author(user_id)
     $authors ||= []
     unless $authors[user_id.to_i]
         doc = cached_open("http://www.vim.org/account/profile.php?user_id=#{user_id}") { |f| Hpricot(f) }
+        # How strange.  If the next line throws an "uknown next_sibling method for nil" error, vim-scripts
+        # probably is suffering a temporary error.  Try the query again and it should succeed.  :-/
         doc.at('td[text()="user name"]').next_sibling.inner_content
         u = {'user_id' => user_id }
         u['user_name'] = doc.at('td[text()="user name"]').next_sibling.inner_content
