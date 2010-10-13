@@ -33,9 +33,6 @@
 #   ./dump-repo repos/*
 # Now, git diff repostats.  If anything's different, you'll know.
 
-# todo: make full scrape resumable
-# todo: add pidfile when running
-
 require 'rubygems'
 require 'bundler'
 Bundler.require
@@ -67,13 +64,14 @@ require 'feedzirra'           # feedzirra gem
 $vimscripts_name = "vim-scripts"
 $vimscripts_email = 'vimscripts@rinspin.com'
 
+$rss_url = 'http://feed43.com/vim-scripts.xml'
+$idle_count = 10    # number of scripts to scrape when we have nothing else to do
 $repos_dir = 'repos'
 $scripts_dir = 'scripts'
 $packages_dir = 'packages'
 $webcache_dir = 'webcache'
 $git_script_file = 'vim-script.json'
-$last_script_id_file = 'last_script_id'
-$last_rss_id_file = 'last_rss_id'
+$state_file = 'state.json'
 
 $vimdirs = %w{after autoload bin colors doc ftdetect ftplugin indent plugin syntax}
 $textext = %w{bat c cpp csh diff h klip patch pl pm ps py rb set sh snip snippet snippets tcl txt xml vim vim.orig}.map { |x| "\\.#{x}$" }.join('|')
@@ -172,6 +170,20 @@ def retryable(options = {}, &block)
 
     # last try will throw an exception
     yield tries+1
+end
+
+# When running normally, we can be in one of two states: rss and full.
+# rss is when the rss is synced and we can update only the scripts that have changed.
+# full is when we're just starting or we have lost the rss sync.
+
+def read_state
+    json = JSON.parse(File.read($state_file)) rescue nil
+    Hashie::Mash.new json
+end
+
+
+def write_state state
+    File.open($state_file, 'w') { |f| f.write(JSON.pretty_generate(state)+"\n") }
 end
 
 
@@ -920,47 +932,78 @@ end
 
 
 def fetch_rss
-    url = 'http://feed43.com/vim-scripts.xml'
-    feed = Feedzirra::Feed.fetch_and_parse(url)
+    feed = Feedzirra::Feed.fetch_and_parse($rss_url)
     puts "feed contains #{feed.entries.map { |e| script_id_from_url(e.url) }.inspect}"
     feed
 end
 
 
 def perform_full
-    feed = fetch_rss
-    highest_index = highest_script_id
-    current_index = 1
-    while true
-        repo_name,count = perform_all(current_index.to_s)
-        break if repo_name.nil? && current_index > highest_index + 4
-        current_index += 1
+    state = read_state
+
+    # The target rss id is the most recent rss id when we start the full scrape.
+    # If it's still in the feed when we finish the full scrape, we're synced
+    # and can return to rss mode.  If not, the full scrape must start again.
+    if state.target_rss_id.nil? || state.mode != 'full'
+        state.mode = 'full'
+        feed = fetch_rss
+        state.target_rss_id = feed.entries.first.entry_id
+        state.full_index = 1
+        puts "Entering full scrape!  Target is #{script_id_from_url feed.entries.first.url} / #{feed.entries.first.entry_id}."
+    else
+        puts "Resuming full scrape.  Target is #{state.target_rss_id}."
     end
-    # successful full scrape!  write the last index so the rss reader
-    # knows where to pick up next time.
-    File.open($last_rss_id_file, 'w') { |f| f.write(feed.entries.first.entry_id) }
+
+    highest_index = highest_script_id
+    while true
+        repo_name,count = perform_all(state.full_index.to_s)
+        break if repo_name.nil? && state.full_index > highest_index + 4
+        state.full_index += 1
+        write_state state
+    end
+
+    # successful full scrape!  The target_rss_id is now the last known good id
+    # and regular rss scraping can begin again.
+    puts "ENTERING RSS scrape mode!"
+    state.last_rss_id = state.target_rss_id
+    state.target_rss_id = nil
+    state.full_index = nil
+    state.mode = 'rss'
+    write_state state
+
+    # to ensure we don't lose sync while waiting for the cronjob to fire
+    perform_rss false
 end
 
 
-def perform_rss
-    feed = fetch_rss
-    last_rss_id = File.read($last_rss_id_file) rescue nil
+def perform_rss fallback=true
+    state = read_state
+    if state.mode != 'rss' || !state.last_rss_id
+        puts "No RSS state found, performing full scrape."
+        perform_full
+        return nil
+    else
+        puts "Resuming RSS scrape."
+    end
 
-    entries = if last_rss_id
-        last_rss_id.gsub!(/[^A-Fa-f0-9]/, '')
-        last_index = feed.entries.index { |e| e.entry_id == last_rss_id }
-        if last_index
-            last_index == 0 ? [] : feed.entries[0..(last_index - 1)]
+    feed = fetch_rss
+    entries = nil
+
+    last_index = feed.entries.index { |e| e.entry_id == state.last_rss_id }
+    if last_index
+        if last_index == 0
+            # rss is up to date!  nothing to scrape
+            entries = []
         else
-            puts "can't find  previous location #{last_rss_id} in the RSS feed."
-	    puts "Performing a full scrape from the beginning!"
-            perform_full
-            nil
+            entries = feed.entries[0..(last_index - 1)]
         end
     else
-        puts "last_rss_id not found, pulling all #{feed.entries.count} items in feed."
-        puts "WARNING: assuming you just did a full scrape.  Bad news if you didn't!"
-        feed.entries
+        puts "can't find  previous location #{state.last_rss_id} in the RSS feed."
+        if fallback
+            puts "Performing a full scrape from the beginning!"
+            perform_full
+        end
+        entries = nil
     end
 
     if entries
@@ -974,30 +1017,31 @@ def perform_rss
             # no versions to download, but the repo still needs to be pushed.
             perform_all(script_id, true)
 
-            File.open($last_rss_id_file, 'w') { |f| f.write(entry.entry_id) }
+            state.last_rss_id = entry.entry_id
+            write_state state
         end
     end
 
-    # if entries is nil then we just performed a full scrape
-    entries ? entries.count : highest_script_id
+    entries ? entries.count : nil
 end
 
 
-def perform_continuous(count=10)
-    last_script_id = File.read($last_script_id_file).to_i rescue 0
-    last_script_id += 1
+def perform_continuous count
+    state = read_state
+    state.last_script_id ||= 0
+    state.last_script_id += 1
 
     # keep looking past the last known id in case rss missed new scripts
-    if last_script_id > highest_script_id + 3
-        puts "Count is #{last_script_id} and the highest known script id is #{highest_script_id}.  Starting from 0!"
-        last_script_id = 1
+    if state.last_script_id > highest_script_id + 3
+        puts "Count is #{state.last_script_id} and the highest known script id is #{highest_script_id}.  Starting from 0!"
+        state.last_script_id = 1
     end
 
-    puts "Performing continuous scrape of #{last_script_id} through #{last_script_id+count-1}"
-    last_script_id.upto(last_script_id+count-1) do |script_id|
+    puts "Performing continuous scrape of #{state.last_script_id} through #{state.last_script_id+count-1}"
+    state.last_script_id.upto(state.last_script_id+count-1) do |script_id|
         puts "Fetching script #{script_id} for continuous scrape"
         perform_all(script_id, true)
-        File.open($last_script_id_file, 'w') { |f| f.write(script_id.to_s) }
+        write_state state
     end
 end
 
@@ -1008,7 +1052,7 @@ if ARGV.empty?
     $ignore_cache = 1
     count = perform_rss
     # also cycle through all packages in case the rss feed missed anything
-    perform_continuous(10 - count) if 10 - count > 0
+    perform_continuous($idle_count - count) if count && $idle_count - count > 0
 elsif ARGV[0] == '--full'
     $ignore_cache = 1
     perform_full
