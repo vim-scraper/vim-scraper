@@ -859,10 +859,7 @@ def perform_push(repo_name)
         # turn off the issues and wiki tabs (wish 'create' would do that)
         retryable(:tries => 4, :sleep => 10) do |retries|
             puts "  disabling wiki/issues for #{script['script_id']} - #{script['name']}#{retries > 0 ? "  TRY #{retries}" : ""}"
-            github.set_repo_info(
-                # http://support.github.com/discussions/api/97-api-requires-that-dots-be-escaped
-                'vim-scripts/' + script['name'].gsub('.', '%2E'),
-                :has_issues => false, :has_wiki => false)
+            github.set_repo_info('vim-scripts/' + script['name'], :has_issues => false, :has_wiki => false)
         end
         api_calls += 1
     end

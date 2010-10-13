@@ -40,10 +40,7 @@ ARGV.each do |arg|
     start = Time.now
     retryable(:tries => 4, :on => Timeout::Error, :sleep => 10) do |retries|
         puts "Turning off #{arg}#{retries > 0 ? "  TRY #{retries}" : ""}"
-        github.set_repo_info(
-            # http://support.github.com/discussions/api/97-api-requires-that-dots-be-escap
-            'vim-scripts/' + script['name'].gsub('.', '%2E'),
-            :has_issues => false, :has_wiki => false)
+        github.set_repo_info('vim-scripts/' + script['name'], :has_issues => false, :has_wiki => false)
     end
 
     stop = Time.now
