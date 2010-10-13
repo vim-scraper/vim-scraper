@@ -1075,9 +1075,6 @@ if ARGV.empty?
     count = perform_rss
     # also cycle through all packages in case the rss feed missed anything
     perform_continuous($idle_count - count) if count && $idle_count - count > 0
-elsif ARGV[0] == '--full'
-    $ignore_cache = 1
-    perform_full
 else
     ARGV.each do |arg|
         if arg =~ /^\d+$/
