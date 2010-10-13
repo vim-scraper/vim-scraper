@@ -976,7 +976,7 @@ def perform_full
     # If it's still in the feed when we finish the full scrape, we're synced
     # and can return to rss mode.  If not, the full scrape must start again.
     if state.target_rss_id.nil? || state.mode != 'full'
-        enter_full_mode
+        enter_full_mode state
     else
         puts "Resuming full scrape from #{state.full_index}.  Target is #{state.target_rss_id}."
     end
