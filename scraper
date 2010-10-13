@@ -26,7 +26,7 @@
 #
 # TESTING:
 # You may think that this script has no tests.  Not true!  Here is
-# how to perform excellent testing:
+# how to perform a fairly comprehensive test:
 #   mv repos repos.orig
 #   ./scraper scripts/*
 #   rm repostats/*
@@ -60,7 +60,7 @@ require 'htmlentities'        # htmlentities gem
 require 'feedzirra'           # feedzirra gem
 
 # thoughts:
-# We do everything we can to make it so you can drop the repo in bundles and just have it work.
+# We try to make it so you can drop the git repo in vim's bundles dir and just have it work.
 # We reset permissions on extracted files -- usually when they're different it's a mistake.
 
 
@@ -178,14 +178,6 @@ module Octopussy
       Hashie::Mash.new(response).repository
     end
   end
-end
-
-
-class Array
-    def to_hash_keys
-        # converts ['a,:b'] to {:a=>1,:b=>1}
-        Hash[*zip([1]*size)]
-    end
 end
 
 
