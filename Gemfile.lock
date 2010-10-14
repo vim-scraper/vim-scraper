@@ -1,11 +1,14 @@
 GEM
   remote: http://rubygems.org/
   specs:
+    abstract (1.0.0)
     activesupport (3.0.0)
     builder (2.1.2)
     bzip2-ruby (0.2.6)
     crack (0.1.6)
     curb (0.7.8)
+    erubis (2.6.6)
+      abstract (>= 1.0.0)
     feedzirra (0.0.24)
       activesupport (>= 2.3.8)
       builder (>= 2.1.2)
@@ -38,6 +41,7 @@ PLATFORMS
 
 DEPENDENCIES
   bzip2-ruby (~> 0.2.6)
+  erubis (~> 2.6.6)
   feedzirra (~> 0.0.24)
   gitrb (~> 0.2.7)
   hashie (~> 0.2.2)

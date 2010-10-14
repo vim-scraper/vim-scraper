@@ -55,6 +55,8 @@ require 'octopussy'           # octopussy gem
 require 'hashie'              # hashie gem
 require 'htmlentities'        # htmlentities gem
 require 'feedzirra'           # feedzirra gem
+require 'erubis'              # erubis gem
+
 
 # thoughts:
 # We try to make it so you can drop the git repo in vim's bundles dir and just have it work.
@@ -310,6 +312,27 @@ def check_encoding(h)
         puts "#{h.encoding}: #{h[0..50]}"
     else
         h
+    end
+end
+
+
+def h(*args)
+    CGI.escapeHTML(*args)
+end
+
+
+def generate_docs
+    repos = Dir.entries($repos_dir).reject { |e| %w{. .. .git}.include?(e) }
+
+    # a hash of all scripts indexed by script_id
+    scripts = repos.sort.map do |dir|
+        Hashie::Mash.new(JSON.parse(File.read(File.join($repos_dir, dir, $git_script_file))))
+    end
+
+    Dir.mkdir 'vim-scripts' unless test ?d, 'vim-scripts'
+    template = Erubis::Eruby.new(File.new(File.join('views', 'index.html.erb')).read)
+    File.open('vim-scripts/index.html', 'w') do |f|
+        f.write template.result(:scripts => scripts)
     end
 end
 
@@ -841,7 +864,17 @@ def store_versions_in_repo(repo, script)
 end
 
 
-def perform_push(repo_name)
+def repo_url script
+    "http://github.com/vim-scripts/#{script['name']}"
+end
+
+
+def remote_url script
+    "git@vim-scripts.github.com:vim-scripts/#{script['name']}"
+end
+
+
+def perform_push repo_name
     return unless repo_name
     creds = Hashie::Mash.new(JSON.parse(File.read('creds.json')))
     github = Octopussy::Client.new(creds)
@@ -873,7 +906,7 @@ def perform_push(repo_name)
         api_calls += 1
         # turn off the issues and wiki tabs (wish 'create' would do that)
         retryable(:tries => 4, :sleep => 10) do |retries|
-            puts "  disabling wiki/issues for #{script['script_id']} - #{script['name']}#{retries > 0 ? "  TRY #{retries}" : ""}"
+            puts "  disabling wiki+issues for #{script['script_id']} - #{script['name']}#{retries > 0 ? "  TRY #{retries}" : ""}"
             github.set_repo_info('vim-scripts/' + script['name'], :has_issues => false, :has_wiki => false)
         end
         api_calls += 1
@@ -881,7 +914,7 @@ def perform_push(repo_name)
 
     repo.git_remote('rm', 'origin') rescue nil
     # http://help.github.com/multiple-keys
-    repo.git_remote('add', 'origin', "git@vim-scripts.github.com:vim-scripts/#{script['name']}")
+    repo.git_remote('add', 'origin', remote_url(script))
     retryable(:tries => 6, :sleep => 15) do |retries|
         # Gitrb::CommandError is as close to a network timeout error as we're going to get
         puts "Pushing #{script['script_id']} - #{script['name']}#{retries > 0 ? "  TRY #{retries}" : ""}"
@@ -908,12 +941,12 @@ def perform_push(repo_name)
 end
 
 
-def perform_scrape(script_id)
+def perform_scrape script_id
     write_script(resolve_name_conflicts(scrape_script(script_id)))
 end
 
 
-def perform_download(script_file)
+def perform_download script_file
     return [nil,-1] unless script_file
     script = JSON.parse(File.read(script_file))
     repo_path = File.join($repos_dir, "#{'%04d' % script['script_id']} - #{filenameify(script['name'])}.git")
@@ -927,7 +960,7 @@ def perform_download(script_file)
 end
 
 
-def perform_all(script_id, always_push=false)
+def perform_all script_id, always_push=false
     repo_name,count = perform_download(perform_scrape(script_id.to_s))
     perform_push(repo_name) if always_push or count > 0
     [repo_name, count]
@@ -995,6 +1028,7 @@ def perform_full
             write_state state
             # do an rss scrape so we don't lose sync while waiting for the cronjob to fire
             perform_rss false
+            generate_docs
             break
         end
         state.full_index += 1
@@ -1047,6 +1081,7 @@ def perform_rss fallback=true
             state.last_rss_id = entry.entry_id
             write_state state
         end
+        generate_docs
     end
 
     entries ? entries.count : nil
@@ -1082,6 +1117,8 @@ if ARGV.empty?
     count = perform_rss
     # also cycle through all packages in case the rss feed missed anything
     perform_continuous($idle_count - count) if count && $idle_count - count > 0
+elsif ARGV[0] == '--docs'
+    generate_docs
 else
     ARGV.each do |arg|
         if arg =~ /^\d+$/

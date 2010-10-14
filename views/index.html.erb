@@ -1,0 +1,35 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <title>Vim Scripts</title>
+    <meta content="text/html; charset=utf-8" http-equiv="content-type" />
+  </head>
+
+<body>
+  <h1>Vim Scripts</h1>
+
+  <p>This is a mirror of <a href="http://www.vim.org/scripts/index.php">Vim's scripts site</a>.</p>
+
+  <p>Code is on <a href="http://github.com/vim-scripts/vim-scraper/">Github</a>.
+
+  <h2>All Scripts</h2>
+
+  <table>
+    <% scripts.each do |script| -%>
+      <tr>
+        <td><%= h script.script_id %></td>
+        <td><%= h script.script_type %></td>
+        <td><a href="<%= h repo_url(script) %>"><%= h script.display_name %></a></td>
+        <td><%= h script.summary %></td>
+      </tr>
+    <% end -%>
+  </table>
+
+  <h2>About</h2>
+
+  <p>This file was generated on <%= h Time.now.to_s %></p>
+
+  <p>Scrape results can be found <a href="scrapes/">here</a>.</p>
+
+</body>
+</html>
