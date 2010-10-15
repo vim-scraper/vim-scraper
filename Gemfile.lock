@@ -22,9 +22,14 @@ GEM
     htmlentities (4.2.1)
     httparty (0.5.2)
       crack (= 0.1.6)
+    i18n (0.4.1)
     json (1.4.6)
     loofah (0.4.7)
       nokogiri (>= 1.3.3)
+    mail (2.2.7)
+      activesupport (>= 2.3.6)
+      mime-types
+      treetop (>= 1.4.5)
     mime-types (1.16)
     mimemagic (0.1.7)
     minitar (0.5.3)
@@ -32,9 +37,12 @@ GEM
     octopussy (0.3.0)
       hashie (~> 0.2.0)
       httparty (~> 0.5.2)
+    polyglot (0.3.1)
     rubyzip (0.9.4)
     sax-machine (0.0.15)
       nokogiri (> 0.0.0)
+    treetop (1.4.8)
+      polyglot (>= 0.3.1)
 
 PLATFORMS
   ruby
@@ -47,7 +55,9 @@ DEPENDENCIES
   hashie (~> 0.2.2)
   hpricot (~> 0.8.2)
   htmlentities (~> 4.2.1)
+  i18n (~> 0.4.1)
   json (~> 1.4.6)
+  mail (~> 2.2.7)
   mime-types (~> 1.16)
   mimemagic (~> 0.1.7)
   minitar (~> 0.5.3)

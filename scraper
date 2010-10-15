@@ -56,6 +56,7 @@ require 'hashie'              # hashie gem
 require 'htmlentities'        # htmlentities gem
 require 'feedzirra'           # feedzirra gem
 require 'erubis'              # erubis gem
+require 'mail'                # mail gem
 
 
 # thoughts:
@@ -64,7 +65,7 @@ require 'erubis'              # erubis gem
 
 
 $vimscripts_name = "vim-scripts"
-$vimscripts_email = 'vimscripts@rinspin.com'
+$vimscripts_email = 'vim-scripts@rinspin.com'
 
 $rss_url = 'http://feed43.com/vim-scripts.xml'
 $idle_count = 10    # number of scripts to scrape when we have nothing else to do
@@ -375,7 +376,7 @@ def script_contents(filename)
 end
 
 
-def hashkeyify(name)
+def hashkeyify name
     # converts a repo name into something worthy of matching against
     name.downcase
 end
@@ -394,7 +395,29 @@ def highest_script_id
 end
 
 
-def author(script)
+# we don't try too hard to unobfuscate addresses but we definitely want them to be legal
+# these rules were created by fiddling until most results looked plausible and all were legal.
+def fix_email_address author
+    email = author['email'].dup
+    email = "unspecified@example.com" if email =~ /^\s*$/
+    email.gsub!(/\s+[\[(]?at[)\]]?\s+/i, '@')
+    email.gsub!(/\s+[\[(]?dot[)\]]?\s+/i, '.')
+    # not sure how this next one will do with IDNs?
+    # actually, without it we only fail on 9 of 1643 addresses
+    # email.gsub!(/[^A-Za-z0-9!#\$%&'*+\/=?^`{|}~_@.-]/, '-')
+    email.gsub!(/\s+|[:<>\[\]()"]/, '-')     # some common evil chars
+    email.gsub!(/^\-+|\-+$/, '')             # no dashes at start or end
+    email = "unspecified@example.com" if email =~ /^\s*$/
+    email = "X#{email}" if email =~ /^@/     # fix "@gmail" with no local part
+    email = "invalid@#{email}" unless email.include?('@')
+    email = "#{email}.example.com" unless email =~ /[A-Za-z0-9]$/
+    addr = Mail::Address.new(email) rescue Mail::Address.new("unparseable@example.com")
+    addr.display_name = [author['first_name'], author['last_name']].select { |s| s =~ /\S/ }.join(' ').gsub(/\s+/, ' ')
+    [addr.display_name, addr.address]
+end
+
+
+def author script
     # returns the author's first and last name or nil if this script has multiple authors.
     # can't just check author id because a number of authors have abandoned old accounts and created new ones
     first_name = script['versions'][0]['author']['first_name']
@@ -796,7 +819,7 @@ def tag_version(repo, version)
 end
 
 
-def find_version(repo, version)
+def find_version repo, version
     tagname = gittagify(script_version(version))
     # gitrb doesn't handle annotated tags so we call git directly
     tag = repo.git_tag('-l', tagname).chomp
@@ -805,7 +828,7 @@ def find_version(repo, version)
 end
 
 
-def copy_tree(repo, script, tree, inpath=[])
+def copy_tree repo, script, tree, inpath=[]
     tree.to_a.each do |name, value|
         path = inpath + [name]
         if value.type == :blob
@@ -817,7 +840,7 @@ def copy_tree(repo, script, tree, inpath=[])
 end
 
 
-def check_for_lone_dir(repo, script)
+def check_for_lone_dir repo, script
     return unless repo.root.count == 1
     loner = repo.root.first.first
     return if $vimdirs.include? loner
@@ -828,7 +851,7 @@ def check_for_lone_dir(repo, script)
 end
 
 
-def check_for_readme_file(repo)
+def check_for_readme_file repo
     # we drop a README file into each repo.  don't want to conflict with one already there.
     repo.root.to_a.each do |name, value|
         if name =~ /^README$/i
@@ -839,13 +862,13 @@ def check_for_readme_file(repo)
 end
 
 
-def store_versions_in_repo(repo, script)
+def store_versions_in_repo repo, script
     committer = Gitrb::User.new($vimscripts_name, $vimscripts_email)
     puts "Processing script #{script['script_id']}: #{script['name']}"
     count = 0
     script['versions'].reverse.each do |version|
-        author = Gitrb::User.new("#{version['author']['first_name']} #{version['author']['last_name']}",
-                                 version['author']['email'], Time.new(*version['date'].split('-'), 0, 0, 0, 0))
+        author_name, author_email = fix_email_address(version['author'])
+        author = Gitrb::User.new(author_name, author_email, Time.new(*version['date'].split('-'), 0, 0, 0, 0))
         unless find_version(repo, version)
             puts "  adding #{version['filename']} #{version['date']} #{script_version(version)}"
             repo.transaction(version['release_notes'], author, committer) do
