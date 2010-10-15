@@ -330,8 +330,8 @@ def generate_docs
     end
 
     Dir.mkdir 'vim-scripts' unless test ?d, 'vim-scripts'
-    template = Erubis::Eruby.new(File.new(File.join('views', 'index.html.erb')).read)
-    File.open('vim-scripts/index.html', 'w') do |f|
+    template = Erubis::Eruby.new(File.new(File.join('views', 'scripts.html.erb')).read)
+    File.open('vim-scripts/scripts.html', 'w') do |f|
         f.write template.result(:scripts => scripts)
     end
 end

@@ -1,0 +1,15 @@
+---
+layout: default
+title: All Scripts
+---
+
+<table>
+  <% scripts.each do |script| -%>
+    <tr>
+      <td><%= h script.script_id %></td>
+      <td><%= h script.script_type %></td>
+      <td><a href="<%= h repo_url(script) %>"><%= h script.display_name %></a></td>
+      <td><%= h script.summary %></td>
+    </tr>
+  <% end -%>
+</table>
