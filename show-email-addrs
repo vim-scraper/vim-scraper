@@ -5,11 +5,14 @@
 require 'json'
 require 'hashie'
 
+require 'mail'
+require 'i18n'
+
 $repos_dir = 'repos'
 $git_script_file = 'vim-script.json'
 
-# not bothering to fix these:
-# blank, -, /bin/vi@wielders.org, @gmail.com, < initial>< last name>< at>< yahoo>
+# what we need to work around:
+# blank, -, @gmail.com, < initial>< last name>< at>< yahoo>
 # b r u c k i e@y a h o o . c o m, heptite () gmail ! com, just ask google
 # john undersc0re orr yah00 c0m, leifw@bigfoot , com
 # ruben-vim .a.t. ainek.com, s i g z e r o A T g m a i l D O T c o m
@@ -22,11 +25,23 @@ repos = Dir.entries($repos_dir).reject { |e| %w{. .. .git}.include?(e) }
 repos.sort.each do |dir|
     script = Hashie::Mash.new(JSON.parse(File.read(File.join($repos_dir, dir, $git_script_file))))
     script.versions.each do |v|
-        email = v.author.email
+        email = v.author.email.dup
+        email = "unspecified@example.com" if email =~ /^\s*$/
         email.gsub!(/\s+[\[(]?at[)\]]?\s+/i, '@')
         email.gsub!(/\s+[\[(]?dot[)\]]?\s+/i, '.')
-        emails[v.author.email] = email
+        # not sure how this next one will do with IDNs?
+        # actually, without it we only fail on 9 of 1643 addresses
+        # email.gsub!(/[^A-Za-z0-9!#\$%&'*+\/=?^`{|}~_@.-]/, '-')
+        email.gsub!(/\s+|[:<>\[\]()"]/, '-')     # some common evil chars
+        email.gsub!(/^\-+|\-+$/, '')             # no dashes at start or end
+        email = "unspecified@example.com" if email =~ /^\s*$/
+        email = "X#{email}" if email =~ /^@/     # fix "@gmail" with no local part
+        email = "invalid@#{email}" unless email.include?('@')
+        email = "#{email}.example.com" unless email =~ /[A-Za-z0-9]$/
+        addr = Mail::Address.new(email) rescue Mail::Address.new("unparseable@example.com")
+        addr.display_name = [v.author.first_name, v.author.last_name].select { |s| s =~ /\S/ }.join(' ').gsub(/\s+/, ' ')
+        emails[v.author.email] = addr
     end
 end
 
-emails.keys.sort.each { |k| puts emails[k] }
+emails.keys.sort.each { |k| puts emails[k].format }
