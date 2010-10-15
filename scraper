@@ -417,6 +417,18 @@ def fix_email_address author
 end
 
 
+def fix_release_notes version
+    msg = version['release_notes']
+    msg.gsub!(/\A\s*|\s*\Z/u, '')  # remove newlines at start and end
+    msg.gsub!(/[ \t]+$/u, '')      # remove trailing whitespace on each line
+    if msg.length > 75 || msg.include?("\n")
+        # message is too long, we'll insert our own first line
+        msg = "Version #{version['script_version']}\n\n#{msg}"
+    end
+    msg + "\n"
+end
+
+
 def author script
     # returns the author's first and last name or nil if this script has multiple authors.
     # can't just check author id because a number of authors have abandoned old accounts and created new ones
@@ -871,7 +883,7 @@ def store_versions_in_repo repo, script
         author = Gitrb::User.new(author_name, author_email, Time.new(*version['date'].split('-'), 0, 0, 0, 0))
         unless find_version(repo, version)
             puts "  adding #{version['filename']} #{version['date']} #{script_version(version)}"
-            repo.transaction(version['release_notes'], author, committer) do
+            repo.transaction(fix_release_notes(version), author, committer) do
                 # delete all existing blobs since we replace everything with the new commit
                 repo.root.to_a.map { |name,value| repo.root.delete(name) }
                 add_version(repo, version, script)
@@ -1146,9 +1158,11 @@ else
     ARGV.each do |arg|
         if arg =~ /^\d+$/
             $ignore_cache = 1
-            perform_all arg
+            # leading zeros cause script ID to be interpreted as octal
+            perform_all arg.gsub(/^0+/, '')
         elsif arg =~ /^-(\d+)$/
-            perform_scrape arg
+            # leading zeros cause script ID to be interpreted as octal
+            perform_scrape $1.gsub(/^0+/, '')
         elsif test ?f, arg
             perform_download arg
         elsif test ?d, arg
