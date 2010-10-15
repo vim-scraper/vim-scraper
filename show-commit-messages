@@ -1,0 +1,58 @@
+#!/bin/env ruby
+
+# Prints every commit message to stdout
+
+require 'json'
+require 'hashie'
+
+$repos_dir = 'repos'
+$git_script_file = 'vim-script.json'
+
+
+# from https://www.bcg.wisc.edu/webteam/support/ruby/standard_deviation
+module Enumerable
+    #  sum of an array of numbers
+    def sum
+        return self.inject(0){|acc,i|acc +i}
+    end
+
+    #  average of an array of numbers
+    def average
+        return self.sum/self.length.to_f
+    end
+
+    #  variance of an array of numbers
+    def sample_variance
+        avg=self.average
+        sum=self.inject(0){|acc,i|acc +(i-avg)**2}
+        return(1/self.length.to_f*sum)
+    end
+
+    #  standard deviation of an array of numbers
+    def standard_deviation
+        return Math.sqrt(self.sample_variance)
+    end
+end
+
+
+nchars = []
+nlines = []
+
+repos = Dir.entries($repos_dir).reject { |e| %w{. .. .git}.include?(e) }
+
+repos.sort.each do |dir|
+    script = Hashie::Mash.new(JSON.parse(File.read(File.join($repos_dir, dir, $git_script_file))))
+    script.versions.each do |v|
+        msg = v.release_notes.encode('UTF-8')
+        msg.gsub!(/\A\s*|\s*\Z/u, '')  # remove newlines at start and end
+        msg.gsub!(/[ \t]+$/u, '')      # remove trailing whitespace
+        nchars << msg.length
+        nlines << msg.lines.count
+        puts msg + "\n\n"
+    end
+end
+
+puts
+puts "chars: min=#{nchars.min} max=#{nchars.max} avg=#{nchars.average} stddev=#{nchars.standard_deviation}"
+puts "lines: min=#{nlines.min} max=#{nlines.max} avg=#{nlines.average} stddev=#{nlines.standard_deviation}"
+
