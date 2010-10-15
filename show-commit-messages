@@ -43,11 +43,15 @@ repos = Dir.entries($repos_dir).reject { |e| %w{. .. .git}.include?(e) }
 repos.sort.each do |dir|
     script = Hashie::Mash.new(JSON.parse(File.read(File.join($repos_dir, dir, $git_script_file))))
     script.versions.each do |v|
-        msg = v.release_notes.encode('UTF-8')
+        msg = v.release_notes
         msg.gsub!(/\A\s*|\s*\Z/u, '')  # remove newlines at start and end
-        msg.gsub!(/[ \t]+$/u, '')      # remove trailing whitespace
+        msg.gsub!(/[ \t]+$/u, '')      # remove trailing whitespace on each line
         nchars << msg.length
         nlines << msg.lines.count
+
+        if msg.length > 75 || msg.include?("\n")
+            msg = "Version #{v.script_version}\n\n#{msg}"
+        end
         puts msg + "\n\n"
     end
 end
