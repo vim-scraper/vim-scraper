@@ -86,6 +86,9 @@ Dir.mkdir $repos_dir unless test ?d, $repos_dir
 Dir.mkdir $packages_dir unless test ?d, $packages_dir
 Dir.mkdir $webcache_dir unless test ?d, $webcache_dir
 
+# this mime magic is far too vague.  it false-triggers all the time.
+MimeMagic.remove 'application/x-gmc-link'
+
 
 # http://github.com/hpricot/hpricot/issues#issue/25
 # super ugly that hpricot manages to screw up charset encodings so badly.
