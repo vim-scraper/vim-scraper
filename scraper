@@ -67,8 +67,10 @@ require 'fileutils'
 # We reset permissions on extracted files -- usually when they're different it's a mistake.
 
 
-$vimscripts_name = "vim-scripts"
-$vimscripts_email = 'vim-scripts@rinspin.com'
+# Change the name of the scraper and make a tag whenever the code changes much.
+# That way you can tell what code generated each commit.  Don't change the email of course.
+$vimscripts_name = "Able Scraper"
+$vimscripts_email = 'scraper@vim-scripts.org'
 
 $rss_url = 'http://feed43.com/vim-scripts.xml'
 $idle_count = 10    # number of scripts to scrape when we have nothing else to do
