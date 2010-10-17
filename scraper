@@ -621,7 +621,11 @@ end
 def copy_file repo, filename, contents
     # an empty file is represented by the empty string.  contents==nil indicates an internal error.
     raise "no data in #{filename}: #{contents.inspect}" unless contents
-    repo.root[filename] = Gitrb::Blob.new(:data => contents)
+
+    # skip 61 swapfiles that people have accidentally checked in
+    unless filename =~ /^\..*\.sw[n-p]$/
+        repo.root[filename] = Gitrb::Blob.new(:data => contents)
+    end
 end
 
 
