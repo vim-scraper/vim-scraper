@@ -34,13 +34,6 @@
 # Now, git diff repostats.  If anything's different, you'll know.
 #
 # to see dupe ids: cd repos; ls | cut -b -4 | sort | uniq -cd | sort
-#
-# todo: if an author creates a script named apple then renames it to pear,
-#   then another author creates a script named apple, we will die when
-#   trying to push the repo.  since there's no apple.json file anymore,
-#   we don't detect the name conflict until we try to create a repo that
-#   already exists.  name resolution should probably run over the repo
-#   dir instead of the script dir.
 
 
 require 'rubygems'
@@ -384,26 +377,15 @@ def script_version(version)
 end
 
 
-def script_filename(script)
-    # if you change the filename format, also change script_extract_*
-    File.join($scripts_dir, "#{'%04d' % script['script_id']} - #{filenameify(script['name'])}.json")
-end
-
-
-def script_contents(filename)
-    JSON.parse(File.read(File.join($scripts_dir, filename)))
-end
-
-
 def hashkeyify name
     # converts a repo name into something worthy of matching against
     name.downcase
 end
 
 
-def script_extract_name script_name
-    script_name =~ /^[0-9]+ - (.+)\.json$/ or raise "can't match #{script_name}";
-    $1
+def script_filename(script)
+    # if you change the filename format, also change script_extract_*
+    File.join($scripts_dir, "#{'%04d' % script['script_id']} - #{filenameify(script['name'])}.json")
 end
 
 
@@ -414,10 +396,33 @@ def script_extract_id script_name
 end
 
 
+def script_extract_name script_name
+    script_name =~ /^[0-9]+ - (.+)\.json$/ or raise "can't match #{script_name}";
+    $1
+end
+
+
+def repo_filename script_id, script_name
+    File.join($repos_dir, "#{'%04d' % script_id} - #{filenameify(script_name)}.git")
+end
+
+
+def repo_extract_id repo_name
+    repo_name =~ /^0*([0-9]+) - .+\.git$/ or raise "can't match #{repo_name}";
+    $1
+end
+
+
+def repo_extract_name repo_name
+    repo_name =~ /^[0-9]+ - (.+)\.git$/ or raise "can't match #{repo_name}";
+    $1
+end
+
+
 def list_existing_scripts
     # returns a hash of key=script name, value=filename
-    Hash[Dir.entries($scripts_dir).reject { |e| %w{. .. .git}.include?(e) }.
-        map { |e| [hashkeyify(script_extract_name(e)), e]}]
+    Hash[Dir.entries($repos_dir).reject { |e| %w{. .. .git}.include?(e) }.
+        map { |e| [hashkeyify(repo_extract_name(e)), e]}]
 end
 
 
@@ -495,12 +500,14 @@ end
 
 def name_conflict_exists all_scripts, script
     # if the script's name doesn't conflict with any script in all_scripts,
-    return nil unless all_scripts[hashkeyify(script['name'])]
+    repo_dir = all_scripts[hashkeyify(script['name'])]
+    return nil unless repo_dir    # no conflict
 
     # or if it's the same script, then that's OK.
-    existing_script = script_contents(all_scripts[hashkeyify(script['name'])])
-    return nil if existing_script['script_id'] == script['script_id']
-    return existing_script
+    return nil if repo_extract_id(repo_dir).to_i == script['script_id'].to_i
+
+    # there's a conflict.  return the conflicting script.
+    JSON.parse(File.read(File.join($repos_dir, repo_dir, $git_script_file)))
 end
 
 
@@ -541,11 +548,6 @@ def resolve_name_conflicts script
     end
 
     script
-end
-
-
-def repo_filename script_id, script_name
-    File.join($repos_dir, "#{'%04d' % script_id} - #{filenameify(script_name)}.git")
 end
 
 
