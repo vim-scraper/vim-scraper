@@ -448,7 +448,6 @@ end
 
 def fix_release_notes version
     msg = version['release_notes']
-    msg.gsub!(/\A\s*|\s*\Z/u, '')  # remove newlines at start and end
     msg.gsub!(/[ \t]+$/u, '')      # remove trailing whitespace on each line
     if msg.length > 75 || msg.include?("\n")
         # message is too long, we'll insert our own first line
