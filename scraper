@@ -71,13 +71,15 @@ $vimscripts_email = 'vim-scripts@rinspin.com'
 
 $rss_url = 'http://feed43.com/vim-scripts.xml'
 $idle_count = 10    # number of scripts to scrape when we have nothing else to do
-$max_run_time = 14.minutes + 30.seconds
+$max_run_time = 14.minutes + 30.seconds    # script exits normally once this time has elapsed
 $repos_dir = 'repos'        # if a repo has been renamed there will be duplicate ids in here
 $scripts_dir = 'scripts'    # should never be any duplicate ids in here
 $packages_dir = 'packages'
 $webcache_dir = 'webcache'
-$git_script_file = 'vim-script.json'
-$state_file = 'state.json'
+$git_script_file = 'vim-script.json'   # the file in the bare repo that stores the script that generated it
+$state_file = 'state.json'             # keeps track of what mode we're in (full vs. rss scrape)
+$pushing = true             # set this to false to prevent pushing (normally, if we find changes in a repo, we push)
+$ignore_cache = false       # we pull from the webcache if we can, setting to true forces pulling from the network
 
 $vimdirs = %w{after autoload bin colors doc ftdetect ftplugin indent plugin syntax}
 $textext = %w{au3 bat c cpp csh diff h klip patch pl pm ps py rb set sh snip snippet snippets tcl txt xml vim vim.orig}.map { |x| "\\.#{x}$" }.join('|')
@@ -1068,7 +1070,7 @@ end
 
 def perform_all script_id, always_push=false
     repo_name,count = perform_download(perform_scrape(script_id.to_s))
-    if always_push or count > 0
+    if $pushing && (always_push or count > 0)
         # push all repos with this ID (if there are multiple, it's because
         # the repo was renamed some time in the past and we don't know which
         # ones have been pushed and which ones haven't)
@@ -1226,16 +1228,22 @@ $start_time = Time.now
 
 if ARGV.empty?
     puts "Starting scrape at #{$start_time}"
-    $ignore_cache = 1
+    $ignore_cache = true
     count = perform_rss
     # also cycle through all packages in case the rss feed missed anything
     perform_continuous($idle_count - count) if count && $idle_count - count > 0
 elsif ARGV[0] == '--docs'
     generate_docs
+elsif ARGV[0] == '--all'
+    # this generates all the repos but doesn't push them
+    $max_run_time = 10.days
+    $ignore_cache = false
+    $pushing = false
+    perform_full
 else
     ARGV.each do |arg|
         if arg =~ /^\d+$/
-            $ignore_cache = 1
+            $ignore_cache = true
             # leading zeros cause script ID to be interpreted as octal
             perform_all arg.gsub(/^0+/, '')
         elsif arg =~ /^-(\d+)$/
