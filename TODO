@@ -2,27 +2,11 @@ TODO: remove .swp files
 
 TODO: do name checking based on repos, not scripts
 
-TODO: missing commits from 1259?
-  also on: 1651
-missing commits, syntax/bbcode.vim changed: 2109 - BBCode--Dahn
-  missing commits: 2188
-
-TODO: files in 1839 are massively changed
-  also 1863 Version 0.4 15 May 2007
-  somewhat changed: 1877 - voodu
-  somewhat changed: 1879 - AutoComplPop
-  1984 - FuzzyFinder
-  2292 2544 2620 2636 2653 2754
-  2771 version 0.6
-  2791 2832 2852
-  2909 - Flex-Development-Support
-  3115 3118
-
 TODO: Version 123: (add colon, and add to front of one-liners)
 TODO: notice when script description or summary change, push changes up.
 
 
-but fixed (partly due to built-in vimzip's mishanlding of windows
+fixed (partly due to built-in vimzip's mishanlding of windows
 path chars, shelling out all the time fixes this, partly due to
 better commit handling (newer version of gitrb?)
 
@@ -36,6 +20,7 @@ better commit handling (newer version of gitrb?)
 3087 - OutlookVim
 3154 - vorax
 3169 - luainspect
+1839 - IndentAnything
 
 
 Somehow the dates on the first commit to
@@ -53,6 +38,11 @@ originally creating the repos?) but that's been fixed.
 
 - handle renaming a script more gracefully
 - tried converting to an organization, that didn't work.
+
+
+
+2791 1259 2653 1651 2109 2188 3118: all had history deleted
+  restored from previous, slightly broken repos
 
 
 Git wish: git diff --stat would sort its output.  It's hard to filter
