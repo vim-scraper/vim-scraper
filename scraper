@@ -191,7 +191,7 @@ def retryable(options = {}, &block)
     end
 
     # last try will throw an exception
-    yield tries+1
+    yield tries
 end
 
 # When running normally, we can be in one of two states: rss and full.
