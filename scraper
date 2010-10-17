@@ -687,10 +687,15 @@ end
 
 def extract_vimball(repo, script, vimball)
     Dir.mktmpdir('scraper') do |tmpdir|
-        cmd = ['/usr/bin/vim', vimball, '-X', '-n', '-c', ':set nomore', '-c',
-            ":set runtimepath=#{tmpdir.gsub(' ', '\ ')},$VIMRUNTIME", '-c', ':so %', '-c', ':q']
-        raise "couldn't run #{cmd.join(' ')}: #{$?}" unless system(*cmd)
-        copy_filesystem(repo, script, tmpdir) { |path| path == '.VimballRecord' || path == 'doc/tags' }
+        # some vimballs leave garbage in the current directory.  :(
+        Dir.mktmpdir('scraper') do |scratchdir|
+            Dir.chdir(scratchdir) do
+                cmd = ['/usr/bin/vim', vimball, '-X', '-n', '-c', ':set nomore', '-c',
+                    ":set runtimepath=#{tmpdir.gsub(' ', '\ ')},$VIMRUNTIME", '-c', ':so %', '-c', ':q']
+                raise "couldn't run #{cmd.join(' ')}: #{$?}" unless system(*cmd)
+                copy_filesystem(repo, script, tmpdir) { |path| path == '.VimballRecord' || path == 'doc/tags' }
+            end
+        end
     end
 end
 
