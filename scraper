@@ -34,6 +34,14 @@
 # Now, git diff repostats.  If anything's different, you'll know.
 #
 # to see dupe ids: cd repos; ls | cut -b -4 | sort | uniq -cd | sort
+#
+# todo: if an author creates a script named apple then renames it to pear,
+#   then another author creates a script named apple, we will die when
+#   trying to push the repo.  since there's no apple.json file anymore,
+#   we don't detect the name conflict until we try to create a repo that
+#   already exists.  name resolution should probably run over the repo
+#   dir instead of the script dir.
+
 
 require 'rubygems'
 require 'bundler'
@@ -340,9 +348,10 @@ def generate_docs
         Hashie::Mash.new(JSON.parse(File.read(File.join($repos_dir, dir, $git_script_file))))
     end
 
-    Dir.mkdir 'vim-scripts' unless test ?d, 'vim-scripts'
+    doc_dir = 'vim-scripts.github.com'
+    Dir.mkdir doc_dir unless test ?d, doc_dir
     template = Erubis::Eruby.new(File.new(File.join('views', 'scripts.html.erb')).read)
-    File.open('vim-scripts/scripts.html', 'w') do |f|
+    File.open("#{doc_dir}/scripts.html", 'w') do |f|
         f.write template.result(:scripts => scripts)
     end
 end
