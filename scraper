@@ -686,8 +686,9 @@ end
 
 
 def extract_vimball(repo, script, vimball)
-    Dir.mktmpdir($vimscripts_name) do |tmpdir|
-        cmd = ['/usr/bin/vim', vimball, '-X', '-n', '-c', ':set nomore', '-c', ":set runtimepath=#{tmpdir},$VIMRUNTIME", '-c', ':so %', '-c', ':q']
+    Dir.mktmpdir('scraper') do |tmpdir|
+        cmd = ['/usr/bin/vim', vimball, '-X', '-n', '-c', ':set nomore', '-c',
+            ":set runtimepath=#{tmpdir.gsub(' ', '\ ')},$VIMRUNTIME", '-c', ':so %', '-c', ':q']
         raise "couldn't run #{cmd.join(' ')}: #{$?}" unless system(*cmd)
         copy_filesystem(repo, script, tmpdir) { |path| path == '.VimballRecord' || path == 'doc/tags' }
     end
@@ -697,7 +698,7 @@ end
 def unvimball(repo, script, vimball)
     # vimball dies badly if called on a file with the wrong line endings
     # probably 10% of line endings are dos so we always perform the correction
-    Tempfile.open($vimscripts_name) do |ttfile|
+    Tempfile.open('scraper') do |ttfile|
         ball = File.read(vimball)
         ball.force_encoding("ASCII-8BIT")
         ball.gsub!("\r\n", "\n")
@@ -711,7 +712,7 @@ end
 
 
 def unshell(repo, script, localpath, cmd)
-    Dir.mktmpdir($vimscripts_name) do |tmpdir|
+    Dir.mktmpdir('scraper') do |tmpdir|
         fullpath = File.expand_path(localpath)
         Dir.chdir(tmpdir) do
             cmd = [*cmd, fullpath]
@@ -783,7 +784,7 @@ def sense_zipped_file(repo, script, filename, infile)
     if MimeMagic.by_magic(contents) == 'application/x-tar'
         copy_tarfile(repo, script, StringIO.new(contents))
     elsif contents[0..512] =~ /^\bUseVimball\s*$/
-        Tempfile.open($vimscripts_name) do |ttfile|
+        Tempfile.open('scraper') do |ttfile|
             ttfile.write(contents)
             ttfile.close
             unvimball(repo, script, ttfile.path)
