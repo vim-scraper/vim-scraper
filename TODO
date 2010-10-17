@@ -1,0 +1,110 @@
+TODO: no README on 1173 tcomment???  last commit and first commit.
+  also on: 1563 - patchreview.vim   and 1567 and 1599
+  and in 1863 Initial upload
+  2098 2208 2226 2441 2521 2606 2628 2657 2658 2711 2719 2729 2743 2745
+  2890 2911 2917 2924 2945 2968 2981 3014 3025 3056 3061 3065 3113 3115
+  3123 3149 3154 3162 3184 3187 3190 3197 3201 3219 3227 3237 3243
+
+Am I missing copyright.txt in 3169?
+
+TODO: remove .swp files
+
+TODO: do name checking based on repos, not scripts
+
+TODO: missing commits from 1259?
+  also on: 1651
+missing commits, syntax/bbcode.vim changed: 2109 - BBCode--Dahn
+  missing commits: 2188
+  2376
+
+TODO: files in 1839 are massively changed
+  also 1863 Version 0.4 15 May 2007
+  somewhat changed: 1877 - voodu
+  somewhat changed: 1879 - AutoComplPop
+  1984 - FuzzyFinder
+  2292 2544 2620 2636 2653 2754
+  2771 version 0.6
+  2791 2832 2852
+  2909 - Flex-Development-Support
+  3115 3118
+
+TODO: Version 123: (add colon, and add to front of one-liners)
+TODO: notice when script description or summary change, push changes up.
+
+
+but fixed (partly due to built-in vimzip's mishanlding of windows
+path chars, shelling out all the time fixes this, partly due to
+better commit handling (newer version of gitrb?)
+
+0065 - CD.vim
+0356 - dbext.vim
+0492 - SQLUtilities
+0848 - SrchRplcHiGrp.vim
+1234 - YankRing.vim
+???? - command-t
+3051 - vimform
+3087 - OutlookVim
+3154 - vorax
+3169 - luainspect
+
+
+Somehow the dates on the first commit to
+  1052 - The-Mail-Suite-tms
+  1082 - MS-Word-from-VIM
+were wrong.
+Not sure why (older date parser?  short-lived and uncaught bug when
+originally creating the repos?) but that's been fixed.
+
+
+- fix long and multi-line commit messages
+- fix email addresses
+- now suppressing 59 .swp files.
+- history of the above plugins were fixed
+
+- handle renaming a script more gracefully
+- tried converting to an organization, that didn't work.
+
+
+Git wish: git diff --stat would sort its output.  It's hard to filter
+these out since you need to ensure the line count is identical.
+
+- macros/ttcoach/ttc_plug_en.vim |  311 +++++++++++++++-------------------------
+  macros/ttcoach.vim             |    7 +-
++ macros/ttcoach/ttc_plug_en.vim |  311 +++++++++++++++-------------------------
+  2 files changed, 117 insertions(+), 201 deletions(-)
+
+
+A more realistic example:
+
+diff --git a/0468 - VEC.stats b/0468 - VEC.stats
+index ccf6b89..e5afce0 100644
+--- a/0468 - VEC.stats  
++++ b/0468 - VEC.stats  
+@@ -1,7 +1,7 @@
+ commit SHA1SHA1SHA1 (HEAD, tag: refs/tags/0.1)
+ AuthorDate: Sat Nov 2 00:00:00 2002 +0000
+ 
+     Initial upload
+ 
+  vec-0.1/README                            |   24 ++++
+  vec-0.1/doc/html/vec.html                 |  197 +++++++++++++++++++++++++++++
+  vec-0.1/doc/html/vim-stylesheet.css       |   23 ++++
++ vec-0.1/src/vec.vim                       |   23 ++++
++ vec-0.1/src/vec/Array.vim                 |   17 +++
+  vec-0.1/src/vec/Array/Concat.vim          |   30 +++++
+  vec-0.1/src/vec/Array/Contains.vim        |   15 +++
+  vec-0.1/src/vec/Array/Destroy.vim         |   14 ++
+  vec-0.1/src/vec/Array/Pop.vim             |   26 ++++
+  vec-0.1/src/vec/Array/Push.vim            |   71 +++++++++++
+  vec-0.1/src/vec/Array/RawProper.vim       |   13 ++
+- vec-0.1/src/vec/Array.vim                 |   17 +++
+- vec-0.1/src/vec/Loop/For.vim              |   59 +++++++++
+  vec-0.1/src/vec/Loop.vim                  |    4 +
++ vec-0.1/src/vec/Loop/For.vim              |   59 +++++++++
++ vec-0.1/src/vec/String.vim                |    4 +
+  vec-0.1/src/vec/String/Dup.vim            |   24 ++++
+  vec-0.1/src/vec/String/Occurances.vim     |   21 +++
+- vec-0.1/src/vec/String.vim                |    4 +
+- vec-0.1/src/vec.vim                       |   23 ++++
+  27 files changed, 951 insertions(+), 0 deletions(-)
+
