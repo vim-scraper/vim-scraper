@@ -465,9 +465,11 @@ end
 def fix_release_notes version
     msg = version['release_notes']
     msg.gsub!(/[ \t]+$/u, '')      # remove trailing whitespace on each line
-    if msg.length > 75 || msg.include?("\n")
+    if msg.length > 70 || msg.include?("\n")
         # message is too long, we'll insert our own first line
         msg = "Version #{version['script_version']}\n\n#{msg}"
+    else
+        msg = "Version #{version['script_version']}: #{msg}"
     end
     msg + "\n"
 end
