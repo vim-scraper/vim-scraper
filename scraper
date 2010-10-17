@@ -59,6 +59,7 @@ require 'htmlentities'        # htmlentities gem
 require 'feedzirra'           # feedzirra gem
 require 'erubis'              # erubis gem
 require 'mail'                # mail gem
+require 'fileutils'
 
 
 # thoughts:
@@ -533,8 +534,13 @@ def resolve_name_conflicts script
 end
 
 
+def repo_filename script_id, script_name
+    File.join($repos_dir, "#{'%04d' % script_id} - #{filenameify(script_name)}.git")
+end
+
+
 def open_repo script_id, script_name
-    repo_path = File.join($repos_dir, "#{'%04d' % script_id} - #{filenameify(script_name)}.git")
+    repo_path = repo_filename script_id, script_name
     # if gitrb is dying on the following line, you need to upgrade
     Gitrb::Repository.new(:path => repo_path, :bare => true, :create => true)
 end
@@ -563,6 +569,13 @@ def resolve_renamed_scripts script
 
     dupes.each do |dupe|
         puts "RENAMED: #{dupe} to #{script['display_name']}"
+
+        new_repo = repo_filename(script['script_id'], script['name'])
+        old_repo = repo_filename(script_extract_id(dupe), script_extract_name(dupe))
+        # copy the existing repo so the objects don't change
+        # (the new repo shouldn't exist but it's not worth dying if it does)
+        FileUtils.cp_r old_repo, new_repo unless test ?d, new_repo
+
         mark_repo_as_duplicate dupe, script
         # delete the obsolete script file
         File.delete File.join($scripts_dir, dupe)
@@ -653,7 +666,7 @@ end
 
 def copy_filesystem(repo, script, dir)
     Find.find(dir) do |path|
-        next if test(?d, path)
+        next if test ?d, path
         localpath = path.sub(dir, '').sub(/^\/+/, '')
         next if localpath =~ /^\s*$/
         next if block_given? && yield(localpath)
