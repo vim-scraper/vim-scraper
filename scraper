@@ -1068,7 +1068,14 @@ end
 
 def perform_all script_id, always_push=false
     repo_name,count = perform_download(perform_scrape(script_id.to_s))
-    perform_push(repo_name) if always_push or count > 0
+    if always_push or count > 0
+        # push all repos with this ID (if there are multiple, it's because
+        # the repo was renamed some time in the past and we don't know which
+        # ones have been pushed and which ones haven't)
+        Dir.entries($repos_dir).reject { |e| %w{. .. .git}.include?(e) }.
+            select { |e| e =~ /^0*([0-9]+)/; $1.to_i == script_id.to_i }.
+            each { |e| perform_push File.join($repos_dir, e) }
+    end
     [repo_name, count]
 end
 
