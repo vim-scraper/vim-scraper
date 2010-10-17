@@ -44,6 +44,10 @@ originally creating the repos?) but that's been fixed.
   restored from previous, slightly broken repos
 
 
+3075 NrrwRgn 0.11 is a good example of how vimballs are a bad idea.
+  A small mistake leads, not to an error message, but to utter garbage.
+
+
 Git wish: git diff --stat would sort its output.  It's hard to filter
 these out since you need to ensure the line count is identical.
 
