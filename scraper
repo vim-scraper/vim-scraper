@@ -4,7 +4,7 @@
 # This code is Copyright (c) 2010 Scott Bronson
 # Released under the MIT License.
 #
-# Full Scrape:
+# FULL SCRAPE:
 # - to do a full scrape / download / upload cycle, pass the script ids:
 #     ./scraper `seq 1 3217`     # where 3217 is the highest script id
 #
@@ -32,6 +32,8 @@
 #   rm repostats/*
 #   ./dump-repo repos/*
 # Now, git diff repostats.  If anything's different, you'll know.
+#
+# to see dupe ids: cd repos; ls | cut -b -4 | sort | uniq -cd | sort
 
 require 'rubygems'
 require 'bundler'
@@ -70,8 +72,8 @@ $vimscripts_email = 'vim-scripts@rinspin.com'
 $rss_url = 'http://feed43.com/vim-scripts.xml'
 $idle_count = 10    # number of scripts to scrape when we have nothing else to do
 $max_run_time = 14.minutes + 30.seconds
-$repos_dir = 'repos'
-$scripts_dir = 'scripts'
+$repos_dir = 'repos'        # if a repo has been renamed there will be duplicate ids in here
+$scripts_dir = 'scripts'    # should never be any duplicate ids in here
 $packages_dir = 'packages'
 $webcache_dir = 'webcache'
 $git_script_file = 'vim-script.json'
@@ -369,7 +371,7 @@ end
 
 
 def script_filename(script)
-    # if you change this, also change the regex in list_existing_scripts
+    # if you change the filename format, also change script_extract_*
     File.join($scripts_dir, "#{'%04d' % script['script_id']} - #{filenameify(script['name'])}.json")
 end
 
@@ -385,16 +387,37 @@ def hashkeyify name
 end
 
 
+def script_extract_name script_name
+    script_name =~ /^[0-9]+ - (.+)\.json$/ or raise "can't match #{script_name}";
+    $1
+end
+
+
+def script_extract_id script_name
+    # ignore leading 0s, otherwise to_i might mistakenly think it's octal
+    script_name =~ /^0*([0-9]+) - .+\.json$/ or raise "can't match #{script_name}"
+    $1
+end
+
+
 def list_existing_scripts
     # returns a hash of key=script name, value=filename
     Hash[Dir.entries($scripts_dir).reject { |e| %w{. .. .git}.include?(e) }.
-        map { |e| e =~ /^[0-9]+ - (.+)\.json$/ or raise "can't match #{e}"; [hashkeyify($1), e]}]
+        map { |e| [hashkeyify(script_extract_name(e)), e]}]
 end
 
 
 def highest_script_id
     Dir.entries($scripts_dir).reject { |e| %w{. .. .git}.include?(e) }.
-        map { |e| e =~ /^([0-9]+) - .+\.json$/ or raise "can't match #{e}"; $1.to_i }.max
+        map { |e| script_extract_id(e).to_i }.max
+end
+
+
+# if a script has been renamed, it will have multiple repos with
+# the same id (the old ones will have a README pointing to the new one)
+def find_scripts_by_id script_id
+    Dir.entries($scripts_dir).reject { |e| %w{. .. .git}.include?(e) }.
+        select { |e| script_extract_id(e).to_i == script_id.to_i }
 end
 
 
@@ -457,7 +480,7 @@ def author script
 end
 
 
-def name_conflict_exists(all_scripts, script)
+def name_conflict_exists all_scripts, script
     # if the script's name doesn't conflict with any script in all_scripts,
     return nil unless all_scripts[hashkeyify(script['name'])]
 
@@ -468,7 +491,9 @@ def name_conflict_exists(all_scripts, script)
 end
 
 
-def resolve_name_conflicts(script)
+# can't have two scripts with the same name on github.
+# try to figure out an intelligent name for the newer repo.
+def resolve_name_conflicts script
     return nil unless script
     all_scripts = list_existing_scripts
 
@@ -506,20 +531,59 @@ def resolve_name_conflicts(script)
 end
 
 
-def write_script(script)
+def open_repo script_id, script_name
+    repo_path = File.join($repos_dir, "#{'%04d' % script_id} - #{filenameify(script_name)}.git")
+    # if gitrb is dying on the following line, you need to upgrade
+    Gitrb::Repository.new(:path => repo_path, :bare => true, :create => true)
+end
+
+
+def mark_repo_as_duplicate dupe, new_script
+    # add a commit that deletes all files and creates a README pointing to the new repo
+    repo = open_repo(script_extract_id(dupe), script_extract_name(dupe))
+    committer = Gitrb::User.new($vimscripts_name, $vimscripts_email)
+    repo.transaction("Renamed to #{new_script['display_name']}", committer, committer) do
+        repo.root.to_a.map { |name,value| repo.root.delete(name) }
+        repo.root['README'] = Gitrb::Blob.new(:data => "This script has been renamed " +
+          "to #{new_script['display_name']}.\n\n#{repo_url new_script}\n")
+    end
+end
+
+
+# when a script gets renamed we copy the local repo so the git
+# objects don't change and then install a README file in the old repo
+def resolve_renamed_scripts script
+    return nil unless script
+    dupes = find_scripts_by_id(script['script_id']).reject do |x|
+        # the new script isn't a duplicate
+        script_extract_name(x) == script['name']
+    end
+
+    dupes.each do |dupe|
+        puts "RENAMED: #{dupe} to #{script['display_name']}"
+        mark_repo_as_duplicate dupe, script
+        # delete the obsolete script file
+        File.delete File.join($scripts_dir, dupe)
+    end
+
+    script
+end
+
+
+def write_script script
     return unless script
     filename = script_filename(script)
     puts "Scraped #{filename}"
-    File.open(filename, 'w') { |f|
+    File.open(filename, 'w') do |f|
         farg = fix_encoding(script)
         # check_encoding(farg)
         f.write(JSON.pretty_generate(farg)+"\n")
-    }
+    end
     filename
 end
 
 
-def download_file(url, dest)
+def download_file url, dest
     retryable(:tries => 4, :sleep => 10) do |retries|
         puts "  downloading #{url} to #{dest}#{retries > 0 ? "  TRY #{retries}" : ""}"
         open(url, 'rb') do |u|
@@ -529,14 +593,14 @@ def download_file(url, dest)
 end
 
 
-def copy_file(repo, filename, contents)
+def copy_file repo, filename, contents
     # an empty file is represented by the empty string.  contents==nil indicates an internal error.
     raise "no data in #{filename}: #{contents.inspect}" unless contents
     repo.root[filename] = Gitrb::Blob.new(:data => contents)
 end
 
 
-def cleanpath(path)     # lifted from git-wiki
+def cleanpath path     # lifted from git-wiki
     path = path.gsub /^[\/\s]*/, ''
     names = path.split('/').reject { |str| str =~ /^\s*$/ }
     i = 0
@@ -980,21 +1044,25 @@ end
 
 
 def perform_scrape script_id
-    write_script(resolve_name_conflicts(scrape_script(script_id)))
+    script = scrape_script script_id
+    script = resolve_name_conflicts script
+    script = resolve_renamed_scripts script
+    write_script script
 end
 
 
 def perform_download script_file
     return [nil,-1] unless script_file
     script = JSON.parse(File.read(script_file))
-    repo_path = File.join($repos_dir, "#{'%04d' % script['script_id']} - #{filenameify(script['name'])}.git")
+    repo = open_repo script['script_id'], script['name']
 
-    # if gitrb is dying on the following line, you need to upgrade
-    repo = Gitrb::Repository.new(:path => repo_path, :bare => true, :create => true)
-    File.open(File.join(repo_path, $git_script_file), 'w') { |f| f.write(JSON.pretty_generate(script)+"\n") }
+    # store the script file in the repo it creates
+    File.open(File.join(repo.path, $git_script_file), 'w') { |f|
+        f.write JSON.pretty_generate(script) + "\n"
+    }
 
     count = store_versions_in_repo(repo, script)
-    [repo_path, count]
+    [repo.path, count]
 end
 
 
