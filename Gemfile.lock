@@ -41,6 +41,7 @@ GEM
     rubyzip (0.9.4)
     sax-machine (0.0.15)
       nokogiri (> 0.0.0)
+    selenium-client (1.2.18)
     treetop (1.4.8)
       polyglot (>= 0.3.1)
 
@@ -63,3 +64,4 @@ DEPENDENCIES
   minitar (~> 0.5.3)
   octopussy (~> 0.3.0)
   rubyzip (~> 0.9.4)
+  selenium-client

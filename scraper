@@ -61,6 +61,7 @@ require 'feedzirra'           # feedzirra gem
 require 'erubis'              # erubis gem
 require 'mail'                # mail gem
 require 'fileutils'
+require 'selenium/client'     # selenium-client gem
 
 
 # thoughts:
@@ -1010,8 +1011,44 @@ def repo_url script
 end
 
 
+# push to vim-scripts.github.com so it we don't interfere with your regular ssh key.
+# create a ~/.ssh/vimscripts-id_rsa and ~/.ssh/vimscripts-id_rsa.pub keypair,
+# and create a ~/.ssh/config that has 2 Host sections:
+#   Host github.com\nHostName github.com\nUser git\nIdentityFile ~/.ssh/id_rsa
+#   Host vim-scripts.github.com\nHostName github.com\nUser git\nIdentityFile ~/.ssh/vimscripts-id_rsa
+# see this for more: http://help.github.com/multiple-keys
+
 def remote_url script
     "git@vim-scripts.github.com:vim-scripts/#{script['name']}"
+end
+
+
+def start_selenium
+    sel = Selenium::Client::Driver.new :host => 'localhost',
+          :port => 4444, :browser => 'firefox', :url => 'https://github.com'
+    sel.start
+    sel.set_context "deleee"
+    sel.open "/login"
+    sel.type "login_field", "vim-scripts"
+    password = File.read('password').chomp rescue raise("Put vim-script's password in a file named 'password'.")
+    sel.type "password", password
+    sel.click "commit", :wait_for => :page
+    sel
+end
+
+
+# github's api is claiming some repos exist when they clearly don't.  the
+# only way to fix this appears to be to create a repo of the same name and
+# delete it using the regular interface (trying to delete using the api
+# throws 500 server errors).  Hence all this Selenium.  Arg.
+
+def obliterate_repo sel, name
+    sel.open "/repositories/new"
+    sel.type "repository_name", name
+    sel.click "//button[@type='submit']", :wait_for => :page
+    sel.open "/vim-scripts/#{name}/admin"
+    sel.click "//div[@id='addons_bucket']/div[3]/div[1]/a/span"
+    sel.click "//div[@id='addons_bucket']/div[3]/div[3]/form/button"
 end
 
 
@@ -1021,23 +1058,42 @@ def perform_push repo_name
     github = Octopussy::Client.new(creds)
     repo = Gitrb::Repository.new(:path => repo_name.dup, :bare => true)
     script = JSON.parse(File.read(File.join(repo_name, $git_script_file)))
+    puts "Uploading #{script['script_id']} - #{script['name']}"
 
     start = Time.now
     api_calls = 0
 
+    # puts "  deleting #{script['name']}..."
+    # repo = github.delete("vim-scripts/#{script['name']}")
+    # puts "  token is #{repo.delete_token}"
+    # result = github.delete("vim-scripts/#{script['name']}", repo.delete_token)
+    # puts "  result: #{result.inspect}"
+
     remote = github.repo("vim-scripts/#{script['name']}") rescue nil
     api_calls += 1
 
+    # if selenium is true then we must be having problems with phantom repos
+    if remote && $selenium
+        puts "  apparently #{remote.url} exists, obliterating..."
+        obliterate_repo $selenium, script['name']
+        remote = nil
+        puts "  obliterate succeeded."
+        sleep 2  # github requires a bit of time to sync
+    end
+
     if remote
         # make sure this actually is the same repo
+        puts "  remote already exists: #{remote.url}"
         remote.homepage =~ /script_id=(\d+)$/
         raise "bad url on github repo #{script['name']}" unless $1
         raise "remote #{script['name']} exists but id is for #{$1}" if script['script_id'] != $1
+    else
+        puts "  remote doesn't exist, creating..."
     end
 
     unless remote
         retryable(:tries => 4, :sleep => 10) do |retries|
-            puts "Creating #{script['script_id']} - #{script['name']}#{retries > 0 ? "  TRY #{retries}" : ""}"
+            puts "  creating #{script['script_id']} - #{script['name']}#{retries > 0 ? "  TRY #{retries}" : ""}"
             remote = github.create(
                 :name => script['name'],
                 :description => "#{script['summary']}",
@@ -1054,11 +1110,10 @@ def perform_push repo_name
     end
 
     repo.git_remote('rm', 'origin') rescue nil
-    # http://help.github.com/multiple-keys
     repo.git_remote('add', 'origin', remote_url(script))
     retryable(:tries => 6, :sleep => 15) do |retries|
         # Gitrb::CommandError is as close to a network timeout error as we're going to get
-        puts "Pushing #{script['script_id']} - #{script['name']}#{retries > 0 ? "  TRY #{retries}" : ""}"
+        puts "  pushing #{script['script_id']} - #{script['name']}#{retries > 0 ? "  TRY #{retries}" : ""}"
         repo.git_push('--tags', 'origin', 'master')
     end
 
@@ -1279,6 +1334,7 @@ elsif ARGV[0] == '--all'
     perform_full
 else
     ARGV.each do |arg|
+        $max_run_time = 10.days
         if arg =~ /^\d+$/
             $ignore_cache = true
             # leading zeros cause script ID to be interpreted as octal
@@ -1289,11 +1345,22 @@ else
         elsif test ?f, arg
             perform_download arg
         elsif test ?d, arg
+            # the github api appears to have bugs, see obliterate_repo for more.
+            # if you're having troubles where the api claims a repo exists but can't
+            # push to it, and the regular user interface claims it doesn't exist,
+            # use selenium to create & delete the repo.  It appears to fix things.
+            #      to use selenium:   OBLITERATE=1 ./scraper repos/*
+            $selenium = start_selenium if ENV['OBLITERATE'] && !$selenium
             perform_push arg
         else
             raise "Could not recognize argument #{arg}"
         end
     end
+end
+
+if $selenium
+    $selenium.close_current_browser_session
+    $selenium.stop
 end
 
 stop = Time.now
