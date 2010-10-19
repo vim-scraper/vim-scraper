@@ -169,6 +169,7 @@ end
 
 # http://blog.codefront.net/2008/01/14/retrying-code-blocks-in-ruby-on-exceptions-whatever/
 # modified to pass the number of retries in the arg (0,1,2 if :tries => 3)
+# todo: should use exponential backoff and also pass the exception to the block
 def retryable(options = {}, &block)
     opts = { :tries => 1, :on => Exception, :sleep => 1 }.merge(options)
     return if opts[:tries] < 1
@@ -1334,7 +1335,10 @@ elsif ARGV[0] == '--all'
     perform_full
 else
     ARGV.each do |arg|
+        # if you're passing args, you probably don't want the scraper to quit
+        # before it's finished processing them all.
         $max_run_time = 10.days
+
         if arg =~ /^\d+$/
             $ignore_cache = true
             # leading zeros cause script ID to be interpreted as octal
@@ -1351,7 +1355,12 @@ else
             # use selenium to create & delete the repo.  It appears to fix things.
             #      to use selenium:   OBLITERATE=1 ./scraper repos/*
             $selenium = start_selenium if ENV['OBLITERATE'] && !$selenium
-            perform_push arg
+            retryable(:tries => 6, :sleep => 90) do |retries|
+                # sometimes, and it's hard to predict why, github errors out reliably
+                # for a few minutes, then magically fixes itself.
+                puts "Upload failed, retry #{retries}" if retries > 0
+                perform_push arg
+            end
         else
             raise "Could not recognize argument #{arg}"
         end
