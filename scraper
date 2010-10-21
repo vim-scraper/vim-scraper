@@ -1322,6 +1322,8 @@ $start_time = Time.now
 if ARGV.empty?
     puts "Starting scrape at #{$start_time}"
     $ignore_cache = true
+    # don't time out after 15 minutes if FOREVER=1
+    $max_run_time = 10.days if ENV['FOREVER']
     count = perform_rss
     # also cycle through all packages in case the rss feed missed anything
     perform_continuous($idle_count - count) if count && $idle_count - count > 0
