@@ -1,0 +1,14 @@
+#!/bin/env ruby
+
+require 'json'
+require 'hashie'
+
+$repos_dir = 'repos'
+$git_script_file = 'vim-script.json'
+
+repos = Dir.entries($repos_dir).reject { |e| %w{. .. .git}.include?(e) }
+repos.sort.each do |dir|
+    script = Hashie::Mash.new(JSON.parse(File.read(File.join($repos_dir, dir, $git_script_file))))
+    puts ("%04d" % script.script_id) + ": " + script.description.inspect
+end
+

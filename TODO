@@ -1,0 +1,32 @@
+The README for these scripts has bad formatting:
+    0098 spec.vim
+    0101 nlist.vim
+    0111
+    0112 borland.vim -- Maerz
+    0124
+    0170
+    0216
+    0470 HTML Photo Board
+    0542
+    0543
+    0631
+    0639
+    0777
+    0930
+    1264
+    2098
+    2100
+    2423
+    2425
+    2981 ZenCoding http://github.com/vim-scripts/ZenCoding.vim
+    3012
+
+
+More deleted scripts: 1022 2668 2730 3080
+    I'm not going to bother removing these.
+
+Are there any repos without any commits at all?
+    Nope!  It's impossible to delete the last one.  That's really a shame.
+    Seems like that would be the right way to delete a script.
+
+Congrats to 2658 -- 3 times as many releases as the runner up.
