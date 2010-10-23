@@ -275,8 +275,12 @@ def scrape_script(script_id)
     s['script_type'] = $script_type_fixes[script_id.to_i] ||
       doc.at('td[text()="script type"]').parent.next_sibling.children.first.inner_content
     s['description'] = doc.at('td[text()="description"]').parent.next_sibling.children.first.inner_content.gsub("\r", "\n")
-    doc.search('td.lightbg~td').find { |e| e.inner_text =~ /Rating.*\s(-?\d+)\/(\d+),.*Downloaded[^\d]*(\d+)/m }
-    s['rating_total'], s['rating_votes'], s['downloads'] = $1, $2, $3      # http://www.vim.org/karma.php
+
+    if false     # we don't use this info and it generates too much noise
+        doc.search('td.lightbg~td').find { |e| e.inner_text =~ /Rating.*\s(-?\d+)\/(\d+),.*Downloaded[^\d]*(\d+)/m }
+        s['rating_total'], s['rating_votes'], s['downloads'] = $1, $2, $3      # http://www.vim.org/karma.php
+    end
+
     s['install_details'] = doc.at('td[text()="install details"]').parent.next_sibling.children.first.inner_content.gsub("\r", "\n")
     # reject links with targets so download links in the description don't appear to be a version (script 1843)
     s['versions'] = doc.search('a[@href*="download_script.php?"]').select { |e| e.attributes['target'].empty? }.to_a.map do |a|
