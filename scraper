@@ -274,7 +274,18 @@ def scrape_script(script_id)
     s['name'] = githubify(s['display_name'])
     s['script_type'] = $script_type_fixes[script_id.to_i] ||
       doc.at('td[text()="script type"]').parent.next_sibling.children.first.inner_content
-    s['description'] = doc.at('td[text()="description"]').parent.next_sibling.children.first.inner_content.gsub("\r", "\n")
+
+    desc = doc.at('td[text()="description"]').parent.next_sibling.children.first
+    desc.search('br').each do |br|
+        # restore the newline to every element preceeding a br.
+        prev = br.previous;
+        if prev && prev.text?
+            prev.content = prev.content + "\r" unless prev.content.end_with?("\r")
+        else
+            br.before "\r"
+        end
+    end
+    s['description'] = desc.inner_content.gsub("\r", "\n")
 
     if false     # we don't use this info and it generates too much noise
         doc.search('td.lightbg~td').find { |e| e.inner_text =~ /Rating.*\s(-?\d+)\/(\d+),.*Downloaded[^\d]*(\d+)/m }
