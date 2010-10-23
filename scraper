@@ -29,9 +29,10 @@
 # how to perform a fairly comprehensive test:
 #   mv repos repos.orig
 #   ./scraper scripts/*
-#   rm repostats/*
+#   rm scraper-stats/*
 #   ./dump-repo repos/*
-# Now, git diff repostats.  If anything's different, you'll know.
+# Now, cd scraper-stats and run git status / git diff.
+# If anything's different, you'll know.
 #
 # to see dupe ids: cd repos; ls | cut -b -4 | sort | uniq -cd | sort
 
