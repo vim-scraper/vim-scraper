@@ -677,21 +677,37 @@ def cleanpath path     # lifted from git-wiki
 end
 
 
-def smart_copy_file(repo, script, filename, contents)
+# wish the site had a compiler file type.  as it is, we need to
+# sniff the file contents to determine if it's a compiler plugin.
+def is_compiler_file contents
+    contents.lines.each do |l|
+        next if l =~ /^\s*("|$)/;  # skip blank lines and comments
+        # afaict 'if exists("current_compiler")' on the first line means compiler plugin
+        return l =~ /^\s*if\s*\(?\s*exists\s*\(\s*"current_compiler"\s*\)/
+    end
+    return false
+end
+
+
+def smart_copy_file repo, script, filename, contents
     filename = cleanpath(filename)
     if filename =~ /^[^\/]+\.vim/
         # a .vim file in the root directory
-        case script['script_type']
-        when 'color scheme' then copy_file(repo, "colors/" + filename, contents)
-        when 'ftplugin' then copy_file(repo, "ftplugin/" + filename, contents)
-        when 'game' then copy_file(repo, "plugin/" + filename, contents)
-        when 'indent' then copy_file(repo, "indent/" + filename, contents)
-        when 'syntax' then copy_file(repo, "syntax/" + filename, contents)
-        when 'utility' then copy_file(repo, "plugin/" + filename, contents)
-        when 'patch' then copy_file(repo, "plugin/" + filename, contents)
+        if is_compiler_file contents
+            copy_file(repo, "compiler/" + filename, contents)
         else
-            # if this fires, they must have added more script types?!
-            raise "Don't know where to put #{filename} for #{script['script_type']}"
+            case script['script_type']
+            when 'color scheme' then copy_file(repo, "colors/" + filename, contents)
+            when 'ftplugin' then copy_file(repo, "ftplugin/" + filename, contents)
+            when 'game' then copy_file(repo, "plugin/" + filename, contents)
+            when 'indent' then copy_file(repo, "indent/" + filename, contents)
+            when 'syntax' then copy_file(repo, "syntax/" + filename, contents)
+            when 'utility' then copy_file(repo, "plugin/" + filename, contents)
+            when 'patch' then copy_file(repo, "plugin/" + filename, contents)
+            else
+                # if this fires, they must have added more script types?!
+                raise "Don't know where to put #{filename} for #{script['script_type']}"
+            end
         end
     elsif filename =~ /^[^\/]+\.txt/
         copy_file(repo, "doc/" + filename, contents)
@@ -704,7 +720,7 @@ def smart_copy_file(repo, script, filename, contents)
 end
 
 
-def copy_filesystem(repo, script, dir)
+def copy_filesystem repo, script, dir
     Find.find(dir) do |path|
         next if test ?d, path
         localpath = path.sub(dir, '').sub(/^\/+/, '')
@@ -715,7 +731,7 @@ def copy_filesystem(repo, script, dir)
 end
 
 
-def extract_vimball(repo, script, vimball)
+def extract_vimball repo, script, vimball
     Dir.mktmpdir('scraper') do |tmpdir|
         # some vimballs leave garbage in the current directory.  :(
         Dir.mktmpdir('scraper') do |scratchdir|
@@ -730,7 +746,7 @@ def extract_vimball(repo, script, vimball)
 end
 
 
-def unvimball(repo, script, vimball)
+def unvimball repo, script, vimball
     # vimball dies badly if called on a file with the wrong line endings
     # probably 10% of line endings are dos so we always perform the correction
     Tempfile.open('scraper') do |ttfile|
