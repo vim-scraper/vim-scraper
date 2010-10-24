@@ -18,9 +18,9 @@ creds = Hashie::Mash.new(JSON.parse(File.read('creds.json')))
 github = Octopussy::Client.new(creds)
 
 # monkeypatch octopussy because its delete has a bug
-Octopussy::Client.instance_eval do
+Octopussy::Client.class_eval do
     def delete(repo, delete_token={})
-        repo = Repo.new(repo)
+        repo = Octopussy::Repo.new(repo)
         response = self.class.post("/repos/delete/#{repo.name}", :query => auth_params, :body => {:delete_token => delete_token})
         Hashie::Mash.new(response)
     end
