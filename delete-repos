@@ -4,7 +4,7 @@
 #   ./delete-repos spec.vim nlist.vim torte.vim
 # Be careful!
 #
-# TODO: add rate limiting
+# TODO: rate limiting hasn't been tested.
 
 
 require 'rubygems'
@@ -26,11 +26,14 @@ Octopussy::Client.class_eval do
     end
 end
 
+call_count = 0
+start = Time.now
 ARGV.each do |name|
     result = github.delete(name)
-    start = Time.now
+    call_count += 1
     if result
         result = github.delete name, result.delete_token
+        call_count += 1
         if result.status == "deleted"
             puts "deleted #{name}"
         else
@@ -38,6 +41,15 @@ ARGV.each do |name|
         end
     else
         puts "got #{result.inspect} trying to delete #{name}"
+    end
+
+    # make sure we don't bump into github's rate limit
+    if call_count >= 60
+        duration = Time.now - start
+        puts "at rate limit, sleeping for #{60 - duration} seconds"
+        sleep 60 - duration if duration < 60
+        start = Time.now
+        call_count = 0
     end
 end
 
