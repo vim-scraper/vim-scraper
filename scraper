@@ -1361,7 +1361,7 @@ else
         if arg =~ /^\d+$/
             $ignore_cache = true
             # leading zeros cause script ID to be interpreted as octal
-            perform_all arg.gsub(/^0+/, '')
+            perform_all arg.gsub(/^0+/, ''), true
         elsif arg =~ /^-(\d+)$/
             # leading zeros cause script ID to be interpreted as octal
             perform_scrape $1.gsub(/^0+/, '')
