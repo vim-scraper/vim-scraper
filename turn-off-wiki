@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 
 # turns off the issues and wiki tabs for the named repos
-# usage: ./turn-off-all-wikis repos/*
+# usage: ./turn-off-wiki repos/*
 
 
 require 'json'

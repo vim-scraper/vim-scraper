@@ -1116,12 +1116,15 @@ def perform_push repo_name
                 :public => true)
         end
         api_calls += 1
-        # turn off the issues and wiki tabs (wish 'create' would do that)
-        retryable(:tries => 4, :sleep => 10) do |retries|
-            puts "  disabling wiki+issues for #{script['script_id']} - #{script['name']}#{retries > 0 ? "  TRY #{retries}" : ""}"
-            github.set_repo_info('vim-scripts/' + script['name'], :has_issues => false, :has_wiki => false)
-        end
-        api_calls += 1
+
+        # TODO can't turn off issues and wikis until github's bug is fixed
+        # http://support.github.com/discussions/api/125-set-repo-info-appears-broken
+#        # turn off the issues and wiki tabs (wish 'create' would do that)
+#        retryable(:tries => 4, :sleep => 10) do |retries|
+#            puts "  disabling wiki+issues for #{script['script_id']} - #{script['name']}#{retries > 0 ? "  TRY #{retries}" : ""}"
+#            github.set_repo_info('vim-scripts/' + script['name'], :has_issues => false, :has_wiki => false)
+#        end
+#        api_calls += 1
     end
 
     repo.git_remote('rm', 'origin') rescue nil
