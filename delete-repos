@@ -1,0 +1,43 @@
+#!/bin/env ruby
+
+# Mass delete, just pass the names of the repos to delete as args.
+#   ./delete-repos spec.vim nlist.vim torte.vim
+# Be careful!
+#
+# TODO: add rate limiting
+
+
+require 'rubygems'
+require 'bundler'
+Bundler.require
+
+require 'octopussy'
+require 'json'
+
+creds = Hashie::Mash.new(JSON.parse(File.read('creds.json')))
+github = Octopussy::Client.new(creds)
+
+# monkeypatch octopussy because its delete has a bug
+Octopussy::Client.instance_eval do
+    def delete(repo, delete_token={})
+        repo = Repo.new(repo)
+        response = self.class.post("/repos/delete/#{repo.name}", :query => auth_params, :body => {:delete_token => delete_token})
+        Hashie::Mash.new(response)
+    end
+end
+
+ARGV.each do |name|
+    result = github.delete(name)
+    start = Time.now
+    if result
+        result = github.delete name, result.delete_token
+        if result.status == "deleted"
+            puts "deleted #{name}"
+        else
+            puts "Unknown response from second stage for #{name}: #{result}"
+        end
+    else
+        puts "got #{result.inspect} trying to delete #{name}"
+    end
+end
+

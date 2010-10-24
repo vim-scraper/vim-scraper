@@ -1084,12 +1084,6 @@ def perform_push repo_name
     start = Time.now
     api_calls = 0
 
-    # puts "  deleting #{script['name']}..."
-    # repo = github.delete("vim-scripts/#{script['name']}")
-    # puts "  token is #{repo.delete_token}"
-    # result = github.delete("vim-scripts/#{script['name']}", repo.delete_token)
-    # puts "  result: #{result.inspect}"
-
     remote = github.repo("vim-scripts/#{script['name']}") rescue nil
     api_calls += 1
 
