@@ -680,10 +680,12 @@ end
 # wish the site had a compiler file type.  as it is, we need to
 # sniff the file contents to determine if it's a compiler plugin.
 def is_compiler_file contents
-    contents.lines.each do |l|
+    x = contents.dup    # this encoding stuff is killing me
+    x.force_encoding("ASCII-8BIT")
+    x.lines.each do |l|
         next if l =~ /^\s*("|$)/;  # skip blank lines and comments
         # afaict 'if exists("current_compiler")' on the first line means compiler plugin
-        return l =~ /^\s*if\s*\(?\s*exists\s*\(\s*"current_compiler"\s*\)/
+        return l =~ /^\s*if\s*\(?\s*exists\s*\(\s*["']current_compiler["']\s*\)/
     end
     return false
 end
