@@ -5,14 +5,20 @@
 # Released under the MIT License.
 #
 # FULL SCRAPE:
-# - to do a full scrape / download / upload cycle, pass the script ids:
+# To start cold with a full scrape, do this:
+#   rm state.json
+#   ./scraper
+# Now the scraper is warm and ready to perform continuous RSS scraping.
+#
+# To do a full scrape / download / upload cycle, pass the script ids:
 #     ./scraper `seq 1 3217`     # where 3217 is the highest script id
+# Note that this pushes each script, even if there are no changes to
+# be pushed.  This is more careful but slower than the technique above..
 #
 # AUTOMATIC RSS Scrape:
-# Now, run with no arguments to perform an rss scrape.  It downloads
-# all scripts present in the rss feed (stores its state in a file).
+# Run the scraper with no args to perform an rss scrape.  It downloads
+# new scripts in the rss feed and remembers its position for next time.
 #     ./scraper
-# Do a full scrape before setting up cron to do the rss scrape.
 #
 # MANUAL Debugging:
 # - with a negative number, scrapes that script ID and stores the json
@@ -22,7 +28,7 @@
 # - with a bare git repo, pushes that repo up to github
 #     ./scraper repos/0987*
 # When you run the above commands in that order, you do a full scrape
-# on script 987.
+# on script 987, equivalent to passing the script ID.
 #
 # TESTING:
 # You may think that this script has no tests.  Not true!  Here is
@@ -89,10 +95,19 @@ $ignore_cache = false       # we pull from the webcache if we can, setting to tr
 
 $vimdirs = %w{after autoload bin colors doc ftdetect ftplugin indent plugin syntax}
 $textext = %w{au3 bat c cpp csh diff h klip patch pl pm ps py rb set sh snip snippet snippets tcl txt xml vim vim.orig}.map { |x| "\\.#{x}$" }.join('|')
+
+# vim.org doesn't offer any way to delete a script so people have invented all sorts of ways of doing it.
+# 1022 2668 2730, and 3080 have also been deleted but I give up.  This is good enough.
 $deleted_scripts = %w{364 548 549 550 762 1032 1129 1263 1280 1295 1301 1436 1452 1509 1562 1669 1789 1824 1949 2056 2172 2306 2309 2313 2316 2318 2323 2352 2456 2498 2664 2861 3076}
+
 # some scripts were created with the wrong type.  this fixes the ones that matter.
 #     http://groups.google.com/group/vim_use/msg/6f9f82e8c6fb4faa
 $script_type_fixes = { 1780 => 'syntax' }
+
+# at least one script is actually multiple scripts -- 790 has python.vim and python3.0.vim
+# this forces package names matching the regex out to a different branch
+$branch_versions = { 790 => { :branch => 'python3', :regex => /^python3\.0\.vim$/ } }
+
 
 Dir.mkdir $scripts_dir unless test ?d, $scripts_dir
 Dir.mkdir $repos_dir unless test ?d, $repos_dir
@@ -1025,10 +1040,17 @@ def store_versions_in_repo repo, script
     puts "Processing script #{script['script_id']}: #{script['name']}"
     count = 0
     script['versions'].reverse.each do |version|
+        branch = 'master'
+        matcher = $branch_versions[script['script_id'].to_i]
+        if matcher && version['filename'] =~ matcher[:regex]
+            branch = matcher[:branch]
+        end
+        repo.branch = branch unless repo.branch == branch
+
         author_name, author_email = fix_email_address(version['author'])
         author = Gitrb::User.new(author_name, author_email, Time.new(*version['date'].split('-'), 0, 0, 0, 0))
         unless find_version(repo, version)
-            puts "  adding #{version['filename']} #{version['date']} #{script_version(version)}"
+            puts "  adding #{version['filename']} #{version['date']} #{script_version(version)} to branch #{branch}"
             repo.transaction(fix_release_notes(version), author, committer) do
                 # delete all existing blobs since we replace everything with the new commit
                 repo.root.to_a.map { |name,value| repo.root.delete(name) }
@@ -1091,6 +1113,14 @@ def obliterate_repo sel, name
 end
 
 
+def repo_heads repo
+    path = "#{repo.path}/refs/heads"
+    Dir.entries(path).select { |f|
+        test ?f, "#{path}/#{f}"
+    }
+end
+
+
 def perform_push repo_name
     return unless repo_name
     creds = Hashie::Mash.new(JSON.parse(File.read('creds.json')))
@@ -1150,7 +1180,7 @@ def perform_push repo_name
     retryable(:tries => 6, :sleep => 15) do |retries|
         # Gitrb::CommandError is as close to a network timeout error as we're going to get
         puts "  pushing #{script['script_id']} - #{script['name']}#{retries > 0 ? "  TRY #{retries}" : ""}"
-        repo.git_push('--tags', 'origin', 'master')
+        repo.git_push('--tags', 'origin', *repo_heads(repo))
     end
 
     # sleep to avoid bumping into github's 60-per-minute API limit
