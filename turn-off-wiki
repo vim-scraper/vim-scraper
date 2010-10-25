@@ -2,6 +2,7 @@
 
 # turns off the issues and wiki tabs for the named repos
 # usage: ./turn-off-wiki repos/*
+#    or: ./turn-off-wiki 0101 0111 0112 0124
 
 
 require 'json'
@@ -30,16 +31,22 @@ def retryable(options = {}, &block)
 end
 
 
+def repo_file file
+    return file if test ?d, file
+    Dir.glob("repos/#{file}*").first
+end
+
+
 $git_script_file = 'vim-script.json'
 creds = Hashie::Mash.new(JSON.parse(File.read('creds.json')))
 github = Octopussy::Client.new(creds)
 
 ARGV.each do |arg|
-    script = JSON.parse(File.read(File.join(arg, $git_script_file)))
+    script = JSON.parse(File.read(File.join(repo_file(arg), $git_script_file)))
 
     start = Time.now
     retryable(:tries => 4, :on => Timeout::Error, :sleep => 10) do |retries|
-        puts "Turning off #{arg}#{retries > 0 ? "  TRY #{retries}" : ""}"
+        puts "Turning off #{repo_file(arg)}#{retries > 0 ? "  TRY #{retries}" : ""}"
         github.set_repo_info('vim-scripts/' + script['name'], :has_issues => false, :has_wiki => false)
     end
 
