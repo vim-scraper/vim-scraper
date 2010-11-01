@@ -384,6 +384,14 @@ def generate_docs
     File.open("#{doc_dir}/scripts.html", 'w') do |f|
         f.write template.result(:scripts => scripts)
     end
+
+    File.open("#{doc_dir}/scripts.json", 'w') do |f|
+        f.write scripts.reduce({}) { |a,v| a[v.script_id.to_i] = v.name; a }.to_json
+    end
+
+    File.open("#{doc_dir}/script_original_names.json", 'w') do |f|
+        f.write scripts.reduce({}) { |a,v| a[v.script_id.to_i] = v.display_name; a }.to_json
+    end
 end
 
 
