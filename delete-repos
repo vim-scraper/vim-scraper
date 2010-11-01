@@ -1,4 +1,4 @@
-#!/bin/env ruby
+#!/usr/bin/env ruby
 
 # Mass delete, just pass the names of the repos to delete as args.
 #   ./delete-repos spec.vim nlist.vim torte.vim
