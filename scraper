@@ -4,6 +4,10 @@
 # This code is Copyright (c) 2010 Scott Bronson
 # Released under the MIT License.
 #
+# DEPENDENCIES
+# Make sure you have vim, unzip, unrar, 7za, and xz installed.
+#    apt-get install vim unzip unrar p7zip-full xz-utils
+#
 # FULL SCRAPE:
 # To start cold with a full scrape, do this:
 #   rm state.json
@@ -120,41 +124,32 @@ MimeMagic.remove 'application/x-gmc-link'
 
 # http://github.com/hpricot/hpricot/issues#issue/25
 # super ugly that hpricot manages to screw up charset encodings so badly.
-# I'm patching hpricot directly as follows.  should probably convert this to a monkeypatch.
-#
-# --- a/lib/hpricot/traverse.rb	2010-08-25 02:07:55.288095773 -0700
-# +++ b/lib/hpricot/traverse.rb	2010-08-25 02:08:02.403095712 -0700
-# @@ -157,7 +157,7 @@
-#      # HTML elements are removed.
-#      def inner_text
-#        if respond_to?(:children) and children
-# -        children.map { |x| x.inner_text }.join
-# +        children.map { |x| str = x.inner_text; str = str.dup.force_encoding('ISO-8859-1').encode('UTF-8') if str.encoding.to_s == 'ASCII-8BIT' || str.encoding.to_s == 'ISO-8859-1'; str }.join
-#        else
-#          ""
-#        end
-#
-# --- a/lib/hpricot/builder.rb   2010-08-25 09:55:37.894992548 -0700
-# +++ b/lib/hpricot/builder.rb   2010-08-25 09:55:23.880992337 -0700
-# @@ -6,8 +6,9 @@
-#  module Hpricot
-#    # XML unescape
-#    def self.uxs(str)
-# -    str.to_s.
-# -        gsub(/\&(\w+);/) { [NamedCharacters[$1] || ??].pack("U*") }.
-# +    str = str.to_s
-# +    str = str.dup.force_encoding('ISO-8859-1').encode('UTF-8') if str.encoding.to_s == 'ASCII-8BIT' || str.encoding.to_s == 'ISO-8859-1'
-# +    str.gsub(/\&(\w+);/) { [NamedCharacters[$1] || ??].pack("U*") }.
-#          gsub(/\&\#(\d+);/) { [$1.to_i].pack("U*") }
-#    end
-#
-# Run './scraper 5' to see a script with a bunch of embedded nbsps
-# that breaks hpricot horribly.
-#
-# encoding resources:
-# http://yokolet.blogspot.com/2009/07/design-and-implementation-of-ruby-m17n.html
-# http://yehudakatz.com/2010/05/05/ruby-1-9-encodings-a-primer-and-the-solution-for-rails/
 
+# hopefully the next version of hpricot allows us to get rid of these monkeypatches
+module Hpricot
+    module Traverse
+        def inner_text
+            if respond_to?(:children) and children
+#                children.map { |x| x.inner_text }.join
+                children.map { |x| str = x.inner_text;
+                    str = str.dup.force_encoding('ISO-8859-1').encode('UTF-8') if str.encoding.to_s == 'ASCII-8BIT' || str.encoding.to_s == 'ISO-8859-1';
+                    str
+                }.join
+            else
+                ""
+            end
+        end
+    end
+
+    def self.uxs(str)
+        str = str.to_s
+        str = str.dup.force_encoding('ISO-8859-1').encode('UTF-8') if str.encoding.to_s == 'ASCII-8BIT' || str.encoding.to_s == 'ISO-8859-1'
+        str.gsub(/\&(\w+);/) { [NamedCharacters[$1] || ??].pack("U*") }.
+            gsub(/\&\#(\d+);/) { [$1.to_i].pack("U*") }
+    end
+end
+
+# and and hopefully a future version will allow us to remove these monkeypatches
 module Hpricot
     module Traverse
         def inner_content
