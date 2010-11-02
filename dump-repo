@@ -5,13 +5,15 @@
 # easy to watch for regressions as the scraper changes.
 #
 # usage: ./dump-repo repos/*
+#    or: ./dump-repo 0002 0009 2142
 
 
 $repostats_dir = 'scraper-stats'
 Dir.mkdir $repostats_dir unless test ?d, $repostats_dir
 
 
-def dump_repo(repo)
+def dump_repo repo
+    raise "no repo" unless repo
     repo = repo.gsub /\/$/, ''
     ENV['GIT_DIR'] = repo
     log = `git log --pretty=fuller --decorate=full --stat`
@@ -30,12 +32,14 @@ def dump_repo(repo)
 end
 
 
+def repo_dir dir
+    return dir if test ?d, dir
+    Dir.glob("repos/#{dir}*").first or raise "repos/#{dir}* does not exist!"
+end
+
+
 raise "specify some repos to dump" if ARGV.empty?
 ARGV.each do |arg|
-    if test ?d, arg
-        dump_repo(arg)
-    else
-        raise "Could not recognize argument #{arg}"
-    end
+    dump_repo repo_dir(arg)
 end
 
