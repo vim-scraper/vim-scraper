@@ -34,7 +34,10 @@ end
 
 def repo_dir dir
     return dir if test ?d, dir
-    Dir.glob("repos/#{dir}*").first or raise "repos/#{dir}* does not exist!"
+    repos = Dir.glob("repos/#{dir}*")
+    raise "repos/#{dir}* does not exist!" unless repos && repos.size > 0
+    raise "multiple repos/#{dir}*: #{repos.inspect}" if repos.size > 1
+    repos.first
 end
 
 
