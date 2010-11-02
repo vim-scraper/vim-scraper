@@ -43,6 +43,10 @@
 #   ./dump-repo repos/*
 # Now, cd scraper-stats and run git status / git diff.
 # If anything's different, you'll know.
+# This speeds things up but you need 4GB+ of ram for a full scrape.
+#     mkdir repos
+#     sudo mount -t tmpfs -o size=1600M tmpfs repos
+# Remember to 'umount repos' when you're done with it.
 #
 # to see dupe ids: cd repos; ls | cut -b -4 | sort | uniq -cd | sort
 
@@ -698,9 +702,7 @@ end
 # wish the site had a compiler file type.  as it is, we need to
 # sniff the file contents to determine if it's a compiler plugin.
 def is_compiler_file contents
-    x = contents.dup    # this encoding stuff is killing me
-    x.force_encoding("ASCII-8BIT")
-    x.lines.each do |l|
+    contents.lines.each do |l|
         next if l =~ /^\s*("|$)/;  # skip blank lines and comments
         # afaict 'if exists("current_compiler")' on the first line means compiler plugin
         return l =~ /^\s*if\s*\(?\s*exists\s*\(\s*["']current_compiler["']\s*\)/
@@ -709,12 +711,26 @@ def is_compiler_file contents
 end
 
 
+# sniff file contents to determine if it's a keymap file
+def is_keymap_file contents
+    # thanks to http://github.com/vim-scripts/greek_polytonic.vim, we can't assume
+    # that we'll find keymap_name near the top of the file.
+    # also see check_for_keymap_helper
+    contents.lines.find { |line| line =~ /^\s*let\s+b:keymap_name\s*=/ }
+end
+
+
 def smart_copy_file repo, script, filename, contents
     filename = cleanpath(filename)
     if filename =~ /^[^\/]+\.vim/
+        encoded_contents = contents.dup    # this encoding stuff is killing me
+        encoded_contents.force_encoding "ASCII-8BIT"
+
         # a .vim file in the root directory
-        if is_compiler_file contents
+        if is_compiler_file encoded_contents
             copy_file(repo, "compiler/" + filename, contents)
+        elsif is_keymap_file encoded_contents
+            copy_file(repo, "keymap/" + filename, contents)
         else
             case script['script_type']
             when 'color scheme' then copy_file(repo, "colors/" + filename, contents)
@@ -1038,6 +1054,24 @@ def check_for_readme_file repo
 end
 
 
+def check_for_keymap_helper repo, script
+    # It's easy to autodetect keymap files (see is_keymap_file above)
+    # but some keymaps come with additional scripts that are not so common
+    return unless repo.root['keymap'] && repo.root['plugin']
+    names = repo.root['keymap'].map { |n,v| n }
+    namesre = Regexp.union names
+    repo.root['plugin'].each do |name, node|
+        contents = node.data.dup
+        contents.force_encoding "ASCII-8BIT"
+        if contents.lines.find { |line| line =~ /^\s*source\s+<sfile>:p:h\/#{namesre}/ }
+            # yep, it's a keymap helper.
+            blob = repo.root['plugin'].delete(name)
+            copy_file repo, "keymap/#{name}", blob.data
+        end
+    end
+end
+
+
 def store_versions_in_repo repo, script
     committer = Gitrb::User.new($vimscripts_name, $vimscripts_email)
     puts "Processing script #{script['script_id']}: #{script['name']}"
@@ -1057,12 +1091,13 @@ def store_versions_in_repo repo, script
             repo.transaction(fix_release_notes(version), author, committer) do
                 # delete all existing blobs since we replace everything with the new commit
                 repo.root.to_a.map { |name,value| repo.root.delete(name) }
-                add_version(repo, version, script)
-                check_for_lone_dir(repo, script)
-                check_for_readme_file(repo)
+                add_version repo, version, script
+                check_for_lone_dir repo, script
+                check_for_keymap_helper repo, script
+                check_for_readme_file repo
                 copy_file(repo, 'README', "This is a mirror of #{script_id_to_url(script['script_id'])}\n\n" + script['description'] + "\n") unless repo.root['README']
             end
-            tag_version(repo, version)
+            tag_version repo, version
             count += 1
         end
     end
