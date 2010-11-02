@@ -5,7 +5,7 @@ title: All Scripts
 
 <table>
   <% scripts.each do |script| -%>
-    <tr>
+    <tr id="s<%= h script.script_id %>">
       <td><%= h script.script_id %></td>
       <td><%= h script.script_type %></td>
       <td><a href="<%= h repo_url(script) %>"><%= h script.display_name %></a></td>
