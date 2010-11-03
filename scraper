@@ -92,7 +92,7 @@ $vimscripts_email = 'scraper@vim-scripts.org'
 $rss_url = 'http://feed43.com/vim-scripts.xml'
 $idle_count = 10    # number of scripts to scrape when we have nothing else to do
 $max_run_time = 14.minutes + 30.seconds    # script exits normally once this time has elapsed
-$repos_dir = 'repos'        # if a repo has been renamed there will be duplicate ids in here
+$repos_dir = ENV['REPOS_DIR'] || 'repos'        # if a repo has been renamed there will be duplicate ids in here
 $scripts_dir = 'scripts'    # should never be any duplicate ids in here
 $packages_dir = 'packages'
 $webcache_dir = 'webcache'
@@ -1258,7 +1258,29 @@ def perform_download script_file
     }
 
     count = store_versions_in_repo(repo, script)
+    dump_repo "#{$repo_dir}/#{repo.path}", ENV['DUMP_REPO'] if ENV['DUMP_REPO']
+    FileUtils.rm_rf "#{$repo_dir}/#{repo.path}" if ENV['PURGE_REPOS']
     [repo.path, count]
+end
+
+
+def dump_repo repo, stats_dir
+    raise "no repo" unless repo
+    repo = repo.gsub /\/$/, ''  # remove trailing / added by filename completion
+    ENV['GIT_DIR'] = repo
+    log = `git log --pretty=fuller --decorate=full --stat`
+    # remove every line with a CommitDate since that's horribly variable
+    log = log.each_line.reduce([]) { |a,v|
+        v.gsub!(/^commit\s+[0-9A-Fa-f]*/, 'commit SHA1SHA1SHA1');
+        v.gsub!(/, refs\/(remotes|heads)[^,)]*\/master/, '');
+        a.push(v) unless v =~ /^CommitDate: /;
+        a }.join
+    ENV.delete('GIT_DIR')
+    filename = File.join(stats_dir, File.basename(repo).gsub(/\.git$/, '') + '.stats')
+    puts "Stats in #{filename}"
+    File.open(filename, 'w') { |f|
+        f.write log
+    }
 end
 
 

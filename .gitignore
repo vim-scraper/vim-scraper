@@ -1,6 +1,8 @@
+stats-*
+.bundle
 creds.json
 state.json
-repos
+repos*
 scraper-stats
 scripts
 packages

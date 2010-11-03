@@ -1,0 +1,41 @@
+#!/bin/sh
+
+# usage:  ./run-test NAME
+
+# where NAME is the name you'd like to give this test run.
+# Results will be found in scraper-stats-NAME
+#
+# because email addresses and readmes change every week, make sure
+# to run a test before making any changes, eyeball the stats diffs
+# to make sure it's only readmes and email addresses, then commit
+# them to the test branch.  This way your stats will be based on
+# all the new emails and readmes.
+
+name="$1"
+
+if [ -z "$name" ]; then
+    echo "Specify a name for this test run."
+    exit
+fi
+
+set -e
+set -x
+
+dir="/tmp/ramdisk"
+[ -d "$dir" ] || mkdir "$dir"
+
+mount | grep -q "^tmpfs on /tmp/ramdisk" || sudo mount -t tmpfs -o size=256M tmpfs "$dir"
+
+rm -rf /tmp/ramdisk/*
+
+# new-workdir is found inside git's contrib,
+#   /usr/share/doc/git/contrib/workdir/git-new-workdir
+git new-workdir scraper-stats stats-"$name" test
+rm stats-"$name"/*
+
+REPOS_DIR="$dir" TMPDIR="$dir" \
+    DUMP_REPO="stats-$name" PURGE_REPOS=1 \
+    ./scraper scripts/*
+
+# unmount?
+
