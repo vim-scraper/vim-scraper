@@ -1459,7 +1459,22 @@ elsif ARGV[0] == '--all'
     $pushing = false
     perform_full
 else
-    ARGV.each do |arg|
+    args = ARGV
+    forked = false
+    if ENV['JOBS']
+        ENV['JOBS'].to_i.downto(2) do |i|
+            workunit = args.count / i
+            if i > 1 && workunit > 0 && fork.nil?
+                args = args[0..workunit-1]
+                break
+            else # parent
+                args = args[workunit..-1]
+                forked = true
+            end
+        end
+    end
+    puts "Processing #{args.size} units."
+    args.each do |arg|
         # if you're passing args, you probably don't want the scraper to quit
         # before it's finished processing them all.
         $max_run_time = 10.days
@@ -1490,6 +1505,7 @@ else
             raise "Could not recognize argument #{arg}"
         end
     end
+    Process.wait if forked
 end
 
 if $selenium
