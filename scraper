@@ -811,7 +811,7 @@ def debom str
     #    => false   # huh??
     # you have GOT to be kidding me.
 
-    raise "WRONG ENCODING: #{str.encoding}" unless str.encoding.to_s == "ASCII-8BIT"
+    raise "WRONG ENCODING: #{str.encoding}" unless str.encoding.to_s == "ASCII-8BIT" || str.encoding.to_s == "US-ASCII"
     if str.unpack("ccc") == [-17, -69, -65]
         str[3..-1]
     else
