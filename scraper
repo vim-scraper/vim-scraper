@@ -108,6 +108,9 @@ $textext = %w{au3 bat c cpp csh diff h klip patch pl pm ps py rb set sh snip sni
 # 1022 2668 2730, and 3080 have also been deleted but I give up.  This is good enough.
 $deleted_scripts = %w{364 548 549 550 762 1032 1129 1263 1280 1295 1301 1436 1452 1509 1562 1669 1789 1824 1949 2056 2172 2306 2309 2313 2316 2318 2323 2352 2456 2498 2664 2861 3076}
 
+# not sure why an author would leave a corrupt package on vim scripts forever but owell.
+$corrupted_packages = { 1609 => "2006-10-06 3.8" }
+
 # some scripts were created with the wrong type.  this fixes the ones that matter.
 #     http://groups.google.com/group/vim_use/msg/6f9f82e8c6fb4faa
 $script_type_fixes = { 1780 => 'syntax' }
@@ -1072,6 +1075,13 @@ def check_for_keymap_helper repo, script
 end
 
 
+def corrupted_package script, version
+    # returns true if this version has been hard-coded as corrupted
+    names = $corrupted_packages[script['script_id'].to_i]
+    names && [names].flatten.include?("#{version['date']} #{version['script_version']}")
+end
+
+
 def store_versions_in_repo repo, script
     committer = Gitrb::User.new($vimscripts_name, $vimscripts_email)
     puts "Processing script #{script['script_id']}: #{script['name']}"
@@ -1086,7 +1096,7 @@ def store_versions_in_repo repo, script
 
         author_name, author_email = fix_email_address(version['author'])
         author = Gitrb::User.new(author_name, author_email, Time.new(*version['date'].split('-'), 0, 0, 0, 0))
-        unless find_version(repo, version)
+        unless corrupted_package(script, version) || find_version(repo, version)
             puts "  adding #{version['filename']} #{version['date']} #{script_version(version)} to branch #{branch}"
             repo.transaction(fix_release_notes(version), author, committer) do
                 # delete all existing blobs since we replace everything with the new commit
