@@ -661,6 +661,26 @@ def write_script script
 end
 
 
+def compute_unique_tag tag, seen
+    while seen[tag]
+        # ack, it's a dupe!
+        tag.sub! /@(\d+)$/, ''
+        tag += "@" + (($1||0).to_i + 1).to_s
+    end
+    seen[tag] = true
+    tag
+end
+
+
+def dedup_script_versions script
+    # some scripts have versions with identical version numbers.  :(
+    seen = {}
+    script['versions'].reverse.each do |version|
+        version['script_version'] = compute_unique_tag version['script_version'], seen
+    end
+end
+
+
 def download_file url, dest
     retryable(:tries => 4, :sleep => 10) do |retries|
         puts "  downloading #{url} to #{dest}#{retries > 0 ? "  TRY #{retries}" : ""}"
@@ -1317,6 +1337,8 @@ def perform_download script_file
     return [nil,-1] unless script_file
     script = JSON.parse(File.read(script_file))
     repo = open_repo script['script_id'], script['name']
+
+    dedup_script_versions script
 
     # store the script file in the repo it creates
     File.open(File.join(repo.path, $git_script_file), 'w') { |f|
