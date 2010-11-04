@@ -6,7 +6,8 @@
 #
 # DEPENDENCIES
 # Make sure you have vim, unzip, unrar, 7za, and xz installed.
-#    apt-get install vim unzip unrar p7zip-full xz-utils
+#   Ubuntu: sudo apt-get install vim unzip unrar p7zip-full xz-utils
+#   Macintosh: sudo port install unrar p7zip xz
 #
 # FULL SCRAPE:
 # To start cold with a full scrape, do this:
@@ -109,7 +110,8 @@ $textext = %w{au3 bat c cpp csh diff h klip patch pl pm ps py rb set sh snip sni
 $deleted_scripts = %w{364 548 549 550 762 1032 1129 1263 1280 1295 1301 1436 1452 1509 1562 1669 1789 1824 1949 2056 2172 2306 2309 2313 2316 2318 2323 2352 2456 2498 2664 2861 3076}
 
 # not sure why an author would leave a corrupt package on vim scripts forever but owell.
-$corrupted_packages = { 1609 => "2006-10-06 3.8" }
+$corrupted_packages = { 1609 => ["2006-10-06 3.8", "2006-10-13 3.9",
+	"2006-11-07 4.1.0", "2006-11-08 4.2.0", "2006-11-18 4.3.0"] }
 
 # some scripts were created with the wrong type.  this fixes the ones that matter.
 #     http://groups.google.com/group/vim_use/msg/6f9f82e8c6fb4faa
@@ -775,7 +777,7 @@ def extract_vimball repo, script, vimball
         # some vimballs leave garbage in the current directory.  :(
         Dir.mktmpdir('scraper') do |scratchdir|
             Dir.chdir(scratchdir) do
-                cmd = ['/usr/bin/vim', vimball, '-X', '-n', '-c', ':set nomore', '-c',
+                cmd = ['vim', vimball, '-X', '-n', '-c', ':set nomore', '-c',
                     ":set runtimepath=#{tmpdir.gsub(' ', '\ ')},$VIMRUNTIME", '-c', ':so %', '-c', ':q']
                 raise "couldn't run #{cmd.join(' ')}: #{$?}" unless system(*cmd)
                 copy_filesystem(repo, script, tmpdir) { |path| path == '.VimballRecord' || path == 'doc/tags' }
@@ -807,7 +809,7 @@ def unshell(repo, script, localpath, cmd)
         Dir.chdir(tmpdir) do
             cmd = [*cmd, fullpath]
             # unzip returns a 1 exit code for success with warnings
-            unless system(*cmd) || (cmd[0] == '/usr/bin/unzip' && $?.exitstatus == 1)
+            unless system(*cmd) || (cmd[0] == 'unzip' && $?.exitstatus == 1)
                 raise "couldn't run #{cmd.join(' ')}: #{$?}"
             end
         end
@@ -851,7 +853,7 @@ end
 
 
 def unxz(file)
-      IO.popen(['/usr/bin/xz', '-d', '--to-stdout', file]) do |contents|
+      IO.popen(['xz', '-d', '--to-stdout', file]) do |contents|
           yield(contents)
       end
 end
@@ -973,7 +975,7 @@ def handle_zipfile(repo, script, pkgfile)
     # oh FORGET IT, we need to shell out for every zip.
     # Ruby's built-in unzipper appears to be fatally flawed.  :(
     if true || tough_zipfiles.include?(pkgfile) || script['script_id'].to_i > 3110
-        unshell(repo, script, pkgfile, ['/usr/bin/unzip'])
+        unshell(repo, script, pkgfile, ['unzip'])
     else
         copy_zipfile(repo, script, pkgfile)
     end
@@ -993,8 +995,8 @@ def add_version(repo, version, script)
     when /\.t?gz$/i then ungzip(pkgfile) { |contents| sense_zipped_file(repo, script, version['filename'].sub(/\.t?gz$/, ''), contents) }
     when /\.t?bz2?$/i then unbzip2(pkgfile) { |contents| sense_zipped_file(repo, script, version['filename'].sub(/\.t?bz2?$/, ''), contents) }
     when /\.xz$/ then unxz(pkgfile) { |contents| sense_zipped_file(repo, script, version['filename'].sub(/\.xz$/, ''), contents) }
-    when /\.7z$/ then unshell(repo, script, pkgfile, ['/usr/bin/7za', 'x'])
-    when /\.rar$/ then unshell(repo, script, pkgfile, ['/usr/bin/unrar', 'x'])
+    when /\.7z$/ then unshell(repo, script, pkgfile, ['7za', 'x'])
+    when /\.rar$/ then unshell(repo, script, pkgfile, ['unrar', 'x'])
     when /\.vba$|\.vimball$/ then unvimball(repo, script, pkgfile)
     else
         # probably need to add a new text file extension to $textext.
