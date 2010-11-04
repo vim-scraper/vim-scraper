@@ -785,6 +785,17 @@ def extract_vimball repo, script, vimball
 end
 
 
+def vimball_is_valid contents
+    # all vimballs must start with "UseVimball" on the first non-blank,
+    # non-comment line.  I suppose.
+    contents.lines.each do |l|
+        next if l =~ /^\s*("|$)/;  # skip blank lines and comments
+        return l =~ /^\s*UseVimball\s*$/
+    end
+    return false
+end
+
+
 def unvimball repo, script, vimball
     # vimball dies badly if called on a file with the wrong line endings
     # probably 10% of line endings are dos so we always perform the correction
@@ -792,6 +803,10 @@ def unvimball repo, script, vimball
         ball = File.read(vimball)
         ball.force_encoding("ASCII-8BIT")
         ball.gsub!("\r\n", "\n")
+        unless vimball_is_valid ball
+            puts "Vimball is corrupt!  #{vimball}"
+            throw :corrupt 
+        end
         # get rid of a useless "hit return to continue" prompt.  vimballs suck.
         ball.gsub!(/call input\(\"\<Hit Return to continue\>\"\)/, '') if script['script_id'].to_i == 293
         ttfile.write(ball)
@@ -1097,18 +1112,20 @@ def store_versions_in_repo repo, script
         author_name, author_email = fix_email_address(version['author'])
         author = Gitrb::User.new(author_name, author_email, Time.new(*version['date'].split('-'), 0, 0, 0, 0))
         unless corrupted_package(script, version) || find_version(repo, version)
-            puts "  adding #{version['filename']} #{version['date']} #{script_version(version)} to branch #{branch}"
-            repo.transaction(fix_release_notes(version), author, committer) do
-                # delete all existing blobs since we replace everything with the new commit
-                repo.root.to_a.map { |name,value| repo.root.delete(name) }
-                add_version repo, version, script
-                check_for_lone_dir repo, script
-                check_for_keymap_helper repo, script
-                check_for_readme_file repo
-                copy_file(repo, 'README', "This is a mirror of #{script_id_to_url(script['script_id'])}\n\n" + script['description'] + "\n") unless repo.root['README']
+            catch :corrupt do
+                puts "  adding #{version['filename']} #{version['date']} #{script_version(version)} to branch #{branch}"
+                repo.transaction(fix_release_notes(version), author, committer) do
+                    # delete all existing blobs since we replace everything with the new commit
+                    repo.root.to_a.map { |name,value| repo.root.delete(name) }
+                    add_version repo, version, script
+                    check_for_lone_dir repo, script
+                    check_for_keymap_helper repo, script
+                    check_for_readme_file repo
+                    copy_file(repo, 'README', "This is a mirror of #{script_id_to_url(script['script_id'])}\n\n" + script['description'] + "\n") unless repo.root['README']
+                end
+                tag_version repo, version
+                count += 1
             end
-            tag_version repo, version
-            count += 1
         end
     end
     count
