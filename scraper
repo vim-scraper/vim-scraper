@@ -40,9 +40,10 @@
 #   mv repos repos.orig
 #   ./scraper scripts/*
 #   rm scraper-stats/*
-#   ./dump-repo repos/*
+#   JOBS=4 ./dump-repo repos/*
 # Now, cd scraper-stats and run git status / git diff.
 # If anything's different, you'll know.
+# JOBS (optional): split args into N groups and run them in parallel.
 # This speeds things up but you need 4GB+ of ram for a full scrape.
 #     mkdir repos
 #     sudo mount -t tmpfs -o size=1600M tmpfs repos
@@ -1505,6 +1506,29 @@ def perform_continuous count
 end
 
 
+def fork_jobs args
+    # This helps a lot (14 mins to 9 mins) but could even be better.
+    # If 3 jobs are forked, 0-1100 gets done in 60% of the time of 2200-3300.
+    # Might fork batches of 10 at a time or something...  not sure it's
+    # worth the additional complexity just to save 30 sec though.
+    #   todo: what about randomizing the argument order before grouping them?
+    if ENV['JOBS']
+        ENV['JOBS'].to_i.downto(2) do |i|
+            workunit = args.count / i
+            if i > 1 && workunit > 0 && fork.nil?
+                args = args[0..workunit-1]
+                $child_number = i
+                break
+            else # parent
+                args = args[workunit..-1]
+            end
+        end
+        puts "Processing #{args.size} unit#{'s' if args.size != 1}."
+    end
+    args
+end
+
+
 $start_time = Time.now
 
 if ARGV.empty?
@@ -1524,21 +1548,7 @@ elsif ARGV[0] == '--all'
     $pushing = false
     perform_full
 else
-    args = ARGV
-    forked = false
-    if ENV['JOBS']
-        ENV['JOBS'].to_i.downto(2) do |i|
-            workunit = args.count / i
-            if i > 1 && workunit > 0 && fork.nil?
-                args = args[0..workunit-1]
-                break
-            else # parent
-                args = args[workunit..-1]
-                forked = true
-            end
-        end
-    end
-    puts "Processing #{args.size} units."
+    args = fork_jobs ARGV
     args.each do |arg|
         # if you're passing args, you probably don't want the scraper to quit
         # before it's finished processing them all.
@@ -1570,7 +1580,11 @@ else
             raise "Could not recognize argument #{arg}"
         end
     end
-    Process.wait if forked
+
+    unless $child_number || args.count == ARGV.count
+        puts "waiting for children to finish..."
+        Process.wait
+    end
 end
 
 if $selenium
@@ -1579,5 +1593,5 @@ if $selenium
 end
 
 stop = Time.now
-puts "done.  Run took #{'%.2f' % (stop-$start_time)} seconds or #{ '%.3f' % ((stop-$start_time)/60)} minutes"
+puts "done#{" #{$child_number}" if $child_number}.  Run took #{'%.2f' % (stop-$start_time)} seconds or #{ '%.3f' % ((stop-$start_time)/60)} minutes"
 
