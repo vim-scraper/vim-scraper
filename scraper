@@ -1070,6 +1070,7 @@ def add_version(repo, version, script)
     when /\.7z$/ then unshell(repo, script, pkgfile, ['/usr/bin/7za', 'x'])
     when /\.rar$/ then unshell(repo, script, pkgfile, ['/usr/bin/unrar', 'x'])
     when /\.vba$|\.vimball$/ then unvimball(repo, script, pkgfile)
+    when /\.gif$|\.jpe?g$|\.png$/ then copy_file repo, actual_name, File.read(pkgfile)
     else
         # probably need to add a new text file extension to $textext.
         # if not, it's probably a new compression format.
