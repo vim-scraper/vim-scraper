@@ -748,11 +748,16 @@ end
 def smart_copy_file repo, script, filename, contents
     filename = cleanpath(filename)
     if filename =~ /^[^\/]+\.vim/
+        # vimfile in the root directory
         encoded_contents = contents.dup    # this encoding stuff is killing me
         encoded_contents.force_encoding "ASCII-8BIT"
 
         # a .vim file in the root directory
-        if is_compiler_file encoded_contents
+        if filename =~ /_options\.vim$/
+            # convention seems to be to put a file of example options to
+            # copy into your vimrc in /plugin_options.name
+            copy_file(repo,  filename, contents)
+        elsif is_compiler_file encoded_contents
             copy_file(repo, "compiler/" + filename, contents)
         elsif is_keymap_file encoded_contents
             copy_file(repo, "keymap/" + filename, contents)
