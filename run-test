@@ -12,7 +12,6 @@
 # all the new emails and readmes.
 
 name="$1"
-
 if [ -z "$name" ]; then
     echo "Specify a name for this test run."
     exit
@@ -30,11 +29,12 @@ rm -rf /tmp/ramdisk/*
 
 # new-workdir is found inside git's contrib,
 #   /usr/share/doc/git/contrib/workdir/git-new-workdir
-git new-workdir scraper-stats stats-"$name" test
-rm stats-"$name"/*
+statsdir="$dir/stats-$name"
+git new-workdir scraper-stats "$statsdir" test
+rm "$statsdir"/*
 
 REPOS_DIR="$dir" TMPDIR="$dir" \
-    DUMP_REPO="stats-$name" PURGE_REPOS=1 \
+    DUMP_REPO="$statsdir" PURGE_REPOS=1 \
     ./scraper scripts/*
 
 # unmount?

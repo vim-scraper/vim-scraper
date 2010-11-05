@@ -41,9 +41,10 @@
 #   mv repos repos.orig
 #   ./scraper scripts/*
 #   rm scraper-stats/*
-#   ./dump-repo repos/*
+#   JOBS=4 ./dump-repo repos/*
 # Now, cd scraper-stats and run git status / git diff.
 # If anything's different, you'll know.
+# JOBS (optional): split args into N groups and run them in parallel.
 # This speeds things up but you need 4GB+ of ram for a full scrape.
 #     mkdir repos
 #     sudo mount -t tmpfs -o size=1600M tmpfs repos
@@ -110,6 +111,7 @@ $textext = %w{au3 bat c cpp csh diff h klip patch pl pm ps py rb set sh snip sni
 $deleted_scripts = %w{364 548 549 550 762 1032 1129 1263 1280 1295 1301 1436 1452 1509 1562 1669 1789 1824 1949 2056 2172 2306 2309 2313 2316 2318 2323 2352 2456 2498 2664 2861 3076}
 
 # not sure why an author would leave a corrupt package on vim scripts forever but owell.
+# also you can't trust script version and date to be unique: script 2709 SudoEdit.vim
 $corrupted_packages = { 1609 => ["2006-10-06 3.8", "2006-10-13 3.9",
 	"2006-11-07 4.1.0", "2006-11-08 4.2.0", "2006-11-18 4.3.0"] }
 
@@ -661,6 +663,26 @@ def write_script script
 end
 
 
+def compute_unique_tag tag, seen
+    while seen[tag]
+        # ack, it's a dupe!
+        tag.sub! /@(\d+)$/, ''
+        tag += "@" + (($1||0).to_i + 1).to_s
+    end
+    seen[tag] = true
+    tag
+end
+
+
+def dedup_script_versions script
+    # some scripts have versions with identical version numbers.  :(
+    seen = {}
+    script['versions'].reverse.each do |version|
+        version['script_version'] = compute_unique_tag version['script_version'], seen
+    end
+end
+
+
 def download_file url, dest
     retryable(:tries => 4, :sleep => 10) do |retries|
         puts "  downloading #{url} to #{dest}#{retries > 0 ? "  TRY #{retries}" : ""}"
@@ -792,9 +814,32 @@ def vimball_is_valid contents
     # non-comment line.  I suppose.
     contents.lines.each do |l|
         next if l =~ /^\s*("|$)/;  # skip blank lines and comments
-        return l =~ /^\s*UseVimball\s*$/
+        # Script 293 Utl has a crazy UseVimball line
+        return l =~ /UseVimball\s*$/
     end
     return false
+end
+
+
+def debom str
+    #   > f = File.read "packages/2709 - SudoEdit.vim/2009-07-08 0.5 SudoEdit.vba"
+    #   > b = f.lines.first
+    #    => "\" Vimball Archiver by Charles E. Campbell, Jr., Ph.D.\n" 
+    #   > b =~ /^"/
+    #    => nil    # what??
+    #   > a=b.dup; a.force_encoding("ASCII-8BIT")
+    #   > a[0]
+    #    => "\xEF"
+    #   > a[0] == "\xEF"
+    #    => false   # huh??
+    # you have GOT to be kidding me.
+
+    raise "WRONG ENCODING: #{str.encoding}" unless str.encoding.to_s == "ASCII-8BIT" || str.encoding.to_s == "US-ASCII"
+    if str.unpack("ccc") == [-17, -69, -65]
+        str[3..-1]
+    else
+        str
+    end
 end
 
 
@@ -805,7 +850,7 @@ def unvimball repo, script, vimball
         ball = File.read(vimball)
         ball.force_encoding("ASCII-8BIT")
         ball.gsub!("\r\n", "\n")
-        unless vimball_is_valid ball
+        unless vimball_is_valid debom(ball)
             puts "Vimball is corrupt!  #{vimball}"
             throw :corrupt 
         end
@@ -814,6 +859,19 @@ def unvimball repo, script, vimball
         ttfile.write(ball)
         ttfile.close
         extract_vimball(repo, script, ttfile.path)
+    end
+end
+
+
+# some scripts (3281) come inside archive files that set the wrong
+# permissions, like unreadable files and dirs.  Make sure every file
+# from an archive is readable and writable and every directory is rwx.
+def fix_permissions dir
+    Find.find(dir) do |path|
+        perms = File::Stat.new(path).mode
+        perms &= 0700
+        perms |= test(?d, path) ? 0700 : 0600
+        File.chmod perms, path
     end
 end
 
@@ -828,7 +886,8 @@ def unshell(repo, script, localpath, cmd)
                 raise "couldn't run #{cmd.join(' ')}: #{$?}"
             end
         end
-        copy_filesystem(repo, script, tmpdir)
+        fix_permissions tmpdir
+        copy_filesystem repo, script, tmpdir
     end
 end
 
@@ -1013,6 +1072,7 @@ def add_version(repo, version, script)
     when /\.7z$/ then unshell(repo, script, pkgfile, ['7za', 'x'])
     when /\.rar$/ then unshell(repo, script, pkgfile, ['unrar', 'x'])
     when /\.vba$|\.vimball$/ then unvimball(repo, script, pkgfile)
+    when /\.gif$|\.jpe?g$|\.png$/ then copy_file repo, actual_name, File.read(pkgfile)
     else
         # probably need to add a new text file extension to $textext.
         # if not, it's probably a new compression format.
@@ -1281,6 +1341,8 @@ def perform_download script_file
     script = JSON.parse(File.read(script_file))
     repo = open_repo script['script_id'], script['name']
 
+    dedup_script_versions script
+
     # store the script file in the repo it creates
     File.open(File.join(repo.path, $git_script_file), 'w') { |f|
         f.write JSON.pretty_generate(script) + "\n"
@@ -1469,6 +1531,29 @@ def perform_continuous count
 end
 
 
+def fork_jobs args
+    # This helps a lot (14 mins to 9 mins) but could even be better.
+    # If 3 jobs are forked, 0-1100 gets done in 60% of the time of 2200-3300.
+    # Might fork batches of 10 at a time or something...  not sure it's
+    # worth the additional complexity just to save 30 sec though.
+    #   todo: what about randomizing the argument order before grouping them?
+    if ENV['JOBS']
+        ENV['JOBS'].to_i.downto(2) do |i|
+            workunit = args.count / i
+            if i > 1 && workunit > 0 && fork.nil?
+                args = args[0..workunit-1]
+                $child_number = i
+                break
+            else # parent
+                args = args[workunit..-1]
+            end
+        end
+        puts "Processing #{args.size} unit#{'s' if args.size != 1}."
+    end
+    args
+end
+
+
 $start_time = Time.now
 
 if ARGV.empty?
@@ -1488,21 +1573,7 @@ elsif ARGV[0] == '--all'
     $pushing = false
     perform_full
 else
-    args = ARGV
-    forked = false
-    if ENV['JOBS']
-        ENV['JOBS'].to_i.downto(2) do |i|
-            workunit = args.count / i
-            if i > 1 && workunit > 0 && fork.nil?
-                args = args[0..workunit-1]
-                break
-            else # parent
-                args = args[workunit..-1]
-                forked = true
-            end
-        end
-    end
-    puts "Processing #{args.size} units."
+    args = fork_jobs ARGV
     args.each do |arg|
         # if you're passing args, you probably don't want the scraper to quit
         # before it's finished processing them all.
@@ -1534,7 +1605,11 @@ else
             raise "Could not recognize argument #{arg}"
         end
     end
-    Process.wait if forked
+
+    unless $child_number || args.count == ARGV.count
+        puts "waiting for children to finish..."
+        Process.wait
+    end
 end
 
 if $selenium
@@ -1543,5 +1618,5 @@ if $selenium
 end
 
 stop = Time.now
-puts "done.  Run took #{'%.2f' % (stop-$start_time)} seconds or #{ '%.3f' % ((stop-$start_time)/60)} minutes"
+puts "done#{" #{$child_number}" if $child_number}.  Run took #{'%.2f' % (stop-$start_time)} seconds or #{ '%.3f' % ((stop-$start_time)/60)} minutes"
 
