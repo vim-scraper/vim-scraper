@@ -2,6 +2,7 @@
 
 # Mass delete, just pass the IDs of the repos to delete and both
 # the github and the local repos/* repositories will be deleted.
+# You can also pass a name if the local repo has been deleted.
 #
 # Use this script to recreate repositories that need fixes.  First
 # get a list of IDs that need regenerating from run-test and its stats
@@ -10,9 +11,10 @@
 #
 # We do the delete and recreate in separate batches so if something
 # goes wrong in the middle, you don't delete a bunch of repos that
-# were just created correctly.
-#
-# TODO: rate limiting hasn't been tested.
+# were just created and pushed correctly.  Also, you might need to
+# wait for a few hours before deleting and pushing since github has
+# a really annoying bug where deleteing and recreating a repo with
+# the same name will just result in the old repo, not an empty one.
 
 
 require 'rubygems'
@@ -24,7 +26,7 @@ require 'json'
 
 $git_script_file = 'vim-script.json'
 creds = Hashie::Mash.new(JSON.parse(File.read('creds.json')))
-github = Octopussy::Client.new(creds)
+$github = Octopussy::Client.new(creds)
 
 
 # monkeypatch octopussy because its delete has a bug
@@ -37,11 +39,47 @@ Octopussy::Client.class_eval do
 end
 
 
+def delete_github_repos *names
+    call_count = 0
+    names.flatten.each do |name|
+        next unless name
+        begin
+            result = $github.delete name
+        rescue Exception => e
+            puts "could not remove #{name}: #{e}"
+            next
+        end
+
+        call_count += 1
+        if result
+            result = $github.delete name, result.delete_token
+            call_count += 1
+            if result.status == "deleted"
+                puts "removed #{name} from github"
+            else
+                puts "Unknown response from second stage for #{name}: #{result}"
+            end
+        else
+            puts "got #{result.inspect} trying to delete #{name}"
+        end
+
+        # make sure we don't bump into github's rate limit
+        if call_count >= 60
+            duration = Time.now - start
+            puts "at rate limit, sleeping for #{60 - duration} seconds"
+            sleep 60 - duration if duration < 60
+            start = Time.now
+            call_count = 0
+        end
+    end
+end
+
+
 def repo_dir dir
     return dir if test ?d, dir
     dirs = Dir.glob("repos/#{dir}*")
     if dirs.nil? || dirs.count == 0
-        puts "repos/#{dir}* does not exist!"
+        delete_github_repos dir
         return nil
     end
     # you get multiple repos with the same id when an author renames his script
@@ -50,7 +88,6 @@ def repo_dir dir
 end
 
 
-call_count = 0
 start = Time.now
 scripts = ARGV.map do |arg|
     path = repo_dir arg
@@ -61,39 +98,7 @@ scripts = ARGV.map do |arg|
     script
 end
 
-# delete github repos
-scripts.each do |script|
-    next unless script
-    begin
-        result = github.delete script.name
-    rescue Exception => e
-        puts "could not remove #{script.name}: #{e}"
-        next
-    end
-
-    call_count += 1
-    if result
-        result = github.delete script.name, result.delete_token
-        call_count += 1
-        if result.status == "deleted"
-            puts "removed #{script.name} from github"
-        else
-            puts "Unknown response from second stage for #{script.name}: #{result}"
-        end
-    else
-        puts "got #{result.inspect} trying to delete #{script.name}"
-    end
-
-    # make sure we don't bump into github's rate limit
-    if call_count >= 60
-        duration = Time.now - start
-        puts "at rate limit, sleeping for #{60 - duration} seconds"
-        sleep 60 - duration if duration < 60
-        start = Time.now
-        call_count = 0
-    end
-end
-
+delete_github_repos scripts.map { |script| script.name if script }
 
 scripts.each do |script|
     next unless script
