@@ -696,7 +696,7 @@ def copy_file repo, filename, contents
     raise "no data in #{filename}: #{contents.inspect}" unless contents
 
     # skip swapfiles that authors accidentally checked in
-    unless filename =~ /\.[^\/]+\.sw[n-p]$/
+    unless filename =~ /\.[^\/]+\.sw[n-p]$/ || filename =~ /~$/
         repo.root[filename] = Gitrb::Blob.new(:data => contents)
     end
 end
