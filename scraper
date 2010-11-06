@@ -747,7 +747,7 @@ end
 
 def smart_copy_file repo, script, filename, contents
     filename = cleanpath(filename)
-    if filename =~ /^[^\/]+\.vim/
+    if filename =~ /^[^\/]+\.vim$/
         # vimfile in the root directory
         encoded_contents = contents.dup    # this encoding stuff is killing me
         encoded_contents.force_encoding "ASCII-8BIT"
@@ -775,7 +775,7 @@ def smart_copy_file repo, script, filename, contents
                 raise "Don't know where to put #{filename} for #{script['script_type']}"
             end
         end
-    elsif filename =~ /^[^\/]+\.txt/
+    elsif filename =~ /^[^\/]+\.txt$/
         copy_file(repo, "doc/" + filename, contents)
     elsif filename =~ /^[^\/]+\/(#{$vimdirs.join('|')})\/([^\/]+)$/
         # developer put vimfiles in a subdir, i.e. fixit/plugin/fixit.vim.
