@@ -1,8 +1,16 @@
 #!/usr/bin/env ruby
 
-# Mass delete, just pass the names of the repos to delete as args.
-#   ./delete-repos spec.vim nlist.vim torte.vim
-# Be careful!
+# Mass delete, just pass the IDs of the repos to delete and both
+# the github and the local repos/* repositories will be deleted.
+#
+# Use this script to recreate repositories that need fixes.  First
+# get a list of IDs that need regenerating from run-test and its stats
+# then pass them on the command line to this script and then to the
+# scraper script.  All the named repos will be deleted and recreated.
+#
+# We do the delete and recreate in separate batches so if something
+# goes wrong in the middle, you don't delete a bunch of repos that
+# were just created correctly.
 #
 # TODO: rate limiting hasn't been tested.
 
@@ -14,8 +22,10 @@ Bundler.require
 require 'octopussy'
 require 'json'
 
+$git_script_file = 'vim-script.json'
 creds = Hashie::Mash.new(JSON.parse(File.read('creds.json')))
 github = Octopussy::Client.new(creds)
+
 
 # monkeypatch octopussy because its delete has a bug
 Octopussy::Client.class_eval do
@@ -26,21 +36,52 @@ Octopussy::Client.class_eval do
     end
 end
 
+
+def repo_dir dir
+    return dir if test ?d, dir
+    dirs = Dir.glob("repos/#{dir}*")
+    if dirs.nil? || dirs.count == 0
+        puts "repos/#{dir}* does not exist!"
+        return nil
+    end
+    # you get multiple repos with the same id when an author renames his script
+    raise "repos/#{dir}* has multiple: #{dirs.inspect}!" if dirs.count > 1
+    dirs
+end
+
+
 call_count = 0
 start = Time.now
-ARGV.each do |name|
-    result = github.delete(name)
+scripts = ARGV.map do |arg|
+    path = repo_dir arg
+    next unless path
+    contents = File.read File.join(path, $git_script_file)
+    script = Hashie::Mash.new JSON.parse(contents)
+    script.path = path
+    script
+end
+
+# delete github repos
+scripts.each do |script|
+    next unless script
+    begin
+        result = github.delete script.name
+    rescue Exception => e
+        puts "could not remove #{script.name}: #{e}"
+        next
+    end
+
     call_count += 1
     if result
-        result = github.delete name, result.delete_token
+        result = github.delete script.name, result.delete_token
         call_count += 1
         if result.status == "deleted"
-            puts "deleted #{name}"
+            puts "removed #{script.name} from github"
         else
-            puts "Unknown response from second stage for #{name}: #{result}"
+            puts "Unknown response from second stage for #{script.name}: #{result}"
         end
     else
-        puts "got #{result.inspect} trying to delete #{name}"
+        puts "got #{result.inspect} trying to delete #{script.name}"
     end
 
     # make sure we don't bump into github's rate limit
@@ -50,6 +91,17 @@ ARGV.each do |name|
         sleep 60 - duration if duration < 60
         start = Time.now
         call_count = 0
+    end
+end
+
+
+scripts.each do |script|
+    next unless script
+    begin
+        FileUtils.rm_rf script.path
+        puts "deleted #{script.path}"
+    rescue Exception => e
+        puts "could not delete #{script.path}: #{e}"
     end
 end
 
