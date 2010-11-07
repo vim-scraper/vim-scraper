@@ -15,6 +15,10 @@
 # wait for a few hours before deleting and pushing since github has
 # a really annoying bug where deleteing and recreating a repo with
 # the same name will just result in the old repo, not an empty one.
+# 
+# Or, now you can use FORCE=1 ./scraper 999
+# This doesn't update the script's description but usually that's not
+# needed and it's better than waiting for github to fix this bug!
 
 
 require 'rubygems'

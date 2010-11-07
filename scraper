@@ -1307,8 +1307,12 @@ def perform_push repo_name
     repo.git_remote('add', 'origin', remote_url(script))
     retryable(:tries => 6, :sleep => 15) do |retries|
         # Gitrb::CommandError is as close to a network timeout error as we're going to get
-        puts "  pushing #{script['script_id']} - #{script['name']}#{retries > 0 ? "  TRY #{retries}" : ""}"
-        repo.git_push('--tags', 'origin', *repo_heads(repo))
+        puts "  #{"force " if ENV['FORCE']}pushing #{script['script_id']} - #{script['name']}#{retries > 0 ? "  TRY #{retries}" : ""}"
+        args = ['--tags']
+        args << '--force' if ENV['FORCE']
+        args << 'origin'
+        args.push *repo_heads(repo)
+        repo.git_push(*args)
     end
 
     # sleep to avoid bumping into github's 60-per-minute API limit
