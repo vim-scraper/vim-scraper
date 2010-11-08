@@ -1,3 +1,9 @@
+Submit a patch to vim which allows git log --stat to display the line
+counts but not the graph.  git log --stat=0 should do it.  Nobody
+would be using 0 since it doesn't do anything useful anyway.
+
+----
+
 some upstream contributions:
 
 gitrb:

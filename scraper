@@ -109,7 +109,7 @@ $textext = %w{au3 bat c cpp csh diff h klip patch pl pm ps py rb set sh snip sni
 
 # vim.org doesn't offer any way to delete a script so people have invented all sorts of ways of doing it.
 # 1022 2668 2730, and 3080 have also been deleted but I give up.  This is good enough.
-$deleted_scripts = %w{364 548 549 550 762 1032 1129 1263 1280 1295 1301 1436 1452 1509 1562 1669 1789 1824 1949 2056 2172 2306 2309 2313 2316 2318 2323 2352 2456 2498 2664 2861 3076}
+$deleted_scripts = %w{364 548 549 550 762 1032 1129 1263 1280 1295 1301 1430 1436 1452 1509 1562 1669 1789 1824 1949 2056 2172 2306 2309 2313 2316 2318 2323 2352 2456 2498 2664 2861 3076}
 
 # not sure why an author would leave a corrupt package on vim scripts forever but owell.
 # also you can't trust script version and date to be unique: script 2709 SudoEdit.vim
@@ -156,7 +156,7 @@ module Hpricot
     def self.uxs(str)
         str = str.to_s
         str = str.dup.force_encoding('ISO-8859-1').encode('UTF-8') if str.encoding.to_s == 'ASCII-8BIT' || str.encoding.to_s == 'ISO-8859-1'
-        str.gsub(/\&(\w+);/) { [NamedCharacters[$1] || ??].pack("U*") }.
+        str.gsub(/\&(\w+);/) { [NamedCharacters[$1] || 63].pack("U*") }.
             gsub(/\&\#(\d+);/) { [$1.to_i].pack("U*") }
     end
 end
@@ -699,7 +699,7 @@ def copy_file repo, filename, contents
     raise "no data in #{filename}: #{contents.inspect}" unless contents
 
     # skip swapfiles that authors accidentally checked in
-    unless filename =~ /\.[^\/]+\.sw[n-p]$/
+    unless filename =~ /\.[^\/]+\.sw[n-p]$/ || filename =~ /~$/
         repo.root[filename] = Gitrb::Blob.new(:data => contents)
     end
 end
@@ -750,12 +750,16 @@ end
 
 def smart_copy_file repo, script, filename, contents
     filename = cleanpath(filename)
-    if filename =~ /^[^\/]+\.vim/
+    if filename =~ /^[^\/]+\.vim$/
+        # vimfile in the root directory
         encoded_contents = contents.dup    # this encoding stuff is killing me
         encoded_contents.force_encoding "ASCII-8BIT"
 
-        # a .vim file in the root directory
-        if is_compiler_file encoded_contents
+        if filename =~ /_options\.vim$/
+            # convention seems to be to put example options to copy into
+            # your vimrc in a file in the root dir called plugin_options.name
+            copy_file(repo,  filename, contents)
+        elsif is_compiler_file encoded_contents
             copy_file(repo, "compiler/" + filename, contents)
         elsif is_keymap_file encoded_contents
             copy_file(repo, "keymap/" + filename, contents)
@@ -773,8 +777,12 @@ def smart_copy_file repo, script, filename, contents
                 raise "Don't know where to put #{filename} for #{script['script_type']}"
             end
         end
-    elsif filename =~ /^[^\/]+\.txt/
+    elsif filename =~ /^[^\/]+\.txt$/
+        # docfile in the root directory
         copy_file(repo, "doc/" + filename, contents)
+    elsif filename =~ /(autoload|after)\/(#{$vimdirs.join('|')})\/([^\/]+)$/
+        # vimdir in autoload or after: a/b/autoload/plugin/fixit.vim
+        copy_file(repo, "#{$1}/#{$2}/#{$3}", contents)
     elsif filename =~ /^[^\/]+\/(#{$vimdirs.join('|')})\/([^\/]+)$/
         # developer put vimfiles in a subdir, i.e. fixit/plugin/fixit.vim.
         copy_file(repo, "#{$1}/#{$2}", contents)
@@ -784,13 +792,17 @@ def smart_copy_file repo, script, filename, contents
 end
 
 
-def copy_filesystem repo, script, dir
+def copy_filesystem repo, script, dir, smart
     Find.find(dir) do |path|
         next if test ?d, path
         localpath = path.sub(dir, '').sub(/^\/+/, '')
         next if localpath =~ /^\s*$/
         next if block_given? && yield(localpath)
-        smart_copy_file(repo, script, localpath, File.read(path))
+        if smart
+            smart_copy_file repo, script, localpath, File.read(path)
+        else
+            copy_file repo, localpath, File.read(path)
+        end
     end
 end
 
@@ -803,7 +815,7 @@ def extract_vimball repo, script, vimball
                 cmd = ['vim', vimball, '-X', '-n', '-c', ':set nomore', '-c',
                     ":set runtimepath=#{tmpdir.gsub(' ', '\ ')},$VIMRUNTIME", '-c', ':so %', '-c', ':q']
                 raise "couldn't run #{cmd.join(' ')}: #{$?}" unless system(*cmd)
-                copy_filesystem(repo, script, tmpdir) { |path| path == '.VimballRecord' || path == 'doc/tags' }
+                copy_filesystem(repo, script, tmpdir, false) { |path| path == '.VimballRecord' || path == 'doc/tags' }
             end
         end
     end
@@ -888,7 +900,7 @@ def unshell(repo, script, localpath, cmd)
             end
         end
         fix_permissions tmpdir
-        copy_filesystem repo, script, tmpdir
+        copy_filesystem repo, script, tmpdir, true
     end
 end
 
@@ -1305,8 +1317,12 @@ def perform_push repo_name
     repo.git_remote('add', 'origin', remote_url(script))
     retryable(:tries => 6, :sleep => 15) do |retries|
         # Gitrb::CommandError is as close to a network timeout error as we're going to get
-        puts "  pushing #{script['script_id']} - #{script['name']}#{retries > 0 ? "  TRY #{retries}" : ""}"
-        repo.git_push('--tags', 'origin', *repo_heads(repo))
+        puts "  #{"force " if ENV['FORCE']}pushing #{script['script_id']} - #{script['name']}#{retries > 0 ? "  TRY #{retries}" : ""}"
+        args = ['--tags']
+        args << '--force' if ENV['FORCE']
+        args << 'origin'
+        args.push *repo_heads(repo)
+        repo.git_push(*args)
     end
 
     # sleep to avoid bumping into github's 60-per-minute API limit
