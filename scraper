@@ -7,7 +7,8 @@
 # DEPENDENCIES
 # Make sure you have vim, unzip, unrar, 7za, and xz installed.
 #   Ubuntu: sudo apt-get install vim unzip unrar p7zip-full xz-utils
-#   Macintosh: sudo port install unrar p7zip xz
+#   Macintosh: sudo port install vim unrar p7zip xz
+#      (stock Snow Leopard Vim doesn't unvimball correctly, install from ports)
 #
 # FULL SCRAPE:
 # To start cold with a full scrape, do this:
