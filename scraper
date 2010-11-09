@@ -115,7 +115,8 @@ $corrupted_packages = { 1609 => "2006-10-06 3.8" }
 
 # some scripts were created with the wrong type.  this fixes the ones that matter.
 #     http://groups.google.com/group/vim_use/msg/6f9f82e8c6fb4faa
-$script_type_fixes = { 1780 => 'syntax' }
+# note that you must re-scrape after adding a fix!  re-generating is not sufficient.
+$script_type_fixes = { 93 => 'ftplugin', 1780 => 'syntax' }
 
 # at least one script is actually multiple scripts -- 790 has python.vim and python3.0.vim
 # this forces package names matching the regex out to a different branch
