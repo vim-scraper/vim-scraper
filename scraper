@@ -118,6 +118,13 @@ $corrupted_packages = { 1609 => "2006-10-06 3.8" }
 # note that you must re-scrape after adding a fix!  re-generating is not sufficient.
 $script_type_fixes = { 93 => 'ftplugin', 1780 => 'syntax' }
 
+# if the regex matches the path, the value is passed to gsub
+# and the result used as the new path.
+$file_location_fixes = {
+    284 =>  {      /([^\/]+\.vim)$/ => 'ftplugin/tex/\1' },
+    1095 => { /^.*\/([^\/]+\.vim)$/ => 'ftplugin/tex/\1' },
+}
+
 # at least one script is actually multiple scripts -- 790 has python.vim and python3.0.vim
 # this forces package names matching the regex out to a different branch
 $branch_versions = { 790 => { :branch => 'python3', :regex => /^python3\.0\.vim$/ } }
@@ -746,9 +753,24 @@ def is_keymap_file contents
 end
 
 
+# returns the new path if a change was made, or nil if not.
+def fix_file_location script, path
+    fix = $file_location_fixes[script['script_id'].to_i]
+    if fix
+        fix.each do |re,sub|
+            newpath = path.gsub re, sub
+            return newpath if newpath != path
+        end
+    end
+    return nil
+end
+
+
 def smart_copy_file repo, script, filename, contents
     filename = cleanpath(filename)
-    if filename =~ /^[^\/]+\.vim$/
+    if newpath = fix_file_location(script, filename)
+        copy_file repo, newpath, contents
+    elsif filename =~ /^[^\/]+\.vim$/
         # vimfile in the root directory
         encoded_contents = contents.dup    # this encoding stuff is killing me
         encoded_contents.force_encoding "ASCII-8BIT"
@@ -835,7 +857,7 @@ end
 def debom str
     #   > f = File.read "packages/2709 - SudoEdit.vim/2009-07-08 0.5 SudoEdit.vba"
     #   > b = f.lines.first
-    #    => "\" Vimball Archiver by Charles E. Campbell, Jr., Ph.D.\n" 
+    #    => "\" Vimball Archiver by Charles E. Campbell, Jr., Ph.D.\n"
     #   > b =~ /^"/
     #    => nil    # what??
     #   > a=b.dup; a.force_encoding("ASCII-8BIT")
@@ -863,7 +885,7 @@ def unvimball repo, script, vimball
         ball.gsub!("\r\n", "\n")
         unless vimball_is_valid debom(ball)
             puts "Vimball is corrupt!  #{vimball}"
-            throw :corrupt 
+            throw :corrupt
         end
         # get rid of a useless "hit return to continue" prompt.  vimballs suck.
         ball.gsub!(/call input\(\"\<Hit Return to continue\>\"\)/, '') if script['script_id'].to_i == 293
