@@ -813,13 +813,13 @@ def smart_copy_file repo, script, filename, contents
 end
 
 
-def copy_filesystem repo, script, dir, smart
+def copy_filesystem repo, script, dir, opts={}
     Find.find(dir) do |path|
         next if test ?d, path
         localpath = path.sub(dir, '').sub(/^\/+/, '')
         next if localpath =~ /^\s*$/
         next if block_given? && yield(localpath)
-        if smart
+        if opts[:smart]
             smart_copy_file repo, script, localpath, File.read(path)
         else
             copy_file repo, localpath, File.read(path)
@@ -836,7 +836,7 @@ def extract_vimball repo, script, vimball
                 cmd = ['/usr/bin/vim', vimball, '-X', '-n', '-c', ':set nomore', '-c',
                     ":set runtimepath=#{tmpdir.gsub(' ', '\ ')},$VIMRUNTIME", '-c', ':so %', '-c', ':q']
                 raise "couldn't run #{cmd.join(' ')}: #{$?}" unless system(*cmd)
-                copy_filesystem(repo, script, tmpdir, false) { |path| path == '.VimballRecord' || path == 'doc/tags' }
+                copy_filesystem(repo, script, tmpdir) { |path| path == '.VimballRecord' || path == 'doc/tags' }
             end
         end
     end
@@ -921,7 +921,7 @@ def unshell(repo, script, localpath, cmd)
             end
         end
         fix_permissions tmpdir
-        copy_filesystem repo, script, tmpdir, true
+        copy_filesystem repo, script, tmpdir, :smart => true
     end
 end
 
