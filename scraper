@@ -5,6 +5,7 @@
 # Released under the MIT License.
 #
 # DEPENDENCIES
+# This script requires Ruby 1.9.2+.
 # Make sure you have vim, unzip, unrar, 7za, and xz installed.
 #    apt-get install vim unzip unrar p7zip-full xz-utils
 #
@@ -1028,7 +1029,10 @@ def sense_file(repo, actual_name, pkgfile)
             # names and magic have failed us, copy these files over raw
             copy_file(repo, actual_name, File.read(pkgfile))
             actual_name = nil
+        elsif magic_type == 'application/zip' && extension_type.include?('application/x-java-archive')
+            # jarfiles sense as zipfiles so don't let the fixup code below "correct" the package extension
         elsif magic_type == 'application/zip'
+        # authors have uploaded a lot of compressed archives without the correct extension.
             actual_name += '.zip'
         elsif magic_type == 'application/x-gzip'
             actual_name += '.gz'
@@ -1058,7 +1062,7 @@ def sense_file(repo, actual_name, pkgfile)
             # odd that magic couldn't sense this valid tarfile.  owell, process it as normal.
         elsif extension_type.include?('application/x-tar') && magic_type == nil
             # magic has a bug where tarfiles are missed: http://github.com/minad/mimemagic/issues/#issue/1
-            # if this happens, we just blindly trust the extension.
+            # when this happens, we just blindly trust the extension.
         else
             # there's such a range of reasons why this will happen that there's nothing to do but
             # have a human improve this function to handle this case.  :(
@@ -1105,6 +1109,7 @@ def add_version(repo, version, script)
     when /\.7z$/ then unshell(repo, script, pkgfile, ['/usr/bin/7za', 'x'])
     when /\.rar$/ then unshell(repo, script, pkgfile, ['/usr/bin/unrar', 'x'])
     when /\.vba$|\.vimball$/ then unvimball(repo, script, pkgfile)
+    when /\.jar$/ then copy_file repo, actual_name, File.read(pkgfile)
     when /\.gif$|\.jpe?g$|\.png$/ then copy_file repo, actual_name, File.read(pkgfile)
     else
         # probably need to add a new text file extension to $textext.
