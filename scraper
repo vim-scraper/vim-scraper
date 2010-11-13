@@ -62,8 +62,6 @@ require 'open-uri'
 require 'cgi'
 require 'json'                # json gem
 require 'gitrb'               # gitrb gem
-require 'zip/zipfilesystem'   # rubyzip gem
-require 'archive/tar/minitar' # minitar gem
 require 'zlib'
 require 'bzip2'               # bzip2-ruby gem
 require 'mime/types'
@@ -926,30 +924,6 @@ def unshell(repo, script, localpath, cmd)
 end
 
 
-def copy_zipfile(repo, script, zip_path)
-    Zip::ZipFile.open(zip_path) do |zipfile|
-        zipfile.each do |entry|
-            next unless entry.file?
-            if entry.symlink?
-                puts "WARNING: ignoring symlink in #{zip_path}: #{entry.name}"
-            else
-                smart_copy_file(repo, script, entry.name, entry.get_input_stream.read)
-            end
-        end
-    end
-end
-
-
-def copy_tarfile(repo, script, tarfile)
-    Archive::Tar::Minitar::Reader.open(tarfile) do |tf|
-        tf.each_entry do |entry|
-            next unless entry.file?
-            smart_copy_file(repo, script, entry.full_name, entry.read || '')
-        end
-    end
-end
-
-
 def ungzip(file)
     Zlib::GzipReader.open(file) { |gz| yield(gz) }
 end
@@ -978,19 +952,20 @@ end
 
 
 def sense_zipped_file(repo, script, filename, infile)
-    # sense the payload of a gz or bz2 file.  don't want to recurse into sense_file: too complex.
+    # sense the payload of a compressed file.  don't want to recurse into sense_file: too complex.
     contents = infile.read
     contents.force_encoding('ASCII-8BIT')
-    if MimeMagic.by_magic(contents) == 'application/x-tar'
-        copy_tarfile(repo, script, StringIO.new(contents))
-    elsif contents[0..512] =~ /^\bUseVimball\s*$/
-        Tempfile.open('scraper') do |ttfile|
-            ttfile.write(contents)
-            ttfile.close
-            unvimball(repo, script, ttfile.path)
+    Tempfile.open('scraper') do |ttfile|
+        ttfile.write(contents)
+        ttfile.close
+
+        if MimeMagic.by_magic(contents) == 'application/x-tar'
+            unshell repo, script, ttfile.path, ['/bin/tar', 'xf']
+        elsif contents[0..512] =~ /^\bUseVimball\s*$/
+            unvimball repo, script, ttfile.path
+        else
+            smart_copy_file repo, script, filename, contents
         end
-    else
-        smart_copy_file(repo, script, filename, contents)
     end
 end
 
@@ -1073,26 +1048,6 @@ def sense_file(repo, actual_name, pkgfile)
 end
 
 
-def handle_zipfile(repo, script, pkgfile)
-    tough_zipfiles = [
-        # ruby's built-in unzipper can't handle these perfectly valid zipfiles:
-        'packages/2441 - pyflakes.vim/2009-12-29 1.57 pyflakes-vim.zip',
-        'packages/2441 - pyflakes.vim/2010-06-17 1.62 pyflakes-vim.zip',
-        # plus a bunch of files from scripts 3114, 3123, 3148, 3150, and 3169.
-        # to be safe we'll just shell out to unzip for everything # newer than 3110.
-        # http://www.ruby-forum.com/topic/211146#936159
-    ]
-
-    # oh FORGET IT, we need to shell out for every zip.
-    # Ruby's built-in unzipper appears to be fatally flawed.  :(
-    if true || tough_zipfiles.include?(pkgfile) || script['script_id'].to_i > 3110
-        unshell(repo, script, pkgfile, ['/usr/bin/unzip'])
-    else
-        copy_zipfile(repo, script, pkgfile)
-    end
-end
-
-
 def add_version(repo, version, script)
     # adds all the files in the package to the repo
     pkgfile = download_package(version, script)
@@ -1100,15 +1055,15 @@ def add_version(repo, version, script)
 
     case actual_name
     when nil then # do nothing
-    when /#{$textext}/ then smart_copy_file(repo, script, actual_name, File.read(pkgfile))
-    when /\.zip$/i then handle_zipfile(repo, script, pkgfile)
-    when /\.tar$/ then File.open(pkgfile, 'r') { |file| copy_tarfile(repo, script, file) }
+    when /#{$textext}/ then smart_copy_file repo, script, actual_name, File.read(pkgfile)
+    when /\.zip$/i then unshell repo, script, pkgfile, ['/usr/bin/unzip']
+    when /\.tar$/ then unshell repo, script, pkgfile, ['/bin/tar', 'xf']
     when /\.t?gz$/i then ungzip(pkgfile) { |contents| sense_zipped_file(repo, script, version['filename'].sub(/\.t?gz$/, ''), contents) }
     when /\.t?bz2?$/i then unbzip2(pkgfile) { |contents| sense_zipped_file(repo, script, version['filename'].sub(/\.t?bz2?$/, ''), contents) }
     when /\.xz$/ then unxz(pkgfile) { |contents| sense_zipped_file(repo, script, version['filename'].sub(/\.xz$/, ''), contents) }
-    when /\.7z$/ then unshell(repo, script, pkgfile, ['/usr/bin/7za', 'x'])
-    when /\.rar$/ then unshell(repo, script, pkgfile, ['/usr/bin/unrar', 'x'])
-    when /\.vba$|\.vimball$/ then unvimball(repo, script, pkgfile)
+    when /\.7z$/ then unshell repo, script, pkgfile, ['/usr/bin/7za', 'x']
+    when /\.rar$/ then unshell repo, script, pkgfile, ['/usr/bin/unrar', 'x']
+    when /\.vba$|\.vimball$/ then unvimball repo, script, pkgfile
     when /\.jar$/ then copy_file repo, actual_name, File.read(pkgfile)
     when /\.gif$|\.jpe?g$|\.png$/ then copy_file repo, actual_name, File.read(pkgfile)
     else
