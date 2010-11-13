@@ -817,17 +817,35 @@ def smart_copy_file repo, script, filename, contents
 end
 
 
+def fix_perms path
+    # some scripts (3281) come inside archive files that set the wrong
+    # permissions, like unreadable files and dirs.  Make sure every file
+    # from an archive is readable and writable and every directory is rwx.
+    perms = File::Stat.new(path).mode
+    perms &= 0700
+    perms |= test(?d, path) ? 0700 : 0600
+    File.chmod perms, path
+end
+
+
 def copy_filesystem repo, script, dir, opts={}
     Find.find(dir) do |path|
         next if test ?l, path
-        next unless test ?f, path
-        localpath = path.sub(dir, '').sub(/^\/+/, '')
-        next if localpath =~ /^\s*$/
-        next if block_given? && yield(localpath)
-        if opts[:smart]
-            smart_copy_file repo, script, localpath, File.read(path)
-        else
-            copy_file repo, localpath, File.read(path)
+
+        if test(?f, path) || test(?d, path)
+            fix_perms path
+        end
+
+        if test ?f, path
+            localpath = path.sub(dir, '').sub(/^\/+/, '')
+            next if localpath =~ /^\s*$/
+            next if block_given? && yield(localpath)
+
+            if opts[:smart]
+                smart_copy_file repo, script, localpath, File.read(path)
+            else
+                copy_file repo, localpath, File.read(path)
+            end
         end
     end
 end
@@ -902,21 +920,6 @@ def unvimball repo, script, vimball
 end
 
 
-# some scripts (3281) come inside archive files that set the wrong
-# permissions, like unreadable files and dirs.  Make sure every file
-# from an archive is readable and writable and every directory is rwx.
-def fix_permissions dir
-    Find.find(dir) do |path|
-        next if test ?l, path
-        next unless test(?f, path) || test(?d, path)
-        perms = File::Stat.new(path).mode
-        perms &= 0700
-        perms |= test(?d, path) ? 0700 : 0600
-        File.chmod perms, path
-    end
-end
-
-
 def unshell(repo, script, localpath, cmd)
     Dir.mktmpdir('scraper') do |tmpdir|
         fullpath = File.expand_path(localpath)
@@ -927,7 +930,6 @@ def unshell(repo, script, localpath, cmd)
                 raise "couldn't run #{cmd.join(' ')}: #{$?}"
             end
         end
-        fix_permissions tmpdir
         copy_filesystem repo, script, tmpdir, :smart => true
     end
 end
