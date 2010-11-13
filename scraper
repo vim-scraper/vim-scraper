@@ -813,7 +813,8 @@ end
 
 def copy_filesystem repo, script, dir, opts={}
     Find.find(dir) do |path|
-        next if test ?d, path
+        next if test ?l, path
+        next unless test ?f, path
         localpath = path.sub(dir, '').sub(/^\/+/, '')
         next if localpath =~ /^\s*$/
         next if block_given? && yield(localpath)
@@ -900,6 +901,8 @@ end
 # from an archive is readable and writable and every directory is rwx.
 def fix_permissions dir
     Find.find(dir) do |path|
+        next if test ?l, path
+        next unless test(?f, path) || test(?d, path)
         perms = File::Stat.new(path).mode
         perms &= 0700
         perms |= test(?d, path) ? 0700 : 0600
