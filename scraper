@@ -50,6 +50,13 @@
 #     sudo mount -t tmpfs -o size=1600M tmpfs repos
 # Remember to 'umount repos' when you're done with it.
 #
+# RESCUING:
+# If you deleted a script repo and want to restore your local copy
+# with the one on github:
+#    git clone --bare git://URL ID\ -\ NAME
+#    ./scraper ID      # to restore internal state
+# Now the script is exactly the same as if it had been scraped.
+#
 # to see dupe ids: cd repos; ls | cut -b -4 | sort | uniq -cd | sort
 
 
@@ -203,13 +210,12 @@ end
 def retryable(options = {}, &block)
     opts = { :tries => 1, :on => Exception, :sleep => 1 }.merge(options)
     return if opts[:tries] < 1
-    retry_exception = opts[:on]
     tries = 0
 
     if opts[:tries] > 1
         begin
             return yield tries
-        rescue retry_exception
+        rescue
             sleep opts[:sleep]
             retry if (tries += 1) < opts[:tries] - 1
         end
