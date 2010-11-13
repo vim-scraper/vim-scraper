@@ -831,6 +831,8 @@ end
 def copy_filesystem repo, script, dir, opts={}
     Find.find(dir) do |path|
         next if test ?l, path
+        # skip any file inside a vcs directory
+        next if path =~ /(?:^|\/)(\.git|.hg|\.bzr|\.svn)(?:$|\/)/i
 
         if test(?f, path) || test(?d, path)
             fix_perms path
