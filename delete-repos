@@ -44,6 +44,7 @@ end
 
 
 def delete_github_repos *names
+    start = Time.now
     call_count = 0
     names.flatten.each do |name|
         next unless name
@@ -92,7 +93,6 @@ def repo_dir dir
 end
 
 
-start = Time.now
 scripts = ARGV.map do |arg|
     path = repo_dir arg
     next unless path
