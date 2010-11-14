@@ -817,29 +817,36 @@ def smart_copy_file repo, script, filename, contents
 end
 
 
-def fix_perms path
-    # some scripts (3281) come inside archive files that set the wrong
-    # permissions, like unreadable files and dirs.  Make sure every file
-    # from an archive is readable and writable and every directory is rwx.
-    perms = File::Stat.new(path).mode
-    perms &= 0700
-    perms |= test(?d, path) ? 0700 : 0600
-    File.chmod perms, path
+def common_prefix set 
+    # http://stackoverflow.com/questions/1916218/find-the-longest-common-starting-substring-in-a-set-of-strings
+    chars = set.map {|w| w.split('') }
+    chars[0].zip(*chars[1..-1]).map { |c| c.uniq }.take_while { |c| c.size == 1 }.join
 end
 
 
 def copy_filesystem repo, script, dir, opts={}
+    paths = []
     Find.find(dir) do |path|
-        next if test ?l, path
-        # skip any file inside a vcs directory
-        next if path =~ /(?:^|\/)(\.git|.hg|\.bzr|\.svn)(?:$|\/)/i
-
-        if test(?f, path) || test(?d, path)
-            fix_perms path
+        if test(?l, path) or path =~ /(?:^|\/)(\.git|.hg|\.bzr|\.svn)$/i
+            Find.prune
+        else
+            # make sure all subdirs are readable
+            File.chmod 0700, path if test ?d, path
+            paths << path
         end
+    end
 
+    prefix = common_prefix paths[1..-1]   # first element is just the dir we're in
+    prefix.sub! /\/+[^\/]*$/, '' unless test ?d, prefix  # trim any partial filenames
+    prefix.sub! /\/*#{Regexp.union $vimdirs}\/*.*$/, ''  # don't trim any vim dirs
+
+    paths.each do |path|
         if test ?f, path
-            localpath = path.sub(dir, '').sub(/^\/+/, '')
+            # make all files rw and preserve the executable bit
+            mode = File::Stat.new(path).mode
+            File.chmod 0600 | (mode & 0700), path
+
+            localpath = path.sub /^#{Regexp.escape prefix}\/*/, ''
             next if localpath =~ /^\s*$/
             next if block_given? && yield(localpath)
 
