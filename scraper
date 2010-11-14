@@ -127,8 +127,9 @@ $script_type_fixes = { 93 => 'ftplugin', 1780 => 'syntax' }
 # if the regex matches the path, the value is passed to gsub
 # and the result used as the new path.
 $file_location_fixes = {
-    284 =>  {      /([^\/]+\.vim)$/ => 'ftplugin/tex/\1' },
-    1095 => { /^.*\/([^\/]+\.vim)$/ => 'ftplugin/tex/\1' },
+    284 =>  {      /([^\/]+\.vim)$/ => 'ftplugin/tex/\1' }, # all .vim files go in ftplugin/tex
+    1095 => { /^.*\/([^\/]+\.vim)$/ => 'ftplugin/tex/\1' }, # all .vim files go in ftplugin/tex
+    1771 => { /readme$/ => nil                           }, # has identical README and readme files.
 }
 
 # at least one script is actually multiple scripts -- 790 has python.vim and python3.0.vim
@@ -759,12 +760,19 @@ end
 
 
 # returns the new path if a change was made, or nil if not.
+# returns true if the file should just be suppressed.
 def fix_file_location script, path
     fix = $file_location_fixes[script['script_id'].to_i]
     if fix
         fix.each do |re,sub|
-            newpath = path.gsub re, sub
-            return newpath if newpath != path
+            if sub.nil?
+                # suppress the file if re matches
+                return path =~ re ? true : nil
+            else
+                # path substitution
+                newpath = path.gsub re, sub
+                return newpath if newpath != path
+            end
         end
     end
     return nil
@@ -774,7 +782,7 @@ end
 def smart_copy_file repo, script, filename, contents
     filename = cleanpath(filename)
     if newpath = fix_file_location(script, filename)
-        copy_file repo, newpath, contents
+        copy_file repo, newpath, contents unless newpath == true
     elsif filename =~ /^[^\/]+\.vim$/
         # vimfile in the root directory
         encoded_contents = contents.dup    # this encoding stuff is killing me
