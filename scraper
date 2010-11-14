@@ -108,7 +108,7 @@ $state_file = 'state.json'             # keeps track of what mode we're in (full
 $pushing = true             # set this to false to prevent pushing (normally, if we find changes in a repo, we push)
 $ignore_cache = false       # we pull from the webcache if we can, setting to true forces pulling from the network
 
-$vimdirs = %w{after autoload bin compiler colors doc ftdetect ftplugin indent plugin syntax}
+$vimdirs = %w{after autoload bin compiler colors doc ftdetect ftplugin indent keymap plugin syntax}
 $textext = %w{au3 bat c cpp csh diff h klip patch pl pm ps py rb set sh snip snippet snippets tcl txt xml vim vim.orig}.map { |x| "\\.#{x}$" }.join('|')
 
 # vim.org doesn't offer any way to delete a script so people have invented all sorts of ways of doing it.
@@ -854,7 +854,14 @@ def copy_filesystem repo, script, dir, opts={}
             mode = File::Stat.new(path).mode
             File.chmod 0600 | (mode & 0700), path
 
-            localpath = path.sub /^#{Regexp.escape prefix}\/*/, ''
+            if opts[:smart]
+                # trim as much as we can off the front of the path
+                localpath = path.sub /^#{Regexp.escape prefix}\/*/, ''
+            else
+                # use the archive location as the path
+                localpath = path.sub /^#{Regexp.escape dir}\/*/, ''
+            end
+
             next if localpath =~ /^\s*$/
             next if block_given? && yield(localpath)
 
