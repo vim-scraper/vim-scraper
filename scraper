@@ -1128,29 +1128,6 @@ def find_version repo, version
 end
 
 
-def copy_tree repo, script, tree, inpath=[]
-    tree.to_a.each do |name, value|
-        path = inpath + [name]
-        if value.type == :blob
-            smart_copy_file(repo, script, path.join('/'), value.data)
-        else
-            copy_tree(repo, script, value, path)
-        end
-    end
-end
-
-
-def check_for_lone_dir repo, script
-    return unless repo.root.count == 1
-    loner = repo.root.first.first
-    return if $vimdirs.include? loner
-    if repo.root[loner].type == :tree
-        # copy contents of the directory into the root
-        copy_tree repo, script, repo.root.delete(loner)
-    end
-end
-
-
 def check_for_readme_file repo
     # we drop a README file into each repo.  don't want to conflict with one already there.
     repo.root.to_a.each do |name, value|
@@ -1208,7 +1185,6 @@ def store_versions_in_repo repo, script
                     # delete all existing blobs since we replace everything with the new commit
                     repo.root.to_a.map { |name,value| repo.root.delete(name) }
                     add_version repo, version, script
-                    check_for_lone_dir repo, script
                     check_for_keymap_helper repo, script
                     check_for_readme_file repo
                     copy_file(repo, 'README', "This is a mirror of #{script_id_to_url(script['script_id'])}\n\n" + script['description'] + "\n") unless repo.root['README']
