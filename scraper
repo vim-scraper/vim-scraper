@@ -137,6 +137,12 @@ $file_location_fixes = {
 # this forces package names matching the regex out to a different branch
 $branch_versions = { 790 => { :branch => 'python3', :regex => /^python3\.0\.vim$/ } }
 
+# Vimballs are normally correct so we copy them straight over, we don't try to fix them
+# (unlike .zips and .tgzs which are normally very broken).  3027's author appears to have
+# produced a broken vimball by balling up as root his home dir and .vim dir...   not very
+# notable except that it's for grsecurity.  :)
+$force_smart = { 3027 => true }
+
 
 Dir.mkdir $scripts_dir unless test ?d, $scripts_dir
 Dir.mkdir $repos_dir unless test ?d, $repos_dir
@@ -841,36 +847,33 @@ def copy_filesystem repo, script, dir, opts={}
         else
             # make sure all subdirs are readable
             File.chmod 0700, path if test ?d, path
-            paths << path
+            # only work on files, and ignore anything that the caller says should be skipped
+            paths << path if test(?f, path) && (block_given? ? !yield(path) : true)
         end
     end
 
-    prefix = common_prefix paths[1..-1]   # first element is just the dir we're in
+    return if paths.empty?    # script 1433 is all directories, no files!
+    prefix = paths.count == 1 ?  File.dirname(paths.first) : common_prefix(paths)
     prefix.sub! /\/+[^\/]*$/, '' unless test ?d, prefix  # trim any partial filenames
     prefix.sub! /(?:^|\/)#{Regexp.union $vimdirs}(?:\/.*|$)/, ''  # don't trim any vim dirs
 
     paths.each do |path|
-        if test ?f, path
-            # make all files rw and preserve the executable bit
-            mode = File::Stat.new(path).mode
-            File.chmod 0600 | (mode & 0700), path
+        # make all files rw and preserve the executable bit
+        mode = File::Stat.new(path).mode
+        File.chmod 0600 | (mode & 0700), path
 
-            if opts[:smart]
-                # trim as much as we can off the front of the path
-                localpath = path.sub /^#{Regexp.escape prefix}\/*/, ''
-            else
-                # use the archive location as the path
-                localpath = path.sub /^#{Regexp.escape dir}\/*/, ''
-            end
+        if opts[:smart] || $force_smart[script['script_id'].to_i]
+            # trim as much as we can off the front of the path
+            localpath = path.sub /^#{Regexp.escape prefix}\/*/, ''
+        else
+            # use the archive location as the path
+            localpath = path.sub /^#{Regexp.escape dir}\/*/, ''
+        end
 
-            next if localpath =~ /^\s*$/
-            next if block_given? && yield(localpath)
-
-            if opts[:smart]
-                smart_copy_file repo, script, localpath, File.read(path)
-            else
-                copy_file repo, localpath, File.read(path)
-            end
+        if opts[:smart]
+            smart_copy_file repo, script, localpath, File.read(path)
+        else
+            copy_file repo, localpath, File.read(path)
         end
     end
 end
@@ -884,7 +887,7 @@ def extract_vimball repo, script, vimball
                 cmd = ['/usr/bin/vim', vimball, '-X', '-n', '-c', ':set nomore', '-c',
                     ":set runtimepath=#{tmpdir.gsub(' ', '\ ')},$VIMRUNTIME", '-c', ':so %', '-c', ':q']
                 raise "couldn't run #{cmd.join(' ')}: #{$?}" unless system(*cmd)
-                copy_filesystem(repo, script, tmpdir) { |path| path == '.VimballRecord' || path == 'doc/tags' }
+                copy_filesystem(repo, script, tmpdir) { |path| path =~ /\.VimballRecord$/ || path =~ /doc\/tags$/ }
             end
         end
     end
