@@ -951,7 +951,7 @@ def unvimball repo, script, vimball
 end
 
 
-def unshell(repo, script, localpath, cmd)
+def unshell repo, script, localpath, cmd
     Dir.mktmpdir('scraper') do |tmpdir|
         fullpath = File.expand_path(localpath)
         Dir.chdir(tmpdir) do
@@ -966,24 +966,24 @@ def unshell(repo, script, localpath, cmd)
 end
 
 
-def ungzip(file)
+def ungzip file
     Zlib::GzipReader.open(file) { |gz| yield(gz) }
 end
 
 
-def unbzip2(file)
+def unbzip2 file
     Bzip2::Reader.open(file) { |bz| yield(bz) }
 end
 
 
-def unxz(file)
+def unxz file
       IO.popen(['/usr/bin/xz', '-d', '--to-stdout', file]) do |contents|
           yield(contents)
       end
 end
 
 
-def download_package(version, script)
+def download_package version, script
     pkgname = "#{version['date']} #{filenameify(script_version(version))} #{filenameify(version['filename'])}"
     pkgdir = File.join($packages_dir, "#{'%04d' % script['script_id']} - #{filenameify(script['name'])}")
     Dir.mkdir pkgdir unless test ?d, pkgdir
@@ -993,7 +993,7 @@ def download_package(version, script)
 end
 
 
-def sense_zipped_file(repo, script, filename, infile)
+def sense_zipped_file repo, script, filename, infile
     # sense the payload of a compressed file.  don't want to recurse into sense_file: too complex.
     contents = infile.read
     contents.force_encoding('ASCII-8BIT')
@@ -1012,12 +1012,12 @@ def sense_zipped_file(repo, script, filename, infile)
 end
 
 
-def is_some_sort_of_zipfile(type)
+def is_some_sort_of_zipfile type
     type.include?('application/zip') || type.include?('application/x-gzip') || type.include?('application/x-bzip')
 end
 
 
-def sense_file(repo, actual_name, pkgfile)
+def sense_file repo, actual_name, pkgfile
     # some files lie about their type (claim to be .zips but are just .vim files).  fix em.
     extension_type = MIME::Types.type_for(actual_name)
     magic_type = File.open(pkgfile) { |f| MimeMagic.by_magic(f) }
@@ -1090,7 +1090,7 @@ def sense_file(repo, actual_name, pkgfile)
 end
 
 
-def add_version(repo, version, script)
+def add_version repo, version, script
     # adds all the files in the package to the repo
     pkgfile = download_package(version, script)
     actual_name = sense_file(repo, version['filename'], pkgfile)
@@ -1116,13 +1116,13 @@ def add_version(repo, version, script)
 end
 
 
-def tag_version(repo, version)
+def tag_version repo, version, branch
     ENV['GIT_COMMITTER_NAME'] = $vimscripts_name
     ENV['GIT_COMMITTER_EMAIL'] = $vimscripts_email
     sver = script_version(version)
-    repo.git_tag('-a', gittagify(sver), '-m', "tag #{sver}")
-    ENV.delete('GIT_COMMITTER_NAME')
-    ENV.delete('GIT_COMMITTER_EMAIL')
+    repo.git_tag '-a', gittagify(sver), '-m', "tag #{sver}", branch
+    ENV.delete 'GIT_COMMITTER_NAME'
+    ENV.delete 'GIT_COMMITTER_EMAIL'
 end
 
 
@@ -1196,7 +1196,7 @@ def store_versions_in_repo repo, script
                     check_for_readme_file repo
                     copy_file(repo, 'README', "This is a mirror of #{script_id_to_url(script['script_id'])}\n\n" + script['description'] + "\n") unless repo.root['README']
                 end
-                tag_version repo, version
+                tag_version repo, version, branch
                 count += 1
             end
         end
