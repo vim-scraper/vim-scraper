@@ -125,7 +125,8 @@ $corrupted_packages = { 1609 => "2006-10-06 3.8" }
 $script_type_fixes = { 93 => 'ftplugin', 1780 => 'syntax' }
 
 # if the regex matches the path, the value is passed to gsub
-# and the result used as the new path.
+# and the result used as the new path.  note: doesn't work for vimballs
+# also doesn't work for gifs and a few others, but that's easy to fix.
 $file_location_fixes = {
     284 =>  {      /([^\/]+\.vim)$/ => 'ftplugin/tex/\1' }, # all .vim files go in ftplugin/tex
     1095 => { /^.*\/([^\/]+\.vim)$/ => 'ftplugin/tex/\1' }, # all .vim files go in ftplugin/tex
@@ -846,7 +847,7 @@ def copy_filesystem repo, script, dir, opts={}
 
     prefix = common_prefix paths[1..-1]   # first element is just the dir we're in
     prefix.sub! /\/+[^\/]*$/, '' unless test ?d, prefix  # trim any partial filenames
-    prefix.sub! /\/*#{Regexp.union $vimdirs}\/*.*$/, ''  # don't trim any vim dirs
+    prefix.sub! /(?:^|\/)#{Regexp.union $vimdirs}(?:\/.*|$)/, ''  # don't trim any vim dirs
 
     paths.each do |path|
         if test ?f, path
