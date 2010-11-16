@@ -116,24 +116,28 @@ $textext = %w{au3 bat c cpp csh diff h klip patch pl pm ps py rb set sh snip sni
 $deleted_scripts = %w{364 548 549 550 762 1032 1129 1263 1280 1295 1301 1430 1436 1452 1509 1562 1669 1789 1824 1949 2056 2172 2306 2309 2313 2316 2318 2323 2352 2456 2498 2664 2861 3076}
 
 # not sure why an author would leave a corrupt package on vim scripts forever but owell.
-# also you can't trust script version and date to be unique: script 2709 SudoEdit.vim
-$corrupted_packages = {
+# also we can't trust the script version and date pair to be unique: script 2709 SudoEdit.vim
+$skip_packages = {
     1609 => "2006-10-06 3.8",
-    3075 => ["2010-07-28 0.12", "2010-07-28 0.11"]
+    3075 => ["2010-07-28 0.12", "2010-07-28 0.11"],
 }
 
 # some scripts were created with the wrong type.  this fixes the ones that matter.
 #     http://groups.google.com/group/vim_use/msg/6f9f82e8c6fb4faa
 # note that you must re-scrape after adding a fix!  re-generating is not sufficient.
-$script_type_fixes = { 93 => 'ftplugin', 1780 => 'syntax' }
+$script_type_fixes = {
+    93   => 'ftplugin',
+    1780 => 'syntax',
+}
 
 # if the regex matches the path, the value is passed to gsub
 # and the result used as the new path.  note: doesn't work for vimballs
 # also doesn't work for gifs and a few others, but that's easy to fix.
 $file_location_fixes = {
-    284 =>  {      /([^\/]+\.vim)$/ => 'ftplugin/tex/\1' }, # all .vim files go in ftplugin/tex
+    284  => {      /([^\/]+\.vim)$/ => 'ftplugin/tex/\1' }, # all .vim files go in ftplugin/tex
     1095 => { /^.*\/([^\/]+\.vim)$/ => 'ftplugin/tex/\1' }, # all .vim files go in ftplugin/tex
     1771 => { /readme$/ => nil                           }, # has identical README and readme files.
+    2651 => { /^(.*)Syntax(.*)$/ => '\1syntax\2'         }, # breaks on case sensitive filesystems
 }
 
 # at least one script is actually multiple scripts -- 790 has python.vim and python3.0.vim
@@ -1166,7 +1170,7 @@ end
 
 def corrupted_package script, version
     # returns true if this version has been hard-coded as corrupted
-    names = $corrupted_packages[script['script_id'].to_i]
+    names = $skip_packages[script['script_id'].to_i]
     names && [names].flatten.include?("#{version['date']} #{version['script_version']}")
 end
 
