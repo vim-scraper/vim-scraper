@@ -8,7 +8,7 @@ title: All Scripts
     <tr id="s<%= h script.script_id %>">
       <td><%= h script.script_id %></td>
       <td><%= h script.script_type %></td>
-      <td><a href="<%= h repo_url(script) %>"><%= h script.display_name %></a></td>
+      <td><a href="<%= h "/#{script.name}" %>"><%= h script.display_name %></a></td>
       <td><%= h script.summary %></td>
     </tr>
   <% end -%>

@@ -55,7 +55,8 @@
 # with the one on github:
 #    git clone --bare git://URL ID\ -\ NAME
 #    ./scraper ID      # to restore internal state
-# Now the script is exactly the same as if it had been scraped.
+# Now the script is exactly the same as if it had been scraped
+# locally from the start.
 #
 # to see dupe ids: cd repos; ls | cut -b -4 | sort | uniq -cd | sort
 
@@ -124,7 +125,8 @@ $skip_packages = {
 
 # some scripts were created with the wrong type.  this fixes the ones that matter.
 #     http://groups.google.com/group/vim_use/msg/6f9f82e8c6fb4faa
-# note that you must re-scrape after adding a fix!  re-generating is not sufficient.
+# note that you must re-scrape after adding a fix ("./scraper 1780").
+# regenerating ("./scraper scripts/1780*") is not sufficient in this case.
 $script_type_fixes = {
     93   => 'ftplugin',
     1780 => 'syntax',
@@ -146,7 +148,7 @@ $branch_versions = { 790 => { :branch => 'python3', :regex => /^python3\.0\.vim$
 
 # Vimballs are normally correct so we copy them straight over, we don't try to fix them
 # (unlike .zips and .tgzs which are normally very broken).  3027's author appears to have
-# produced a broken vimball by balling up as root his home dir and .vim dir...   not very
+# produced a broken vimball by balling up his root user's .vim dir...   not very
 # notable except that it's for grsecurity.  :)
 $force_smart = { 3027 => true }
 
@@ -403,26 +405,53 @@ end
 
 
 def generate_docs
+    # a hash of all scripts (including ones abandoned by renames) indexed by script_id
     repos = Dir.entries($repos_dir).reject { |e| %w{. .. .git}.include?(e) }
-
-    # a hash of all scripts indexed by script_id
-    scripts = repos.sort.map do |dir|
+    all_scripts = repos.sort.map do |dir|
         Hashie::Mash.new(JSON.parse(File.read(File.join($repos_dir, dir, $git_script_file))))
+    end
+
+    # just the official scripts -- no renames, no deletions
+    script_files = Dir.entries($scripts_dir).reject { |e| %w{. .. .git}.include?(e) }
+    good_scripts = script_files.sort.map do |file|
+        Hashie::Mash.new(JSON.parse(File.read(File.join($scripts_dir, file))))
     end
 
     doc_dir = 'vim-scripts.github.com'
     Dir.mkdir doc_dir unless test ?d, doc_dir
-    template = Erubis::Eruby.new(File.new(File.join('views', 'scripts.html.erb')).read)
-    File.open("#{doc_dir}/scripts.html", 'w') do |f|
-        f.write template.result(:scripts => scripts)
+
+    index_template = Erubis::Eruby.new(File.new(File.join('views', 'scripts.html.erb')).read)
+    File.open("#{doc_dir}/vim/scripts.html", 'w') do |f|
+        f.write index_template.result(:scripts => good_scripts)
     end
 
-    File.open("#{doc_dir}/scripts.json", 'w') do |f|
-        f.write scripts.reduce({}) { |a,v| a[v.script_id.to_i] = v.name; a }.to_json
+
+    File.open("#{doc_dir}/api/scripts.json", 'w') do |f|
+        f.write good_scripts.map { |s| s.name }
     end
 
-    File.open("#{doc_dir}/script_original_names.json", 'w') do |f|
-        f.write scripts.reduce({}) { |a,v| a[v.script_id.to_i] = v.display_name; a }.to_json
+    File.open("#{doc_dir}/api/scripts_recent.json", 'w') do |f|
+        f.write good_scripts.map { |s|
+            recent_author_name, recent_author_email = fix_email_address(s.versions.last.author)
+            {
+                :n => s.name,
+                :s => s.summary,
+                :rv => s.versions.last.script_version,
+                :rd => s.versions.last.date,
+                :ra => recent_author_name,
+                :re => recent_author_email
+            }
+        }
+    end
+
+    # each script id and its official, current name.
+    File.open("#{doc_dir}/api/script_ids.json", 'w') do |f|
+        f.write good_scripts.reduce({}) { |a,v| a[v.script_id.to_i] = v.name; a }.to_json
+    end
+
+    # original display name for scripts, and their IDs.
+    File.open("#{doc_dir}/api/script_original_names.json", 'w') do |f|
+        f.write all_scripts.reduce({}) { |a,v| a[v.display_name] = v.name; a }.to_json
     end
 end
 
