@@ -114,7 +114,7 @@ $textext = %w{au3 bat c cpp csh diff h klip patch pl pm ps py rb set sh snip sni
 
 # vim.org doesn't offer any way to delete a script so people have invented all sorts of ways of doing it.
 # 1022 2668 2730, and 3080 have also been deleted but I give up.  This is good enough.
-$deleted_scripts = %w{364 548 549 550 762 1032 1129 1263 1280 1295 1301 1430 1436 1452 1509 1562 1669 1789 1824 1949 2056 2172 2306 2309 2313 2316 2318 2323 2352 2456 2498 2664 2861 3076}
+$deleted_scripts = %w{364 548 549 550 762 1032 1129 1263 1280 1295 1301 1430 1436 1452 1509 1562 1669 1789 1824 1949 2056 2172 2306 2309 2313 2316 2318 2323 2352 2456 2498 2664 2861 3076 3080}
 
 # not sure why an author would leave a corrupt package on vim scripts forever but owell.
 # also we can't trust the script version and date pair to be unique: script 2709 SudoEdit.vim
