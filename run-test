@@ -20,10 +20,24 @@ fi
 set -e
 set -x
 
-dir="/tmp/ramdisk"
-[ -d "$dir" ] || mkdir "$dir"
 
-mount | grep -q "^tmpfs on /tmp/ramdisk" || sudo mount -t tmpfs -o size=256M tmpfs "$dir"
+disk_mb=256
+if which hdid > /dev/null; then
+    dir="/Volumes/ramdisk"
+    mount | grep -q " on $dir" || (
+        dev="$(hdid -nomount ram://$(($disk_mb * 2048)))"
+        dev=$(echo $dev)    # because it contains garbage whitespace :(
+        diskutil erasevolume HFS+ ramdisk "$dev"
+    )
+    # newfs_hfs "$dev"
+    # mount -t hfs "$dev" "$dir"
+    # hdiutil detach DEVICE to reclaim the ramdisk
+else
+    dir="/tmp/ramdisk"
+    [ -d "$dir" ] || mkdir "$dir"
+    mount | grep -q "^tmpfs on /tmp/ramdisk" || sudo mount -t tmpfs -o size=${disk_mb}M tmpfs "$dir"
+    # and just use umount as usual to reclaim the ramdisk
+fi
 
 
 # new-workdir is found inside git's contrib,
