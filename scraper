@@ -5,6 +5,7 @@
 # Released under the MIT License.
 #
 # DEPENDENCIES
+# This script requires Ruby 1.9.2+.
 # Make sure you have vim, unzip, unrar, 7za, and xz installed.
 #   Ubuntu: sudo apt-get install vim unzip unrar p7zip-full xz-utils
 #   Macintosh: sudo port install vim unrar p7zip xz
@@ -51,6 +52,14 @@
 #     sudo mount -t tmpfs -o size=1600M tmpfs repos
 # Remember to 'umount repos' when you're done with it.
 #
+# RESCUING:
+# If you deleted a script repo and want to restore your local copy
+# with the one on github:
+#    git clone --bare git://URL ID\ -\ NAME
+#    ./scraper ID      # to restore internal state
+# Now the script is exactly the same as if it had been scraped
+# locally from the start.
+#
 # to see dupe ids: cd repos; ls | cut -b -4 | sort | uniq -cd | sort
 
 
@@ -63,8 +72,6 @@ require 'open-uri'
 require 'cgi'
 require 'json'                # json gem
 require 'gitrb'               # gitrb gem
-require 'zip/zipfilesystem'   # rubyzip gem
-require 'archive/tar/minitar' # minitar gem
 require 'zlib'
 require 'bzip2'               # bzip2-ruby gem
 require 'mime/types'
@@ -104,25 +111,48 @@ $state_file = 'state.json'             # keeps track of what mode we're in (full
 $pushing = true             # set this to false to prevent pushing (normally, if we find changes in a repo, we push)
 $ignore_cache = false       # we pull from the webcache if we can, setting to true forces pulling from the network
 
-$vimdirs = %w{after autoload bin colors doc ftdetect ftplugin indent plugin syntax}
+$vimdirs = %w{after autoload bin compiler colors doc ftdetect ftplugin indent keymap plugin syntax}
 $textext = %w{au3 bat c cpp csh diff h klip patch pl pm ps py rb set sh snip snippet snippets tcl txt xml vim vim.orig}.map { |x| "\\.#{x}$" }.join('|')
 
 # vim.org doesn't offer any way to delete a script so people have invented all sorts of ways of doing it.
 # 1022 2668 2730, and 3080 have also been deleted but I give up.  This is good enough.
-$deleted_scripts = %w{364 548 549 550 762 1032 1129 1263 1280 1295 1301 1430 1436 1452 1509 1562 1669 1789 1824 1949 2056 2172 2306 2309 2313 2316 2318 2323 2352 2456 2498 2664 2861 3076}
+$deleted_scripts = %w{364 548 549 550 762 1032 1129 1263 1280 1295 1301 1430 1436 1452 1509 1562 1669 1789 1824 1949 2056 2172 2306 2309 2313 2316 2318 2323 2352 2456 2498 2664 2861 3076 3080}
 
 # not sure why an author would leave a corrupt package on vim scripts forever but owell.
-# also you can't trust script version and date to be unique: script 2709 SudoEdit.vim
-$corrupted_packages = { 1609 => ["2006-10-06 3.8", "2006-10-13 3.9",
-	"2006-11-07 4.1.0", "2006-11-08 4.2.0", "2006-11-18 4.3.0"] }
+# also we can't trust the script version and date pair to be unique: script 2709 SudoEdit.vim
+$skip_packages = {
+    1609 =>  ["2006-10-06 3.8", "2006-10-13 3.9", "2006-11-07 4.1.0", "2006-11-08 4.2.0", "2006-11-18 4.3.0"],
+    3075 => ["2010-07-28 0.12", "2010-07-28 0.11"],
+}
 
 # some scripts were created with the wrong type.  this fixes the ones that matter.
 #     http://groups.google.com/group/vim_use/msg/6f9f82e8c6fb4faa
-$script_type_fixes = { 1780 => 'syntax' }
+# note that you must re-scrape after adding a fix ("./scraper 1780").
+# regenerating ("./scraper scripts/1780*") is not sufficient in this case.
+$script_type_fixes = {
+    93   => 'ftplugin',
+    1780 => 'syntax',
+}
+
+# if the regex matches the path, the value is passed to gsub
+# and the result used as the new path.  note: doesn't work for vimballs
+# also doesn't work for gifs and a few others, but that's easy to fix.
+$file_location_fixes = {
+    284  => {      /([^\/]+\.vim)$/ => 'ftplugin/tex/\1' }, # all .vim files go in ftplugin/tex
+    1095 => { /^.*\/([^\/]+\.vim)$/ => 'ftplugin/tex/\1' }, # all .vim files go in ftplugin/tex
+    1771 => { /readme$/ => nil                           }, # has identical README and readme files.
+    2651 => { /^(.*)Syntax(.*)$/ => '\1syntax\2'         }, # breaks on case sensitive filesystems
+}
 
 # at least one script is actually multiple scripts -- 790 has python.vim and python3.0.vim
 # this forces package names matching the regex out to a different branch
 $branch_versions = { 790 => { :branch => 'python3', :regex => /^python3\.0\.vim$/ } }
+
+# Vimballs are normally correct so we copy them straight over, we don't try to fix them
+# (unlike .zips and .tgzs which are normally very broken).  3027's author appears to have
+# produced a broken vimball by balling up his root user's .vim dir...   not very
+# notable except that it's for grsecurity.  :)
+$force_smart = { 3027 => true }
 
 
 Dir.mkdir $scripts_dir unless test ?d, $scripts_dir
@@ -199,13 +229,12 @@ end
 def retryable(options = {}, &block)
     opts = { :tries => 1, :on => Exception, :sleep => 1 }.merge(options)
     return if opts[:tries] < 1
-    retry_exception = opts[:on]
     tries = 0
 
     if opts[:tries] > 1
         begin
             return yield tries
-        rescue retry_exception
+        rescue
             sleep opts[:sleep]
             retry if (tries += 1) < opts[:tries] - 1
         end
@@ -378,26 +407,53 @@ end
 
 
 def generate_docs
+    # a hash of all scripts (including ones abandoned by renames) indexed by script_id
     repos = Dir.entries($repos_dir).reject { |e| %w{. .. .git}.include?(e) }
-
-    # a hash of all scripts indexed by script_id
-    scripts = repos.sort.map do |dir|
+    all_scripts = repos.sort.map do |dir|
         Hashie::Mash.new(JSON.parse(File.read(File.join($repos_dir, dir, $git_script_file))))
+    end
+
+    # just the official scripts -- no renames, no deletions
+    script_files = Dir.entries($scripts_dir).reject { |e| %w{. .. .git}.include?(e) }
+    good_scripts = script_files.sort.map do |file|
+        Hashie::Mash.new(JSON.parse(File.read(File.join($scripts_dir, file))))
     end
 
     doc_dir = 'vim-scripts.github.com'
     Dir.mkdir doc_dir unless test ?d, doc_dir
-    template = Erubis::Eruby.new(File.new(File.join('views', 'scripts.html.erb')).read)
-    File.open("#{doc_dir}/scripts.html", 'w') do |f|
-        f.write template.result(:scripts => scripts)
+
+    index_template = Erubis::Eruby.new(File.new(File.join('views', 'scripts.html.erb')).read)
+    File.open("#{doc_dir}/vim/scripts.html", 'w') do |f|
+        f.write index_template.result(:scripts => good_scripts)
     end
 
-    File.open("#{doc_dir}/scripts.json", 'w') do |f|
-        f.write scripts.reduce({}) { |a,v| a[v.script_id.to_i] = v.name; a }.to_json
+
+    File.open("#{doc_dir}/api/scripts.json", 'w') do |f|
+        f.write good_scripts.map { |s| s.name }
     end
 
-    File.open("#{doc_dir}/script_original_names.json", 'w') do |f|
-        f.write scripts.reduce({}) { |a,v| a[v.script_id.to_i] = v.display_name; a }.to_json
+    File.open("#{doc_dir}/api/scripts_recent.json", 'w') do |f|
+        f.write good_scripts.map { |s|
+            recent_author_name, recent_author_email = fix_email_address(s.versions.last.author)
+            {
+                :n => s.name,
+                :s => s.summary,
+                :rv => s.versions.last.script_version,
+                :rd => s.versions.last.date,
+                :ra => recent_author_name,
+                :re => recent_author_email
+            }
+        }
+    end
+
+    # each script id and its official, current name.
+    File.open("#{doc_dir}/api/script_ids.json", 'w') do |f|
+        f.write good_scripts.reduce({}) { |a,v| a[v.script_id.to_i] = v.name; a }.to_json
+    end
+
+    # original display name for scripts, and their IDs.
+    File.open("#{doc_dir}/api/script_original_names.json", 'w') do |f|
+        f.write all_scripts.reduce({}) { |a,v| a[v.display_name] = v.name; a }.to_json
     end
 end
 
@@ -699,7 +755,7 @@ def copy_file repo, filename, contents
     raise "no data in #{filename}: #{contents.inspect}" unless contents
 
     # skip swapfiles that authors accidentally checked in
-    unless filename =~ /\.[^\/]+\.sw[n-p]$/ || filename =~ /~$/
+    unless filename =~ /\.[^\/]+\.sw[n-p]$/ || filename =~ /~$/ || filename =~ /\.(?:_\.)?DS_Store$/
         repo.root[filename] = Gitrb::Blob.new(:data => contents)
     end
 end
@@ -748,9 +804,31 @@ def is_keymap_file contents
 end
 
 
+# returns the new path if a change was made, or nil if not.
+# returns true if the file should just be suppressed.
+def fix_file_location script, path
+    fix = $file_location_fixes[script['script_id'].to_i]
+    if fix
+        fix.each do |re,sub|
+            if sub.nil?
+                # suppress the file if re matches
+                return path =~ re ? true : nil
+            else
+                # path substitution
+                newpath = path.gsub re, sub
+                return newpath if newpath != path
+            end
+        end
+    end
+    return nil
+end
+
+
 def smart_copy_file repo, script, filename, contents
     filename = cleanpath(filename)
-    if filename =~ /^[^\/]+\.vim$/
+    if newpath = fix_file_location(script, filename)
+        copy_file repo, newpath, contents unless newpath == true
+    elsif filename =~ /^[^\/]+\.vim$/
         # vimfile in the root directory
         encoded_contents = contents.dup    # this encoding stuff is killing me
         encoded_contents.force_encoding "ASCII-8BIT"
@@ -792,13 +870,45 @@ def smart_copy_file repo, script, filename, contents
 end
 
 
-def copy_filesystem repo, script, dir, smart
+def common_prefix set 
+    # http://stackoverflow.com/questions/1916218/find-the-longest-common-starting-substring-in-a-set-of-strings
+    chars = set.map {|w| w.split('') }
+    chars[0].zip(*chars[1..-1]).map { |c| c.uniq }.take_while { |c| c.size == 1 }.join
+end
+
+
+def copy_filesystem repo, script, dir, opts={}
+    paths = []
     Find.find(dir) do |path|
-        next if test ?d, path
-        localpath = path.sub(dir, '').sub(/^\/+/, '')
-        next if localpath =~ /^\s*$/
-        next if block_given? && yield(localpath)
-        if smart
+        if test(?l, path) or path =~ /(?:^|\/)(\.git|.hg|\.bzr|\.svn)$/i
+            Find.prune
+        else
+            # make sure all subdirs are readable
+            File.chmod 0700, path if test ?d, path
+            # only work on files, and ignore anything that the caller says should be skipped
+            paths << path if test(?f, path) && (block_given? ? !yield(path) : true)
+        end
+    end
+
+    return if paths.empty?    # script 1433 is all directories, no files!
+    prefix = paths.count == 1 ?  File.dirname(paths.first) : common_prefix(paths)
+    prefix.sub! /\/+[^\/]*$/, '' unless test ?d, prefix  # trim any partial filenames
+    prefix.sub! /(?:^|\/)#{Regexp.union $vimdirs}(?:\/.*|$)/, ''  # don't trim any vim dirs
+
+    paths.each do |path|
+        # make all files rw and preserve the executable bit
+        mode = File::Stat.new(path).mode
+        File.chmod 0600 | (mode & 0700), path
+
+        if opts[:smart] || $force_smart[script['script_id'].to_i]
+            # trim as much as we can off the front of the path
+            localpath = path.sub /^#{Regexp.escape prefix}\/*/, ''
+        else
+            # use the archive location as the path
+            localpath = path.sub /^#{Regexp.escape dir}\/*/, ''
+        end
+
+        if opts[:smart]
             smart_copy_file repo, script, localpath, File.read(path)
         else
             copy_file repo, localpath, File.read(path)
@@ -815,7 +925,7 @@ def extract_vimball repo, script, vimball
                 cmd = ['vim', vimball, '-X', '-n', '-c', ':set nomore', '-c',
                     ":set runtimepath=#{tmpdir.gsub(' ', '\ ')},$VIMRUNTIME", '-c', ':so %', '-c', ':q']
                 raise "couldn't run #{cmd.join(' ')}: #{$?}" unless system(*cmd)
-                copy_filesystem(repo, script, tmpdir, false) { |path| path == '.VimballRecord' || path == 'doc/tags' }
+                copy_filesystem(repo, script, tmpdir) { |path| path =~ /\.VimballRecord$/ || path =~ /doc\/tags$/ }
             end
         end
     end
@@ -837,7 +947,7 @@ end
 def debom str
     #   > f = File.read "packages/2709 - SudoEdit.vim/2009-07-08 0.5 SudoEdit.vba"
     #   > b = f.lines.first
-    #    => "\" Vimball Archiver by Charles E. Campbell, Jr., Ph.D.\n" 
+    #    => "\" Vimball Archiver by Charles E. Campbell, Jr., Ph.D.\n"
     #   > b =~ /^"/
     #    => nil    # what??
     #   > a=b.dup; a.force_encoding("ASCII-8BIT")
@@ -865,7 +975,7 @@ def unvimball repo, script, vimball
         ball.gsub!("\r\n", "\n")
         unless vimball_is_valid debom(ball)
             puts "Vimball is corrupt!  #{vimball}"
-            throw :corrupt 
+            throw :corrupt
         end
         # get rid of a useless "hit return to continue" prompt.  vimballs suck.
         ball.gsub!(/call input\(\"\<Hit Return to continue\>\"\)/, '') if script['script_id'].to_i == 293
@@ -876,20 +986,7 @@ def unvimball repo, script, vimball
 end
 
 
-# some scripts (3281) come inside archive files that set the wrong
-# permissions, like unreadable files and dirs.  Make sure every file
-# from an archive is readable and writable and every directory is rwx.
-def fix_permissions dir
-    Find.find(dir) do |path|
-        perms = File::Stat.new(path).mode
-        perms &= 0700
-        perms |= test(?d, path) ? 0700 : 0600
-        File.chmod perms, path
-    end
-end
-
-
-def unshell(repo, script, localpath, cmd)
+def unshell repo, script, localpath, cmd
     Dir.mktmpdir('scraper') do |tmpdir|
         fullpath = File.expand_path(localpath)
         Dir.chdir(tmpdir) do
@@ -899,54 +996,29 @@ def unshell(repo, script, localpath, cmd)
                 raise "couldn't run #{cmd.join(' ')}: #{$?}"
             end
         end
-        fix_permissions tmpdir
-        copy_filesystem repo, script, tmpdir, true
+        copy_filesystem repo, script, tmpdir, :smart => true
     end
 end
 
 
-def copy_zipfile(repo, script, zip_path)
-    Zip::ZipFile.open(zip_path) do |zipfile|
-        zipfile.each do |entry|
-            next unless entry.file?
-            if entry.symlink?
-                puts "WARNING: ignoring symlink in #{zip_path}: #{entry.name}"
-            else
-                smart_copy_file(repo, script, entry.name, entry.get_input_stream.read)
-            end
-        end
-    end
-end
-
-
-def copy_tarfile(repo, script, tarfile)
-    Archive::Tar::Minitar::Reader.open(tarfile) do |tf|
-        tf.each_entry do |entry|
-            next unless entry.file?
-            smart_copy_file(repo, script, entry.full_name, entry.read || '')
-        end
-    end
-end
-
-
-def ungzip(file)
+def ungzip file
     Zlib::GzipReader.open(file) { |gz| yield(gz) }
 end
 
 
-def unbzip2(file)
+def unbzip2 file
     Bzip2::Reader.open(file) { |bz| yield(bz) }
 end
 
 
-def unxz(file)
+def unxz file
       IO.popen(['xz', '-d', '--to-stdout', file]) do |contents|
           yield(contents)
       end
 end
 
 
-def download_package(version, script)
+def download_package version, script
     pkgname = "#{version['date']} #{filenameify(script_version(version))} #{filenameify(version['filename'])}"
     pkgdir = File.join($packages_dir, "#{'%04d' % script['script_id']} - #{filenameify(script['name'])}")
     Dir.mkdir pkgdir unless test ?d, pkgdir
@@ -956,30 +1028,31 @@ def download_package(version, script)
 end
 
 
-def sense_zipped_file(repo, script, filename, infile)
-    # sense the payload of a gz or bz2 file.  don't want to recurse into sense_file: too complex.
+def sense_zipped_file repo, script, filename, infile
+    # sense the payload of a compressed file.  don't want to recurse into sense_file: too complex.
     contents = infile.read
     contents.force_encoding('ASCII-8BIT')
-    if MimeMagic.by_magic(contents) == 'application/x-tar'
-        copy_tarfile(repo, script, StringIO.new(contents))
-    elsif contents[0..512] =~ /^\bUseVimball\s*$/
-        Tempfile.open('scraper') do |ttfile|
-            ttfile.write(contents)
-            ttfile.close
-            unvimball(repo, script, ttfile.path)
+    Tempfile.open('scraper') do |ttfile|
+        ttfile.write(contents)
+        ttfile.close
+
+        if MimeMagic.by_magic(contents) == 'application/x-tar'
+            unshell repo, script, ttfile.path, ['tar', 'xf']
+        elsif contents[0..512] =~ /^\bUseVimball\s*$/
+            unvimball repo, script, ttfile.path
+        else
+            smart_copy_file repo, script, filename, contents
         end
-    else
-        smart_copy_file(repo, script, filename, contents)
     end
 end
 
 
-def is_some_sort_of_zipfile(type)
+def is_some_sort_of_zipfile type
     type.include?('application/zip') || type.include?('application/x-gzip') || type.include?('application/x-bzip')
 end
 
 
-def sense_file(repo, actual_name, pkgfile)
+def sense_file repo, actual_name, pkgfile
     # some files lie about their type (claim to be .zips but are just .vim files).  fix em.
     extension_type = MIME::Types.type_for(actual_name)
     magic_type = File.open(pkgfile) { |f| MimeMagic.by_magic(f) }
@@ -1008,7 +1081,10 @@ def sense_file(repo, actual_name, pkgfile)
             # names and magic have failed us, copy these files over raw
             copy_file(repo, actual_name, File.read(pkgfile))
             actual_name = nil
+        elsif magic_type == 'application/zip' && extension_type.include?('application/x-java-archive')
+            # jarfiles sense as zipfiles so don't let the fixup code below "correct" the package extension
         elsif magic_type == 'application/zip'
+        # authors have uploaded a lot of compressed archives without the correct extension.
             actual_name += '.zip'
         elsif magic_type == 'application/x-gzip'
             actual_name += '.gz'
@@ -1038,7 +1114,7 @@ def sense_file(repo, actual_name, pkgfile)
             # odd that magic couldn't sense this valid tarfile.  owell, process it as normal.
         elsif extension_type.include?('application/x-tar') && magic_type == nil
             # magic has a bug where tarfiles are missed: http://github.com/minad/mimemagic/issues/#issue/1
-            # if this happens, we just blindly trust the extension.
+            # when this happens, we just blindly trust the extension.
         else
             # there's such a range of reasons why this will happen that there's nothing to do but
             # have a human improve this function to handle this case.  :(
@@ -1049,42 +1125,23 @@ def sense_file(repo, actual_name, pkgfile)
 end
 
 
-def handle_zipfile(repo, script, pkgfile)
-    tough_zipfiles = [
-        # ruby's built-in unzipper can't handle these perfectly valid zipfiles:
-        'packages/2441 - pyflakes.vim/2009-12-29 1.57 pyflakes-vim.zip',
-        'packages/2441 - pyflakes.vim/2010-06-17 1.62 pyflakes-vim.zip',
-        # plus a bunch of files from scripts 3114, 3123, 3148, 3150, and 3169.
-        # to be safe we'll just shell out to unzip for everything # newer than 3110.
-        # http://www.ruby-forum.com/topic/211146#936159
-    ]
-
-    # oh FORGET IT, we need to shell out for every zip.
-    # Ruby's built-in unzipper appears to be fatally flawed.  :(
-    if true || tough_zipfiles.include?(pkgfile) || script['script_id'].to_i > 3110
-        unshell(repo, script, pkgfile, ['unzip'])
-    else
-        copy_zipfile(repo, script, pkgfile)
-    end
-end
-
-
-def add_version(repo, version, script)
+def add_version repo, version, script
     # adds all the files in the package to the repo
     pkgfile = download_package(version, script)
     actual_name = sense_file(repo, version['filename'], pkgfile)
 
     case actual_name
     when nil then # do nothing
-    when /#{$textext}/ then smart_copy_file(repo, script, actual_name, File.read(pkgfile))
-    when /\.zip$/i then handle_zipfile(repo, script, pkgfile)
-    when /\.tar$/ then File.open(pkgfile, 'r') { |file| copy_tarfile(repo, script, file) }
+    when /#{$textext}/ then smart_copy_file repo, script, actual_name, File.read(pkgfile)
+    when /\.zip$/i then unshell repo, script, pkgfile, ['unzip']
+    when /\.tar$/ then unshell repo, script, pkgfile, ['tar', 'xf']
     when /\.t?gz$/i then ungzip(pkgfile) { |contents| sense_zipped_file(repo, script, version['filename'].sub(/\.t?gz$/, ''), contents) }
     when /\.t?bz2?$/i then unbzip2(pkgfile) { |contents| sense_zipped_file(repo, script, version['filename'].sub(/\.t?bz2?$/, ''), contents) }
     when /\.xz$/ then unxz(pkgfile) { |contents| sense_zipped_file(repo, script, version['filename'].sub(/\.xz$/, ''), contents) }
-    when /\.7z$/ then unshell(repo, script, pkgfile, ['7za', 'x'])
-    when /\.rar$/ then unshell(repo, script, pkgfile, ['unrar', 'x'])
-    when /\.vba$|\.vimball$/ then unvimball(repo, script, pkgfile)
+    when /\.7z$/ then unshell repo, script, pkgfile, ['7za', 'x']
+    when /\.rar$/ then unshell repo, script, pkgfile, ['unrar', 'x']
+    when /\.vba$|\.vimball$/ then unvimball repo, script, pkgfile
+    when /\.jar$/ then copy_file repo, actual_name, File.read(pkgfile)
     when /\.gif$|\.jpe?g$|\.png$/ then copy_file repo, actual_name, File.read(pkgfile)
     else
         # probably need to add a new text file extension to $textext.
@@ -1094,13 +1151,13 @@ def add_version(repo, version, script)
 end
 
 
-def tag_version(repo, version)
+def tag_version repo, version, branch
     ENV['GIT_COMMITTER_NAME'] = $vimscripts_name
     ENV['GIT_COMMITTER_EMAIL'] = $vimscripts_email
     sver = script_version(version)
-    repo.git_tag('-a', gittagify(sver), '-m', "tag #{sver}")
-    ENV.delete('GIT_COMMITTER_NAME')
-    ENV.delete('GIT_COMMITTER_EMAIL')
+    repo.git_tag '-a', gittagify(sver), '-m', "tag #{sver}", branch
+    ENV.delete 'GIT_COMMITTER_NAME'
+    ENV.delete 'GIT_COMMITTER_EMAIL'
 end
 
 
@@ -1110,29 +1167,6 @@ def find_version repo, version
     tag = repo.git_tag('-l', tagname).chomp
     tag = nil if tag =~ /^\s*$/
     return tag
-end
-
-
-def copy_tree repo, script, tree, inpath=[]
-    tree.to_a.each do |name, value|
-        path = inpath + [name]
-        if value.type == :blob
-            smart_copy_file(repo, script, path.join('/'), value.data)
-        else
-            copy_tree(repo, script, value, path)
-        end
-    end
-end
-
-
-def check_for_lone_dir repo, script
-    return unless repo.root.count == 1
-    loner = repo.root.first.first
-    return if $vimdirs.include? loner
-    if repo.root[loner].type == :tree
-        # copy contents of the directory into the root
-        copy_tree repo, script, repo.root.delete(loner)
-    end
 end
 
 
@@ -1167,7 +1201,7 @@ end
 
 def corrupted_package script, version
     # returns true if this version has been hard-coded as corrupted
-    names = $corrupted_packages[script['script_id'].to_i]
+    names = $skip_packages[script['script_id'].to_i]
     names && [names].flatten.include?("#{version['date']} #{version['script_version']}")
 end
 
@@ -1193,12 +1227,11 @@ def store_versions_in_repo repo, script
                     # delete all existing blobs since we replace everything with the new commit
                     repo.root.to_a.map { |name,value| repo.root.delete(name) }
                     add_version repo, version, script
-                    check_for_lone_dir repo, script
                     check_for_keymap_helper repo, script
                     check_for_readme_file repo
                     copy_file(repo, 'README', "This is a mirror of #{script_id_to_url(script['script_id'])}\n\n" + script['description'] + "\n") unless repo.root['README']
                 end
-                tag_version repo, version
+                tag_version repo, version, branch
                 count += 1
             end
         end

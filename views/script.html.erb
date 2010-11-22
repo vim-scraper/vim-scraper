@@ -1,0 +1,45 @@
+---
+layout: default
+title: <%= h script.name %>
+---
+
+<h1><%= h script.script_id.to_s + " - " + script.name %></h1>
+<p>
+  <%= h script.script_type %>
+  <a href="<%= repo_url(script) %>">[ GitHub ]</a>
+  <a href="<%= script_id_to_url(script.script_id) %>">[ vim.org ]</a>
+  <br/>
+  originally <%= script.display_name %>
+</p>
+
+<p><%= h script.summary %></p>
+
+Releases:
+
+<table>
+  <% script.versions.each do |version| %>
+    <tr>
+      <td><%= h version.script_version %></td>
+      <td><%= h version.date %></td>
+      <td><%=
+        author_name, author_email = fix_email_address(version['author'])
+        h "#{author_name} <#{author_email}>"
+      %>
+    </tr>
+  <% end %>
+</table>
+
+<hr>
+
+<pre>
+<%= h script.description %></p>
+</pre>
+
+<hr>
+
+The script should just work.  If not, here are the original install details:
+
+<pre>
+<%= h script.install_details %></p>
+</pre>
+
