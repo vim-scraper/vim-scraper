@@ -905,9 +905,12 @@ def extract_vimball repo, script, vimball
         # some vimballs leave garbage in the current directory.  :(
         Dir.mktmpdir('scraper') do |scratchdir|
             Dir.chdir(scratchdir) do
+                # vim and vimball team up to make this a complete nightmare
+                fname = 'VIM-COMMAND-ad09824lksas'
+                File.open(fname, 'w') { |f| f.write ":q\n" }
                 cmd = ['vim', vimball, '-X', '-n', '-c', ':set nomore', '-c',
-                    ":set runtimepath=#{tmpdir.gsub(' ', '\ ')},$VIMRUNTIME", '-c', ':so %', '-c', ':q']
-                out, result = Open3.popen2(*cmd) { |i,o,t| [o.read, t.value] }
+                    ":set runtimepath=#{tmpdir.gsub(' ', '\ ')},$VIMRUNTIME", '-S', '%', '-s', fname]
+                out, result = Open3.popen3(*cmd) { |i,o,e,t| [o.read, t.value] }
                 raise "#{out}couldn't run #{cmd.join(' ')}: #{result.exitstatus}" unless result.success?
                 copy_filesystem(repo, script, tmpdir) { |path| path =~ /\.VimballRecord$/ || path =~ /doc\/tags$/ }
             end
