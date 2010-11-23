@@ -1,5 +1,0 @@
-Possibly bad (probably doesn't matter):
-    0067 - nqc.vim         -- just a lot of weird files
-    0070 - pt.vim.gz       -- not sure pt.dict is in the right place
-    0071 - dctl.vim.gz     -- not sure dctl.dict is in the right place
-    0084 - gdbvim.tar.gz   -- plugin is in /gdbvim/gdbvim.vim, not /plugin

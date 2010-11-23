@@ -256,18 +256,10 @@ def write_state state
 end
 
 
-def download(url)
-    retryable(:tries => 4, :sleep => 10) do |retries|
-        puts "downloading #{url}#{retries > 0 ? "  TRY #{retries}" : ""}"
-        open(url) { |u| f.write(u.read) }
-    end
-end
-
-
 def scrape_author(user_id)
     $authors ||= []
     unless $authors[user_id.to_i]
-        doc = download("http://www.vim.org/account/profile.php?user_id=#{user_id}") { |f| Hpricot(f) }
+        doc = open("http://www.vim.org/account/profile.php?user_id=#{user_id}") { |f| Hpricot(f) }
         # How strange.  If the next line throws an "uknown next_sibling method for nil" error, vim-scripts
         # probably is suffering a temporary error.  Try the query again and it should succeed.  :-/
         doc.at('td[text()="user name"]').next_sibling.inner_content
@@ -302,7 +294,7 @@ def scrape_script(script_id)
         return nil
     end
 
-    doc = download(script_id_to_url(script_id)) { |f| Hpricot(f) }
+    doc = open(script_id_to_url(script_id)) { |f| Hpricot(f) }
     if doc.search('title').inner_text == "Error : vim online"
         puts "Skipped #{script_id} -- doesn't exist."
         return nil
