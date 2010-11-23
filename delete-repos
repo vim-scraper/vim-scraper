@@ -1,24 +1,16 @@
 #!/usr/bin/env ruby
 
-# Mass delete, just pass the IDs of the repos to delete and both
-# the github and the local repos/* repositories will be deleted.
-# You can also pass a name if the local repo has been deleted.
+# Mass delete, just pass the names or full paths of the repos to delete
+# and both the github and local repos/* repositories will be deleted.
 #
-# Use this script to recreate repositories that need fixes.  First
-# get a list of IDs that need regenerating from run-test and its stats
-# then pass them on the command line to this script and then to the
-# scraper script.  All the named repos will be deleted and recreated.
+# You might need to wait for a few hours between deleting and pushing
+# since github has a bug where quickly deleting, creating, and pushing a
+# repo with the same name will just result in a resurrection of the old
+# repo with the old contents, not an empty one.
 #
-# We do the delete and recreate in separate batches so if something
-# goes wrong in the middle, you don't delete a bunch of repos that
-# were just created and pushed correctly.  Also, you might need to
-# wait for a few hours before deleting and pushing since github has
-# a really annoying bug where deleteing and recreating a repo with
-# the same name will just result in the old repo, not an empty one.
-# 
-# Or, now you can use FORCE=1 ./scraper 999
-# This doesn't update the script's description but usually that's not
-# needed and it's better than waiting for github to fix this bug!
+# Now you can use FORCE=1 ./scraper 0999 to get around this.  It doesn't
+# update the script's description but usually that's not needed and it's
+# better than waiting for github to fix this bug!
 
 
 require 'rubygems'
@@ -80,37 +72,25 @@ def delete_github_repos *names
 end
 
 
-def repo_dir dir
-    return dir if test ?d, dir
-    dirs = Dir.glob("repos/#{dir}*")
-    if dirs.nil? || dirs.count == 0
-        delete_github_repos dir
-        return nil
+scripts = ARGV.reduce({}) do |a,path|
+    name = File.basename(path).sub(/\.git$/, '')
+    path = "repos/#{name}.git" unless test ?d, path
+    if test ?d, path
+        a[name] = path
+    else
+        puts "warning: can't find #{path}"
     end
-    # you get multiple repos with the same id when an author renames his script
-    raise "repos/#{dir}* has multiple: #{dirs.inspect}!" if dirs.count > 1
-    dirs
+    a
 end
 
+delete_github_repos scripts.keys
 
-scripts = ARGV.map do |arg|
-    path = repo_dir arg
-    next unless path
-    contents = File.read File.join(path, $git_script_file)
-    script = Hashie::Mash.new JSON.parse(contents)
-    script.path = path
-    script
-end
-
-delete_github_repos scripts.map { |script| script.name if script }
-
-scripts.each do |script|
-    next unless script
+scripts.each do |name,path|
     begin
-        FileUtils.rm_rf script.path
-        puts "deleted #{script.path}"
+        FileUtils.rm_rf path
+        puts "deleted #{path}"
     rescue Exception => e
-        puts "could not delete #{script.path}: #{e}"
+        puts "could not delete #{path}: #{e}"
     end
 end
 
