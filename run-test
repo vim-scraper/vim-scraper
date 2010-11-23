@@ -56,4 +56,5 @@ REPOS_DIR="$dir" TMPDIR="$tmpdir" \
     ./scraper scripts/*
 
 rm -rf "$tmpdir"
+echo "Results are in $statsdir"
 

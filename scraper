@@ -38,19 +38,18 @@
 # on script 987, equivalent to passing the script ID.
 #
 # TESTING:
-# You may think that this script has no tests.  Not true!  Here is
-# how to perform a fairly comprehensive test:
-#   mv repos repos.orig
-#   ./scraper scripts/*
+# You may think that this script has no tests.  Not true!  The run-test
+# script creates a repo for every script in the system, runs git log on
+# it, and dumps the results.  If anything has changed, you'll see it.
+#   JOBS=4 ./run-test stock
+#   cd result/stats-stock
+#   git status; git diff; etc.
+# JOBS (optional): splits args into N groups and runs them in parallel.
+# You should also keep an eye on your production repos (which, because
+# of changes to READMEs and email addrs, and authors deleting releases,
+# will always be different from the from-scratch test above).
 #   rm scraper-stats/*
-#   JOBS=4 ./dump-repo repos/*
-# Now, cd scraper-stats and run git status / git diff.
-# If anything's different, you'll know.
-# JOBS (optional): split args into N groups and run them in parallel.
-# This speeds things up but you need 4GB+ of ram for a full scrape.
-#     mkdir repos
-#     sudo mount -t tmpfs -o size=1600M tmpfs repos
-# Remember to 'umount repos' when you're done with it.
+#   ./scraper --dump
 #
 # RESCUING:
 # If you deleted a script repo and want to restore your local copy
@@ -1603,6 +1602,8 @@ if ARGV.empty?
     perform_continuous($idle_count - count) if count && $idle_count - count > 0
 elsif ARGV[0] == '--docs'
     generate_docs
+elsif ARGV[0] == '--dump'
+    ARGV[1..-1].each { |repo| dump_repo repo, 'scraper-stats' }
 elsif ARGV[0] == '--all'
     # this generates all the repos but doesn't push them
     $max_run_time = 10.days
