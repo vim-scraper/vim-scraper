@@ -1,28 +1,5 @@
-Known bugs:
-
-http://github.com/schwern/gitpan/issues#issue/47
-    make it clearer in the description that this is not the dev repository
-    "Archive of Foo-Bar releases. NOT THE DEVELOPMENT REPOSITORY."
-
-
-Possibly fix:
-
-ColorSchemeMenuMaker.vba drops a .VimballRecord in the wrong dir.
-
-790 has a funny thing where it's jumping back and forth between python and python3.0.
-    it should have been two separate scripts.  not sure we can do anything about that.
-
-Probably todo:
-    if a dir only contains a /license|readme/i file, move the file to the root dir
-    0023
-
 Possibly bad (probably doesn't matter):
     0067 - nqc.vim         -- just a lot of weird files
     0070 - pt.vim.gz       -- not sure pt.dict is in the right place
     0071 - dctl.vim.gz     -- not sure dctl.dict is in the right place
     0084 - gdbvim.tar.gz   -- plugin is in /gdbvim/gdbvim.vim, not /plugin
-
-
-To check for duplicate names:
-    cd scripts; ls | sed 's/[0-9]* - \(.*\)\.json/\1/' | sort | uniq -c | sort -r -n | less
-

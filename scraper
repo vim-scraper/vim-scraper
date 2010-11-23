@@ -460,7 +460,7 @@ end
 
 def githubify(s)
     # these guys only allow A-Za-z0-9._- yet we need to try to keep the name readable.
-    s.gsub(/^\s*|\s*$/, '').gsub(/\s+-|-\s+/, '-').gsub(/\+\+/, 'pp').gsub(/([CF])#/i, "#{$1}sharp").gsub('::', '.').gsub('&', 'and').gsub(/\s+|:|\+/, '-').gsub(/[^A-Za-z0-9_.-]/, '')
+    s.gsub(/^\s*|\s*$/, '').gsub(/\s+-|-\s+/, '-').gsub(/\+\+/, 'pp').gsub(/([CF])#/i, "#{$1}sharp").gsub('::', '.').gsub('&', 'and').gsub(/\s+|:|\+/, '-').gsub(/^-|-$/, '').gsub(/[^A-Za-z0-9_.-]/, '')
 end
 
 
