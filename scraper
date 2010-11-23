@@ -86,6 +86,7 @@ require 'erubis'              # erubis gem
 require 'mail'                # mail gem
 require 'fileutils'
 require 'selenium/client'     # selenium-client gem
+require 'open3'
 
 
 # thoughts:
@@ -906,7 +907,8 @@ def extract_vimball repo, script, vimball
             Dir.chdir(scratchdir) do
                 cmd = ['vim', vimball, '-X', '-n', '-c', ':set nomore', '-c',
                     ":set runtimepath=#{tmpdir.gsub(' ', '\ ')},$VIMRUNTIME", '-c', ':so %', '-c', ':q']
-                raise "couldn't run #{cmd.join(' ')}: #{$?}" unless system(*cmd)
+                out, result = Open3.popen2(*cmd) { |i,o,t| [o.read, t.value] }
+                raise "#{out}couldn't run #{cmd.join(' ')}: #{result.exitstatus}" unless result.success?
                 copy_filesystem(repo, script, tmpdir) { |path| path =~ /\.VimballRecord$/ || path =~ /doc\/tags$/ }
             end
         end
