@@ -9,7 +9,7 @@
 # Make sure you have vim, unzip, unrar, 7za, and xz installed.
 #   Ubuntu: sudo apt-get install vim unzip unrar p7zip-full xz-utils
 #   Macintosh: sudo port install vim unrar p7zip xz
-#      (stock Snow Leopard Vim doesn't unvimball correctly, install from ports)
+#      (stock Snow Leopard's Vim unvimballs wrong, install vim from ports)
 #
 # FULL SCRAPE:
 # To start cold with a full scrape, do this:
@@ -498,18 +498,12 @@ end
 
 
 def repo_filename script_id, script_name
-    File.join($repos_dir, "#{'%04d' % script_id} - #{filenameify(script_name)}.git")
-end
-
-
-def repo_extract_id repo_name
-    repo_name =~ /^0*([0-9]+) - .+\.git$/ or raise "can't match #{repo_name}";
-    $1
+    File.join($repos_dir, "#{filenameify(script_name)}.git")
 end
 
 
 def repo_extract_name repo_name
-    repo_name =~ /^[0-9]+ - (.+)\.git$/ or raise "can't match #{repo_name}";
+    repo_name =~ /^(.+)\.git$/ or raise "can't match #{repo_name}";
     $1
 end
 
@@ -601,10 +595,11 @@ def name_conflict_exists all_scripts, script
     return nil unless repo_dir    # no conflict
 
     # or if it's the same script, then that's OK.
-    return nil if repo_extract_id(repo_dir).to_i == script['script_id'].to_i
+    new_script = JSON.parse(File.read(File.join($repos_dir, repo_dir, $git_script_file)))
+    return nil if new_script['script_id'].to_i == script['script_id'].to_i
 
     # there's a conflict.  return the conflicting script.
-    JSON.parse(File.read(File.join($repos_dir, repo_dir, $git_script_file)))
+    new_script
 end
 
 
