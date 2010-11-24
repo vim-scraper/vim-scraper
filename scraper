@@ -224,21 +224,23 @@ end
 # modified to pass the number of retries in the arg (0,1,2 if :tries => 3)
 # todo: should use exponential backoff and also pass the exception to the block
 def retryable(options = {}, &block)
-    opts = { :tries => 1, :on => Exception, :sleep => 1 }.merge(options)
+    opts = { :tries => 4, :on => Exception, :sleep => 10 }.merge(options)
     return if opts[:tries] < 1
     tries = 0
 
+    prev_exception = nil
     if opts[:tries] > 1
         begin
-            return yield tries
-        rescue
+            return yield tries, prev_exception
+        rescue Exception => e
+            prev_exception = e
             sleep opts[:sleep]
             retry if (tries += 1) < opts[:tries] - 1
         end
     end
 
     # last try will throw an exception
-    yield tries
+    yield tries, prev_exception
 end
 
 # When running normally, we can be in one of two states: rss and full.
@@ -259,7 +261,7 @@ end
 def scrape_author(user_id)
     $authors ||= []
     unless $authors[user_id.to_i]
-        doc = open("http://www.vim.org/account/profile.php?user_id=#{user_id}") { |f| Hpricot(f) }
+        doc = retryable { open("http://www.vim.org/account/profile.php?user_id=#{user_id}") { |f| Hpricot(f) } }
         # How strange.  If the next line throws an "uknown next_sibling method for nil" error, vim-scripts
         # probably is suffering a temporary error.  Try the query again and it should succeed.  :-/
         doc.at('td[text()="user name"]').next_sibling.inner_content
@@ -294,7 +296,7 @@ def scrape_script(script_id)
         return nil
     end
 
-    doc = open(script_id_to_url(script_id)) { |f| Hpricot(f) }
+    doc = retryable { open(script_id_to_url(script_id)) { |f| Hpricot(f) } }
     if doc.search('title').inner_text == "Error : vim online"
         puts "Skipped #{script_id} -- doesn't exist."
         return nil
