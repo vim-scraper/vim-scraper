@@ -1624,6 +1624,11 @@ else
                 puts "Upload failed, retry #{retries}" if retries > 0
                 perform_push arg
             end
+        elsif (f=Dir.glob("#{$scripts_dir}/???? - #{arg}.json")) && !f.empty? && test(?f, f.first)
+            # plain script name -- must have already been scraped tho
+            raise "multiple hits for #{arg}: #{f.inspect}" unless f.count == 1
+            f.first =~ /^#{$scripts_dir}\/(\d\d\d\d)/
+            perform_all $1.gsub(/^0+/, ''), true
         else
             raise "Could not recognize argument #{arg}"
         end
