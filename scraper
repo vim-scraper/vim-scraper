@@ -6,10 +6,9 @@
 #
 # DEPENDENCIES
 # This script requires Ruby 1.9.2+.
-# Make sure you have vim, unzip, unrar, 7za, and xz installed.
-#   Ubuntu: sudo apt-get install vim unzip unrar p7zip-full xz-utils
-#   Macintosh: sudo port install vim unrar p7zip xz
-#      (stock Snow Leopard's Vim unvimballs wrong, install vim from ports)
+# Make sure you have unzip, unrar, 7za, and xz installed.
+#   Ubuntu: sudo apt-get install unzip unrar p7zip-full xz-utils
+#   Macintosh: sudo port install unrar p7zip xz
 #
 # FULL SCRAPE:
 # To start cold with a full scrape, do this:
@@ -132,25 +131,20 @@ $script_type_fixes = {
     1780 => 'syntax',
 }
 
-# if the regex matches the path, the value is passed to gsub
-# and the result used as the new path.  note: doesn't work for vimballs
-# also doesn't work for gifs and a few others, but that's easy to fix.
+# if the regex matches the path, it is run through gsub and the result
+# used as the new path.  If the replace string is nil, the file is
+# suppressed.   Doesn't work for gifs and a few others (easy to fix).
 $file_location_fixes = {
     284  => {      /([^\/]+\.vim)$/ => 'ftplugin/tex/\1' }, # all .vim files go in ftplugin/tex
     1095 => { /^.*\/([^\/]+\.vim)$/ => 'ftplugin/tex/\1' }, # all .vim files go in ftplugin/tex
     1771 => { /readme$/ => nil                           }, # has identical README and readme files.
     2651 => { /^(.*)Syntax(.*)$/ => '\1syntax\2'         }, # breaks on case sensitive filesystems
+    3027 => { /^root\/\.vim\/(.*)$/ => '\1'              }, # grsecurity balled up his entire root dir
 }
 
 # at least one script is actually multiple scripts -- 790 has python.vim and python3.0.vim
 # this forces package names matching the regex out to a different branch
 $branch_versions = { 790 => { :branch => 'python3', :regex => /^python3\.0\.vim$/ } }
-
-# Vimballs are normally correct so we copy them straight over, we don't try to fix them
-# (unlike .zips and .tgzs which are normally very broken).  3027's author appears to have
-# produced a broken vimball by balling up his root user's .vim dir...   not very
-# notable except that it's for grsecurity.  :)
-$force_smart = { 3027 => true }
 
 
 Dir.mkdir $scripts_dir unless test ?d, $scripts_dir
@@ -877,7 +871,7 @@ def copy_filesystem repo, script, dir, opts={}
         mode = File::Stat.new(path).mode
         File.chmod 0600 | (mode & 0700), path
 
-        if opts[:smart] || $force_smart[script['script_id'].to_i]
+        if opts[:smart]
             # trim as much as we can off the front of the path
             localpath = path.sub /^#{Regexp.escape prefix}\/*/, ''
         else
@@ -918,7 +912,9 @@ def unvimball repo, script, vimball
         data = lines.slice!(0, num_lines)
 
         unless path == 'doc/tags'
-            copy_file repo, cleanpath(path), data.join("\n")+"\n"
+            path = cleanpath path
+            path = fix_file_location(script, path) || path
+            copy_file repo, path, data.join("\n")+"\n" unless path == true
         end
     end
 end
