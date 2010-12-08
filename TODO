@@ -1,7 +1,3 @@
-Why the line number changes between 1.7.1 and 1.7.3.2?
-  - maybe core.eol and core.autocrlf?  http://www.kernel.org/pub/software/scm/git/docs/RelNotes/1.7.2.txt
-
-
 Submit a patch to vim which allows git log --stat to display the line
 counts but not the graph.  git log --stat=0 should do it.  Nobody
 would be using 0 since it doesn't do anything useful anyway.

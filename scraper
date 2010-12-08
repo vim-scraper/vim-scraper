@@ -49,7 +49,7 @@
 # of changes to READMEs and email addrs, and authors deleting releases,
 # will always be different from the from-scratch test above).
 #   rm scraper-stats/*
-#   ./scraper --dump
+#   ./scraper --dump repos/*
 #
 # RESCUING:
 # If you deleted a script repo and want to restore your local copy
