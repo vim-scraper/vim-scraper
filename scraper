@@ -894,75 +894,32 @@ def copy_filesystem repo, script, dir, opts={}
 end
 
 
-def extract_vimball repo, script, vimball
-    Dir.mktmpdir('scraper') do |tmpdir|
-        # some vimballs leave garbage in the current directory.  :(
-        Dir.mktmpdir('scraper') do |scratchdir|
-            Dir.chdir(scratchdir) do
-                # vim and vimball team up to make this a complete nightmare
-                fname = 'VIM-COMMAND-ad09824lksas'
-                File.open(fname, 'w') { |f| f.write ":q\n" }
-                cmd = ['vim', vimball, '-X', '-n', '-c', ':set nomore', '-c',
-                    ":set runtimepath=#{tmpdir.gsub(' ', '\ ')},$VIMRUNTIME", '-S', '%', '-s', fname]
-                out, result = Open3.popen3(*cmd) { |i,o,e,t| [o.read, t.value] }
-                raise "#{out}couldn't run #{cmd.join(' ')}: #{result.exitstatus}" unless result.success?
-                copy_filesystem(repo, script, tmpdir) { |path| path =~ /\.VimballRecord$/ || path =~ /doc\/tags$/ }
-            end
-        end
-    end
-end
-
-
-def vimball_is_valid contents
-    # all vimballs must start with "UseVimball" on the first non-blank,
-    # non-comment line.  I suppose.
-    contents.lines.each do |l|
-        next if l =~ /^\s*("|$)/;  # skip blank lines and comments
-        # Script 293 Utl has a crazy UseVimball line
-        return l =~ /UseVimball\s*$/
-    end
-    return false
-end
-
-
-def debom str
-    #   > f = File.read "packages/2709 - SudoEdit.vim/2009-07-08 0.5 SudoEdit.vba"
-    #   > b = f.lines.first
-    #    => "\" Vimball Archiver by Charles E. Campbell, Jr., Ph.D.\n"
-    #   > b =~ /^"/
-    #    => nil    # what??
-    #   > a=b.dup; a.force_encoding("ASCII-8BIT")
-    #   > a[0]
-    #    => "\xEF"
-    #   > a[0] == "\xEF"
-    #    => false   # huh??
-    # you have GOT to be kidding me.
-
-    raise "WRONG ENCODING: #{str.encoding}" unless str.encoding.to_s == "ASCII-8BIT" || str.encoding.to_s == "US-ASCII"
-    if str.unpack("ccc") == [-17, -69, -65]
-        str[3..-1]
-    else
-        str
-    end
-end
-
-
 def unvimball repo, script, vimball
-    # vimball dies badly if called on a file with the wrong line endings
-    # probably 10% of line endings are dos so we always perform the correction
-    Tempfile.open('scraper') do |ttfile|
-        ball = File.read(vimball)
-        ball.force_encoding("ASCII-8BIT")
-        ball.gsub!("\r\n", "\n")
-        unless vimball_is_valid debom(ball)
-            puts "Vimball is corrupt!  #{vimball}"
-            throw :corrupt
+    # this routine deeply inspired by
+    # https://github.com/carlhuda/janus/commit/6ae56116aa9f1cd65af43bd550405295ff2f5967
+    lines = File.readlines(vimball).map &:chomp
+
+    # If UseVimball and finish headers aren't found, archive is corrupt
+    throw :corrupt unless lines.first =~ /^" Vimball Archiver/
+    until (current = lines.shift) =~ /UseVimball\s*$/
+        throw :corrupt unless current =~ /^\s*("|$)/
+    end
+    until (current = lines.shift) =~ /finish\s*$/
+        throw :corrupt unless current =~ /^\s*("|$)/
+    end
+
+    while current = lines.shift
+        # filename (followed by who knows), then the number of lines, then the data
+        path = current
+        path.sub! /\t\[\[\[1$/, ''
+        path.gsub! '\\', '/'
+        current = lines.shift
+        num_lines = current[/^(\d+)$/, 1].to_i
+        data = lines.slice!(0, num_lines)
+
+        unless path == 'doc/tags'
+            copy_file repo, cleanpath(path), data.join("\n")+"\n"
         end
-        # get rid of a useless "hit return to continue" prompt.  vimballs suck.
-        ball.gsub!(/call input\(\"\<Hit Return to continue\>\"\)/, '') if script['script_id'].to_i == 293
-        ttfile.write(ball)
-        ttfile.close
-        extract_vimball(repo, script, ttfile.path)
     end
 end
 
