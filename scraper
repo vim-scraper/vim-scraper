@@ -888,6 +888,12 @@ def copy_filesystem repo, script, dir, opts={}
 end
 
 
+def corrupt_vimball where
+    puts "  corrupt vimball at #{where}"
+    throw :corrupt
+end
+
+
 def unvimball repo, script, vimball
     # this routine deeply inspired by
     # https://github.com/carlhuda/janus/commit/6ae56116aa9f1cd65af43bd550405295ff2f5967
@@ -895,12 +901,12 @@ def unvimball repo, script, vimball
 
     # If UseVimball and finish headers aren't found, archive is corrupt
     # This should be /^" Vimball Archiver/ but the BOM screws Ruby up.
-    throw :corrupt unless lines.first =~ /" Vimball Archiver/
+    corrupt_vimball "A" unless lines.shift =~ /" Vimball Archiver/
     until (current = lines.shift) =~ /UseVimball\s*$/
-        throw :corrupt unless current =~ /^\s*("|$)/
+        corrupt_vimball "B" unless current =~ /^\s*("|$)/
     end
     until (current = lines.shift) =~ /finish\s*$/
-        throw :corrupt unless current =~ /^\s*("|$)/
+        corrupt_vimball "C" unless current =~ /^\s*("|$)/
     end
 
     while current = lines.shift
