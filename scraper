@@ -662,6 +662,8 @@ def resolve_renamed_scripts script
         FileUtils.cp_r old_repo, new_repo unless test ?d, new_repo
 
         mark_repo_as_duplicate dupe, script
+        puts "  pushing obsolete repo"
+        perform_push old_repo
         # delete the obsolete script file
         File.delete File.join($scripts_dir, dupe)
     end
