@@ -13,13 +13,8 @@
 # FULL SCRAPE:
 # To start cold with a full scrape, do this:
 #   rm state.json
-#   ./scraper
+#   FOREVER=1 ./scraper
 # Now the scraper is warm and ready to perform continuous RSS scraping.
-#
-# To do a full scrape / download / upload cycle, pass the script ids:
-#     ./scraper `seq 1 3217`     # where 3217 is the highest script id
-# Note that this pushes each script, even if there are no changes to
-# be pushed.  This is more careful but slower than the technique above..
 #
 # AUTOMATIC RSS Scrape:
 # Run the scraper with no args to perform an rss scrape.  It downloads
@@ -27,14 +22,14 @@
 #     ./scraper
 #
 # MANUAL Debugging:
-# - with a negative number, scrapes that script ID and stores the json
+# - with a positive number, does a full scrape / upload cycle
+#     ./scraper 987
+# - with a negative number, scrapes but does not upload
 #     ./scraper -987
-# - with a .json file, downloads the script and converts to a git repo
+# - with a .json file, creates the git repo
 #     ./scraper scripts/0987*
 # - with a bare git repo, pushes that repo up to github
 #     ./scraper repos/0987*
-# When you run the above commands in that order, you do a full scrape
-# on script 987, equivalent to passing the script ID.
 #
 # TESTING:
 # You may think that this script has no tests.  Not true!  The run-test
@@ -44,21 +39,24 @@
 #   cd result/stats-stock
 #   git status; git diff; etc.
 # JOBS (optional): splits args into N groups and runs them in parallel.
-# You should also keep an eye on your production repos (which, because
-# of changes to READMEs and email addrs, and authors deleting releases,
-# will always be different from the from-scratch test above).
+#
+# Because authors are always renaming scripts, changing email addrs and
+# readmes, and deleting revisions, a from-scratch scrape will always
+# be different from the repos in github.  Therefore, you should do this
+# after every few scrapes:
 #   rm scraper-stats/*
 #   ./scraper --dump repos/*
+#
+# In the scraper-stats repo, the master branch contains the ongoing repos
+# and the test branch contains the recreate-from-scratch each time repos.
 #
 # RESCUING:
 # If you deleted a script repo and want to restore your local copy
 # with the one on github:
-#    git clone --bare git://URL ID\ -\ NAME
-#    ./scraper ID      # to restore internal state
+#    git clone --bare git://github.com/vim-scripts/SCRIPTNAME
+#    ./scraper SCRIPTID      # to restore internal state
 # Now the script is exactly the same as if it had been scraped
 # locally from the start.
-#
-# to see dupe ids: cd repos; ls | cut -b -4 | sort | uniq -cd | sort
 
 
 require 'rubygems'
@@ -88,13 +86,7 @@ require 'selenium/client'     # selenium-client gem
 require 'open3'
 
 
-# thoughts:
-# We try to make it so you can drop the git repo in vim's bundles dir and just have it work.
-# We reset permissions on extracted files -- usually when they're different it's a mistake.
-
-
-# Change the name of the scraper and make a tag whenever the code changes much.
-# That way you can tell what code generated each commit.  Don't change the email of course.
+# This is the name and email address of the git committer.
 $vimscripts_name = "Able Scraper"
 $vimscripts_email = 'scraper@vim-scripts.org'
 
