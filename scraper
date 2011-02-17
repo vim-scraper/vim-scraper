@@ -1389,6 +1389,10 @@ end
 def enter_full_mode state
     state.mode = 'full'
     feed = fetch_rss
+    unless feed.entries.first
+        puts "NO ENTRIES IN FEED??"
+        exit 1
+    end
     state.target_rss_id = feed.entries.first.entry_id
     state.full_index = 1
     puts "Entering full scrape mode!  Target is #{script_id_from_url feed.entries.first.url} / #{feed.entries.first.entry_id}."
