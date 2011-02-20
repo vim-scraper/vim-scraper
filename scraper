@@ -22,14 +22,14 @@
 #     ./scraper
 #
 # MANUAL Debugging:
-# - with a positive number, does a full scrape / upload cycle
+# - with a positive number, does a full scrape / compile / upload cycle
 #     ./scraper 987
 #     ./scraper $(seq 1001 2000)
-# - with a negative number, scrapes but does not upload
+# - with a negative number, scrapes but does not compile or upload
 #     ./scraper -987
-# - with a .json file, creates the git repo
+# - with a .json file, compiles the git repo
 #     ./scraper scripts/0987*
-# - with a bare git repo, pushes that repo up to github
+# - with a bare git repo, pushes the repo up to github
 #     ./scraper repos/0987*
 #
 # TESTING:
@@ -244,6 +244,14 @@ def write_state state
 end
 
 
+# vim.org has added a new email obfuscation trick: replacing @ and . with images.
+def unfuddle_email elem
+    elem.search('img[@src*=emailat]' ).each { |e| e.swap("@") }
+    elem.search('img[@src*=emaildot]').each { |e| e.swap(".") }
+    elem.inner_text
+end
+
+
 def scrape_author(user_id)
     $authors ||= []
     unless $authors[user_id.to_i]
@@ -255,7 +263,7 @@ def scrape_author(user_id)
         u['user_name'] = doc.at('td[text()="user name"]').next_sibling.inner_content
         u['first_name'] = doc.at('td[text()="first name"]').next_sibling.inner_content
         u['last_name'] = doc.at('td[text()="last name"]').next_sibling.inner_content
-        u['email'] = doc.at('td[text()="email"]').next_sibling.inner_content
+        u['email'] = unfuddle_email doc.at('td[text()="email"]').next_sibling
         u['homepage'] = doc.at('td[text()="homepage"]').next_sibling.inner_content
         $authors[user_id.to_i] = u
     end
