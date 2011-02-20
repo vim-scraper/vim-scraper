@@ -1,4 +1,30 @@
-Submit a patch to vim which allows git log --stat to display the line
+delete mode 100644 1093 - archive_viewer.vim.json
+delete mode 100644 2633 - coding_style.vim.json
+delete mode 100644 2636 - indentcpp.vim.json
+rewrite 2658 - Changing-color-script.json (99%)
+rewrite 2682 - colorsupport.vim.json (68%)
+rewrite 2778 - gui2term.py.json (68%)
+delete mode 100644 2918 - SpitVspit.vim.json
+rewrite 3239 - minibufexplorerpp.json (76%)
+rewrite 3241 - bufsurf.json (78%)
+delete mode 100644 3286 - LiteTabPage.json
+
+Check on AutoTmpl and AutoTmpl-B
+
+Why doesn't Lite-Tab-Page exist on github???
+
+Someone deleted everything and upload a vimball??  Need to suppress.
+  https://github.com/vim-scripts/mojo.vim/commits/master
+
+BufClose and bufkill?
+
+fully automate scraping
+
+is it possible to generate docs incrementally?
+
+make it possible for 2 or more scrapers to work at the same time
+
+Submit a patch to git which allows git log --stat to display the line
 counts but not the graph.  git log --stat=0 should do it.  Nobody
 would be using 0 since it doesn't do anything useful anyway.
 

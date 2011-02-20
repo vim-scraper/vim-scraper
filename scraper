@@ -46,9 +46,18 @@
 # be different from the repos in github.  Therefore, you should do this
 # after every few scrapes:
 #   ./scraper --dump
-#
 # In the scraper-stats repo, the master branch contains the ongoing repos
 # and the test branch contains the recreate-from-scratch each time repos.
+#
+# RECOMPILING:
+# Sometimes the scraper generates bad repos but you don't discover this
+# until after they've been pushed to github.  No problem!  Create a
+# text file containing the names of the repos that need fixing and  then
+# delete and recreate them:
+#   ./delete-repos $(cat BADNAMES)
+#   FOREVER=1 ./scraper $(cat BADNAMES)
+# Each command works incrementally -- if there's a network or github
+# error, you can just keep running it until it succeeds.
 #
 # RESCUING:
 # If you deleted a script repo and want to restore your local copy
