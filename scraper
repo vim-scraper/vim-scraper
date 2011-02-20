@@ -24,6 +24,7 @@
 # MANUAL Debugging:
 # - with a positive number, does a full scrape / upload cycle
 #     ./scraper 987
+#     ./scraper $(seq 1001 2000)
 # - with a negative number, scrapes but does not upload
 #     ./scraper -987
 # - with a .json file, creates the git repo
@@ -44,8 +45,7 @@
 # readmes, and deleting revisions, a from-scratch scrape will always
 # be different from the repos in github.  Therefore, you should do this
 # after every few scrapes:
-#   rm scraper-stats/*
-#   ./scraper --dump repos/*
+#   ./scraper --dump
 #
 # In the scraper-stats repo, the master branch contains the ongoing repos
 # and the test branch contains the recreate-from-scratch each time repos.
@@ -1550,7 +1550,19 @@ if ARGV.empty?
 elsif ARGV[0] == '--docs'
     generate_docs
 elsif ARGV[0] == '--dump'
-    ARGV[1..-1].each { |repo| dump_repo repo, 'scraper-stats' }
+    args = ARGV[1..-1]
+    stats_dir = 'scraper-stats'
+    if args.empty?
+        # this is a full dump so remove old dumpfiles
+        Dir.entries(stats_dir).
+            reject { |f| f == '.' || f == '..' || f == '.git' }.
+            each { |f| File.delete(File.join(stats_dir, f)) }
+        args = Dir.entries($repos_dir).
+            reject { |f| f == '.' || f == '..' || f == '.git' }.
+            map { |f| File.join $repos_dir, f }.
+            sort
+    end
+    args.each { |repo| dump_repo repo, stats_dir }
 elsif ARGV[0] == '--all'
     # this generates all the repos but doesn't push them
     $max_run_time = 10.days
