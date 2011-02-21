@@ -1554,7 +1554,7 @@ def fork_jobs args
     args
 end
 
-
+if __FILE__ == $0
 $start_time = Time.now
 
 if ARGV.empty?
@@ -1637,3 +1637,4 @@ end
 stop = Time.now
 puts "done#{" #{$child_number}" if $child_number}.  Run took #{'%.2f' % (stop-$start_time)} seconds or #{ '%.3f' % ((stop-$start_time)/60)} minutes"
 
+end
