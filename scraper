@@ -57,7 +57,7 @@
 #   ./delete-repos $(cat BADNAMES)
 #   FOREVER=1 ./scraper $(cat BADNAMES)
 # Each command works incrementally -- if there's a network or github
-# error, you can just keep running it until it succeeds.
+# error, you can just run it again until it succeeds.
 #
 # RESCUING:
 # If you deleted a script repo and want to restore your local copy
