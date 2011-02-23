@@ -156,33 +156,6 @@ Dir.mkdir $packages_dir unless test ?d, $packages_dir
 MimeMagic.remove 'application/x-gmc-link'
 
 
-# http://github.com/hpricot/hpricot/issues#issue/25
-# super ugly that hpricot manages to screw up charset encodings so badly.
-
-# hopefully the next version of hpricot allows us to get rid of these monkeypatches
-module Hpricot
-    module Traverse
-        def inner_text
-            if respond_to?(:children) and children
-#                children.map { |x| x.inner_text }.join
-                children.map { |x| str = x.inner_text;
-                    str = str.dup.force_encoding('ISO-8859-1').encode('UTF-8') if str.encoding.to_s == 'ASCII-8BIT' || str.encoding.to_s == 'ISO-8859-1';
-                    str
-                }.join
-            else
-                ""
-            end
-        end
-    end
-
-    def self.uxs(str)
-        str = str.to_s
-        str = str.dup.force_encoding('ISO-8859-1').encode('UTF-8') if str.encoding.to_s == 'ASCII-8BIT' || str.encoding.to_s == 'ISO-8859-1'
-        str.gsub(/\&(\w+);/) { [NamedCharacters[$1] || 63].pack("U*") }.
-            gsub(/\&\#(\d+);/) { [$1.to_i].pack("U*") }
-    end
-end
-
 # and and hopefully a future version will allow us to remove these monkeypatches
 module Hpricot
     module Traverse
