@@ -5,7 +5,7 @@ gem 'json'        ,'~> 1.4.6'
 gem 'gitrb'       ,'~> 0.2.7'
 gem 'bzip2-ruby'  ,'~> 0.2.6'
 gem 'mime-types'  ,'~> 1.16'
-gem 'mimemagic'   ,'~> 0.1.7'
+gem 'mimemagic'   ,'= 0.1.7'  # can't use 0.1.8, see comments on https://github.com/minad/mimemagic/commit/50078a4d52bb80f525784f6a4cb874fc7d2a03a0#commitcomment-280266
 gem 'octopussy'   ,'~> 0.3.0'
 gem 'hashie'      ,'~> 0.2.2'
 gem 'htmlentities','~> 4.2.1'
