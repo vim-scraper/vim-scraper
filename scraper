@@ -105,9 +105,11 @@ $max_run_time = 14.minutes + 30.seconds    # script exits normally once this tim
 $repos_dir = ENV['REPOS_DIR'] || 'repos'        # if a repo has been renamed there will be duplicate ids in here
 $scripts_dir = 'scripts'    # should never be any duplicate ids in here
 $packages_dir = 'packages'
+$webcache_dir = 'webcache'
 $git_script_file = 'vim-script.json'   # the file in the bare repo that stores the script that generated it
 $state_file = 'state.json'             # keeps track of what mode we're in (full vs. rss scrape)
 $pushing = true             # set this to false to prevent pushing (normally, if we find changes in a repo, we push)
+$ignore_cache = false       # we pull from the webcache if we can, setting to true forces pulling from the network
 
 $vimdirs = %w{after autoload bin compiler colors doc ftdetect ftplugin indent keymap plugin syntax}
 $textext = %w{au3 bat c cpp csh diff h klip patch pl pm ps py rb set sh snip snippet snippets tcl txt xml vim vim.orig}.map { |x| "\\.#{x}$" }.join('|')
@@ -151,6 +153,7 @@ $branch_versions = { 790 => { :branch => 'python3', :regex => /^python3\.0\.vim$
 Dir.mkdir $scripts_dir unless test ?d, $scripts_dir
 Dir.mkdir $repos_dir unless test ?d, $repos_dir
 Dir.mkdir $packages_dir unless test ?d, $packages_dir
+Dir.mkdir $webcache_dir unless test ?d, $webcache_dir
 
 # this mime magic is far too vague.  it false-triggers all the time.
 MimeMagic.remove 'application/x-gmc-link'
@@ -264,7 +267,7 @@ end
 def scrape_author(user_id)
     $authors ||= []
     unless $authors[user_id.to_i]
-        doc = retryable { open("http://www.vim.org/account/profile.php?user_id=#{user_id}") { |f| Hpricot(f) } }
+        doc = retryable { cached_open("http://www.vim.org/account/profile.php?user_id=#{user_id}") { |f| Hpricot(f) } }
         # How strange.  If the next line throws an "uknown next_sibling method for nil" error, vim-scripts
         # probably is suffering a temporary error.  Try the query again and it should succeed.  :-/
         doc.at('td[text()="user name"]').next_sibling.inner_content
@@ -291,6 +294,23 @@ def script_id_from_url(url)
 end
 
 
+def cached_open(url)
+    path = File.join($webcache_dir, filenameify(url))
+    # ignore_cache should be true if we're running a real scrape and should
+    # never use stale data.  Otherwise, leave it false so your testing and
+    # debugging will just use the local file system.
+    if $ignore_cache || !File.exist?(path) || File.size(path) <= 0
+        File.open(path, 'w') do |f|
+            retryable(:tries => 4, :sleep => 10) do |retries|
+                puts "downloading #{url}#{retries > 0 ? "  TRY #{retries}" : ""}"
+                open(url) { |u| f.write(u.read) }
+            end
+        end
+    end
+    File.open(path) { |f| yield f }
+end
+
+
 def scrape_script(script_id)
     script_id = script_id.to_s
 
@@ -299,7 +319,7 @@ def scrape_script(script_id)
         return nil
     end
 
-    doc = retryable { open(script_id_to_url(script_id)) { |f| Hpricot(f) } }
+    doc = retryable { cached_open(script_id_to_url(script_id)) { |f| Hpricot(f) } }
     if doc.search('title').inner_text == "Error : vim online"
         puts "Skipped #{script_id} -- doesn't exist."
         return nil
@@ -1559,6 +1579,7 @@ $start_time = Time.now
 
 if ARGV.empty?
     puts "Starting scrape at #{$start_time}"
+    $ignore_cache = true
     # don't time out after 15 minutes if FOREVER=1
     $max_run_time = 10.days if ENV['FOREVER']
     count = perform_rss
@@ -1583,6 +1604,7 @@ elsif ARGV[0] == '--dump'
 elsif ARGV[0] == '--all'
     # this generates all the repos but doesn't push them
     $max_run_time = 10.days
+    $ignore_cache = false
     $pushing = false
     perform_full
 else
@@ -1593,6 +1615,7 @@ else
         $max_run_time = 10.days
 
         if arg =~ /^\d+$/
+            $ignore_cache = true
             # leading zeros cause script ID to be interpreted as octal
             perform_all arg.gsub(/^0+/, ''), true
         elsif arg =~ /^-(\d+)$/
