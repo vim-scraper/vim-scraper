@@ -1,3 +1,17 @@
+Make more resilient against intermittent failures
+
+Processing script 2685: zOS-Enterprise-Compiler-PLI
+downloading http://www.vim.org/scripts/script.php?script_id=2686
+./scraper:481:in `githubify': undefined method `gsub' for nil:NilClass (NoMethodError)
+  from ./scraper:330:in `scrape_script'
+  from ./scraper:1354:in `perform_scrape'
+  from ./scraper:1401:in `perform_all'
+  from ./scraper:1467:in `perform_full'
+  from ./scraper:1486:in `perform_rss'
+  from ./scraper:1585:in `<main>'
+
+
+
 Make the scraper more robust against corrupted pages being served
 (simple reload seems to fix it every time)
 We should probably re-fetch the script at least once if hpricot dies with an error.

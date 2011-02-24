@@ -46,7 +46,7 @@ ARGV.each do |arg|
 
     start = Time.now
     retryable(:tries => 4, :on => Timeout::Error, :sleep => 10) do |retries|
-        puts "Turning off #{repo_file(arg)}#{retries > 0 ? "  TRY #{retries}" : ""}"
+        puts "Turning off #{repo_file(arg)}#{retries > 0 ? "  RETRY #{retries}" : ""}"
         github.set_repo_info('vim-scripts/' + script['name'], :has_issues => false, :has_wiki => false)
     end
 
