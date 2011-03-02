@@ -17,22 +17,12 @@ require 'rubygems'
 require 'bundler'
 Bundler.require
 
-require 'octopussy'
+require 'octokit'
 require 'json'
 
 $git_script_file = 'vim-script.json'
 creds = Hashie::Mash.new(JSON.parse(File.read('creds.json')))
-$github = Octopussy::Client.new(creds)
-
-
-# monkeypatch octopussy because its delete has a bug
-Octopussy::Client.class_eval do
-    def delete(repo, delete_token={})
-        repo = Octopussy::Repo.new(repo)
-        response = self.class.post("/repos/delete/#{repo.name}", :query => auth_params, :body => {:delete_token => delete_token})
-        Hashie::Mash.new(response)
-    end
-end
+$github = Octokit::Client.new(creds)
 
 
 def delete_github_repos *names

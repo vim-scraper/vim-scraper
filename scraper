@@ -84,7 +84,7 @@ require 'mimemagic'           # mimemagic gem
 require 'tmpdir'
 require 'tempfile'
 require 'find'
-require 'octopussy'           # octopussy gem
+require 'octokit'             # octokit gem
 require 'hashie'              # hashie gem
 require 'htmlentities'        # htmlentities gem
 require 'feedzirra'           # feedzirra gem
@@ -1271,7 +1271,7 @@ end
 def perform_push repo_name
     return unless repo_name
     creds = Hashie::Mash.new(JSON.parse(File.read('creds.json')))
-    github = Octopussy::Client.new(creds)
+    github = Octokit::Client.new(creds)
     repo = Gitrb::Repository.new(:path => repo_name.dup, :bare => true)
     script = JSON.parse(File.read(File.join(repo_name, $git_script_file)))
     puts "Uploading #{script['script_id']} - #{script['name']}"
@@ -1344,8 +1344,8 @@ def perform_push repo_name
     # we should have a script that will compare the full list of
     # repos on github and here and print any differences.  that is
     # not a part of this script's job.
-    # Octopussy.list_repos('vim-scripts')
-    # Octopussy.delete("vim-scripts/#{ghname}")
+    # Octokit.list_repos('vim-scripts')
+    # Octokit.delete("vim-scripts/#{ghname}")
 
     # no need to reset the remote because presumably we created this
     # repo and the remote is already set correctly.
