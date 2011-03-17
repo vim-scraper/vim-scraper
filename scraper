@@ -325,6 +325,11 @@ def scrape_script(script_id)
         return nil
     end
 
+    # vim.org seems to have a bug where every thousand requests or so it
+    # returns a page with unparseable content.  When it happens, you get
+    # nil dereference / empty string errors below.  No big deal, just
+    # re-run the scrape and everything ends up fine.
+
     s = {'script_id' => script_id}
     s['display_name'], s['summary'] = doc.search('.txth1').inner_content.split(" : ", 2)
     s['name'] = githubify(s['display_name'])
