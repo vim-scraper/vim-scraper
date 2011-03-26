@@ -1,3 +1,9 @@
+GIT
+  remote: git://github.com/bronson/retryable.git
+  revision: bb5b5796cf9cf6e04161f39920888a9fc1c86ef1
+  specs:
+    retryable (0.2.0)
+
 GEM
   remote: http://rubygems.org/
   specs:
@@ -62,4 +68,5 @@ DEPENDENCIES
   mime-types (~> 1.16)
   mimemagic (= 0.1.7)
   octopussy (~> 0.3.0)
+  retryable!
   selenium-client

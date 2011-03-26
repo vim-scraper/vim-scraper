@@ -11,8 +11,8 @@
 #   Macintosh: sudo port install unrar p7zip xz
 #
 # FULL SCRAPE:
-# To start cold with a full scrape, do this:
-#   rm state.json
+# To start a full scrape, do this:
+#   rm -f state.json
 #   FOREVER=1 ./scraper
 # Now the scraper is warm and ready to perform continuous RSS scraping.
 #
@@ -93,7 +93,13 @@ require 'mail'                # mail gem
 require 'fileutils'
 require 'selenium/client'     # selenium-client gem
 require 'open3'
+require 'retryable'
 
+include Retryable
+# :on => [] means that we won't retry anything unless the caller
+# specifies the exact exceptions that it wants to be retried.
+retryable_options :detect_nesting => true, :tries => 4,
+    :sleep => lambda { |n| 4 ** n }, :on => []
 
 # This is the name and email address of the git committer.
 $vimscripts_name = "Able Scraper"
@@ -159,6 +165,8 @@ Dir.mkdir $webcache_dir unless test ?d, $webcache_dir
 # this mime magic is far too vague.  it false-triggers all the time.
 MimeMagic.remove 'application/x-gmc-link'
 
+class SourceForgeError < RuntimeError; end
+
 
 # http://github.com/hpricot/hpricot/issues#issue/25
 # super ugly that hpricot manages to screw up charset encodings so badly.
@@ -219,29 +227,6 @@ module Hpricot
 end
 
 
-# http://blog.codefront.net/2008/01/14/retrying-code-blocks-in-ruby-on-exceptions-whatever/
-# modified to pass the number of retries in the arg (0,1,2 if :tries => 3)
-# todo: should use exponential backoff and also pass the exception to the block
-def retryable(options = {}, &block)
-    opts = { :tries => 4, :on => Exception, :sleep => 10 }.merge(options)
-    return if opts[:tries] < 1
-    tries = 0
-
-    prev_exception = nil
-    if opts[:tries] > 1
-        begin
-            return yield tries, prev_exception
-        rescue Exception => e
-            prev_exception = e
-            sleep opts[:sleep]
-            retry if (tries += 1) < opts[:tries] - 1
-        end
-    end
-
-    # last try will throw an exception
-    yield tries, prev_exception
-end
-
 # When running normally, we can be in one of two states: rss and full.
 # rss is when the rss is synced and we can update only the scripts that have changed.
 # full is when we're just starting or we have lost the rss sync.
@@ -281,7 +266,7 @@ end
 
 
 def scrape_page url
-    retryable(:tries => 4, :sleep => 10) do |retries|
+    retryable(:on => [SourceForgeError, OpenURI::HTTPError]) do |retries|
         doc = cached_open(url, retries) { |f| Hpricot(f) }
 
         # vim.org (SourceForge) seems to have a bug where every thousand requests or so
@@ -289,7 +274,7 @@ def scrape_page url
         # retrying always seems to fix it.
         if doc.search('title').inner_text == "Unknown Site"
             puts "Sourceforge lost its head for #{url} on try #{retries}, trying again."
-            raise "sf error, try again"
+            raise SourceForgeError.new "Sourceforge blew #{url}"
         end
 
         return doc
@@ -760,7 +745,7 @@ end
 
 
 def download_file url, dest
-    retryable(:tries => 4, :sleep => 10) do |retries|
+    retryable(:on => OpenURI::HTTPError) do |retries|
         puts "  downloading #{url} to #{dest}#{retries > 0 ? "  RETRY #{retries}" : ""}"
         open(url, 'rb') do |u|
             File.open(dest, 'wb') { |f| f.write(u.read) }
@@ -1317,7 +1302,7 @@ def perform_push repo_name
     end
 
     unless remote
-        retryable(:tries => 4, :sleep => 10) do |retries|
+        retryable do |retries|
             puts "  creating #{script['script_id']} - #{script['name']}#{retries > 0 ? "  RETRY #{retries}" : ""}"
             remote = github.create(
                 :name => script['name'],
@@ -1328,7 +1313,7 @@ def perform_push repo_name
         api_calls += 1
 
         # turn off the issues and wiki tabs (wish 'create' would do that)
-        retryable(:tries => 4, :sleep => 10) do |retries|
+        retryable do |retries|
             puts "  disabling wiki+issues for #{script['script_id']} - #{script['name']}#{retries > 0 ? "  RETRY #{retries}" : ""}"
             github.set_repo_info('vim-scripts/' + script['name'], :has_issues => false, :has_wiki => false)
         end
@@ -1337,7 +1322,7 @@ def perform_push repo_name
 
     repo.git_remote('rm', 'origin') rescue nil
     repo.git_remote('add', 'origin', remote_url(script))
-    retryable(:tries => 6, :sleep => 15) do |retries|
+    retryable do |retries|
         # Gitrb::CommandError is as close to a network timeout error as we're going to get
         puts "  #{"force " if ENV['FORCE']}pushing #{script['script_id']} - #{script['name']}#{retries > 0 ? "  RETRY #{retries}" : ""}"
         args = ['--tags']
@@ -1647,7 +1632,7 @@ else
             # use selenium to create & delete the repo.  It appears to fix things.
             #      to use selenium:   OBLITERATE=1 ./scraper repos/*
             $selenium = start_selenium if ENV['OBLITERATE'] && !$selenium
-            retryable(:tries => 6, :sleep => 90) do |retries|
+            retryable do |retries|
                 # sometimes, and it's hard to predict why, github errors out reliably
                 # for a few minutes, then magically fixes itself.
                 puts "Upload failed, retry #{retries}" if retries > 0
