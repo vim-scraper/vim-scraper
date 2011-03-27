@@ -26,3 +26,7 @@ gem 'i18n'        ,'~> 0.4.1'
 gem 'retryable'   , :git => 'git://github.com/bronson/retryable.git'
 gem 'selenium-client'
 
+group :test do
+  gem 'rspec'       ,'~> 2.5'
+end
+

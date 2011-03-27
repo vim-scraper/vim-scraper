@@ -13,6 +13,7 @@ GEM
     builder (3.0.0)
     bzip2-ruby (0.2.7)
     curb (0.7.10)
+    diff-lcs (1.1.2)
     erubis (2.6.6)
       abstract (>= 1.0.0)
     faraday (0.5.6)
@@ -56,6 +57,14 @@ GEM
       multi_xml (~> 0.2.0)
     polyglot (0.3.1)
     rack (1.2.1)
+    rspec (2.5.0)
+      rspec-core (~> 2.5.0)
+      rspec-expectations (~> 2.5.0)
+      rspec-mocks (~> 2.5.0)
+    rspec-core (2.5.1)
+    rspec-expectations (2.5.0)
+      diff-lcs (~> 1.1.2)
+    rspec-mocks (2.5.0)
     sax-machine (0.0.16)
       nokogiri (> 0.0.0)
     selenium-client (1.2.18)
@@ -81,4 +90,5 @@ DEPENDENCIES
   mimemagic (= 0.1.7)
   octokit (~> 0.5)
   retryable!
+  rspec (~> 2.5)
   selenium-client
