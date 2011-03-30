@@ -2,7 +2,8 @@ require File.dirname(File.absolute_path(__FILE__)) + '/../lib/github'
 
 describe "GitHub" do
   before :each do
-    client = Octokit::Client.new :login => "<LOGIN>", :token => "<TOKEN>", :adapter => :test
+    @adapter = Faraday::Adapter::Test
+    client = Octokit::Client.new :login => "<LOGIN>", :token => "<TOKEN>", :adapter => @adapter
     @github = GitHub.new :client => client
   end
 

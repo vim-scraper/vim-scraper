@@ -1,6 +1,6 @@
 GIT
   remote: git://github.com/bronson/retryable.git
-  revision: bb5b5796cf9cf6e04161f39920888a9fc1c86ef1
+  revision: 9000008ae7e151bebeb325a814aa5086defa2fe9
   specs:
     retryable (0.2.0)
 
@@ -12,11 +12,11 @@ GEM
     addressable (2.2.4)
     builder (3.0.0)
     bzip2-ruby (0.2.7)
-    curb (0.7.10)
+    curb (0.7.15)
     diff-lcs (1.1.2)
     erubis (2.6.6)
       abstract (>= 1.0.0)
-    faraday (0.5.6)
+    faraday (0.5.7)
       addressable (~> 2.2.4)
       multipart-post (~> 1.1.0)
       rack (>= 1.1.0, < 2)
@@ -45,10 +45,10 @@ GEM
     mime-types (1.16)
     mimemagic (0.1.7)
     multi_json (0.0.5)
-    multi_xml (0.2.1)
+    multi_xml (0.2.2)
     multipart-post (1.1.0)
     nokogiri (1.4.4)
-    octokit (0.5.2)
+    octokit (0.6.0)
       addressable (~> 2.2.4)
       faraday (~> 0.5.4)
       faraday_middleware (~> 0.3.2)
@@ -56,7 +56,7 @@ GEM
       multi_json (~> 0.0.5)
       multi_xml (~> 0.2.0)
     polyglot (0.3.1)
-    rack (1.2.1)
+    rack (1.2.2)
     rspec (2.5.0)
       rspec-core (~> 2.5.0)
       rspec-expectations (~> 2.5.0)

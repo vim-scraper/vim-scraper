@@ -1587,6 +1587,10 @@ if ARGV.empty?
     count = perform_rss
     # also cycle through all packages in case the rss feed missed anything
     perform_continuous($idle_count - count) if count && $idle_count - count > 0
+elsif ARGV[0] == '--console'
+    require 'irb'
+    ARGV.shift
+    IRB.start
 elsif ARGV[0] == '--docs'
     generate_docs
 elsif ARGV[0] == '--dump'
