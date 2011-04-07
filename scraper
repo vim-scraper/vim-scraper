@@ -414,6 +414,7 @@ end
 
 
 def generate_docs
+    puts "reading scripts..."
     # a hash of all scripts (including ones abandoned by renames) indexed by script_id
     repos = Dir.entries($repos_dir).reject { |e| %w{. .. .git}.include?(e) }
     all_scripts = repos.sort.map do |dir|
@@ -429,6 +430,7 @@ def generate_docs
     doc_dir = 'vim-scripts.github.com'
     Dir.mkdir doc_dir unless test ?d, doc_dir
 
+    puts "generating docs..."
     index_template = Erubis::Eruby.new(File.new(File.join('views', 'scripts.html.erb')).read)
     File.open("#{doc_dir}/vim/scripts.html", 'w') do |f|
         f.write index_template.result(:scripts => good_scripts)
