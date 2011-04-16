@@ -431,7 +431,7 @@ def generate_docs
     Dir.mkdir doc_dir unless test ?d, doc_dir
 
     File.open("#{doc_dir}/api/scripts.json", 'w') do |f|
-        f.write good_scripts.map { |s| s.name }
+        f.write good_scripts.map { |s| s.name }.to_json
     end
 
     File.open("#{doc_dir}/api/scripts_recent.json", 'w') do |f|
@@ -445,7 +445,7 @@ def generate_docs
                 :ra => recent_author_name,
                 :re => recent_author_email
             }
-        }
+        }.to_json
     end
 
     # each script id and its official, current name.
