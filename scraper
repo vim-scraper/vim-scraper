@@ -439,6 +439,7 @@ def generate_docs
             recent_author_name, recent_author_email = fix_email_address(s.versions.last.author)
             {
                 :n => s.name,
+                :t => s.script_type,
                 :s => s.summary,
                 :rv => s.versions.last.script_version,
                 :rd => s.versions.last.date,
