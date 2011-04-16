@@ -427,15 +427,9 @@ def generate_docs
         Hashie::Mash.new(JSON.parse(File.read(File.join($scripts_dir, file))))
     end
 
+    puts "generating docs..."
     doc_dir = 'vim-scripts.github.com'
     Dir.mkdir doc_dir unless test ?d, doc_dir
-
-    puts "generating docs..."
-    index_template = Erubis::Eruby.new(File.new(File.join('views', 'scripts.html.erb')).read)
-    File.open("#{doc_dir}/vim/scripts.html", 'w') do |f|
-        f.write index_template.result(:scripts => good_scripts)
-    end
-
 
     File.open("#{doc_dir}/api/scripts.json", 'w') do |f|
         f.write good_scripts.map { |s| s.name }
