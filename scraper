@@ -1114,7 +1114,9 @@ def add_version repo, version, script
     case actual_name
     when nil then # do nothing
 
-    # horrible special case for 3584 - checklist.vim
+    # need to special-case 3584 - checklist.vim because the zipfile is too new.
+    # TODO: switch to unzipping all zipfiles with 7z once this bug is fixed:
+    # https://sourceforge.net/tracker/?func=detail&aid=3310980&group_id=14481&atid=114481
     when /checklist-v0.51.zip$/ then unshell repo, script, pkgfile, ['7z', 'x']
 
     when /#{$textext}/ then smart_copy_file repo, script, actual_name, File.read(pkgfile)
