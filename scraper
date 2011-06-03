@@ -1058,6 +1058,9 @@ def sense_file repo, actual_name, pkgfile
             # names and magic have failed us, copy these files over raw
             copy_file(repo, actual_name, File.read(pkgfile))
             actual_name = nil
+        elsif magic_type == 'application/x-tar' && extension_type.include?('application/x-gtar')
+            # extension claims tarfile was gzipped but magic claims it wasn't.  Trust the magic.
+            actual_name += '.tar'
         elsif magic_type == 'application/zip' && extension_type.include?('application/x-java-archive')
             # jarfiles sense as zipfiles so don't let the fixup code below "correct" the package extension
         elsif magic_type == 'application/zip'
