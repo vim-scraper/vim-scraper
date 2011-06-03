@@ -6,8 +6,8 @@
 #
 # DEPENDENCIES
 # This script requires Ruby 1.9.2+.
-# Make sure you have unzip, unrar, 7za, and xz installed.
-#   Ubuntu: sudo apt-get install unzip unrar p7zip-full xz-utils
+# Make sure you have unrar, 7za, and xz installed.
+#   Ubuntu: sudo apt-get install unrar p7zip-full xz-utils
 #   Macintosh: sudo port install unrar p7zip xz
 #
 # FULL SCRAPE:
@@ -969,8 +969,7 @@ def unshell repo, script, localpath, cmd
         fullpath = File.expand_path(localpath)
         Dir.chdir(tmpdir) do
             cmd = [*cmd, fullpath]
-            # unzip returns a 1 exit code for success with warnings
-            unless system(*cmd) || (cmd[0] == 'unzip' && $?.exitstatus == 1)
+            unless system *cmd
                 raise "couldn't run #{cmd.join(' ')}: #{$?}"
             end
         end
@@ -1113,17 +1112,12 @@ def add_version repo, version, script
 
     case actual_name
     when nil then # do nothing
-
-    # horrible special case for 3584 - checklist.vim
-    when /checklist-v0.51.zip$/ then unshell repo, script, pkgfile, ['7z', 'x']
-
     when /#{$textext}/ then smart_copy_file repo, script, actual_name, File.read(pkgfile)
-    when /\.zip$/i then unshell repo, script, pkgfile, ['unzip']
+    when /\.zip$|\.7z$/i then unshell repo, script, pkgfile, ['7z', 'x']
     when /\.tar$/ then unshell repo, script, pkgfile, ['tar', 'xf']
     when /\.t?gz$/i then ungzip(pkgfile) { |contents| sense_zipped_file(repo, script, version['filename'].sub(/\.t?gz$/, ''), contents) }
     when /\.t?bz2?$/i then unbzip2(pkgfile) { |contents| sense_zipped_file(repo, script, version['filename'].sub(/\.t?bz2?$/, ''), contents) }
     when /\.xz$/ then unxz(pkgfile) { |contents| sense_zipped_file(repo, script, version['filename'].sub(/\.xz$/, ''), contents) }
-    when /\.7z$/ then unshell repo, script, pkgfile, ['7za', 'x']
     when /\.rar$/ then unshell repo, script, pkgfile, ['unrar', 'x']
     when /\.vba$|\.vimball$/ then unvimball repo, script, pkgfile
     when /\.jar$/ then copy_file repo, actual_name, File.read(pkgfile)
