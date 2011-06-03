@@ -1395,11 +1395,11 @@ def dump_repo repo, stats_dir
     repo = repo.gsub /\/$/, ''  # remove trailing / added by filename completion
     ENV['GIT_DIR'] = repo
     log = `git log --pretty=fuller --decorate=full --stat`
-    # remove every line with a CommitDate since that's horribly variable
     log = log.each_line.reduce([]) { |a,v|
-        v.gsub!(/^commit\s+[0-9A-Fa-f]*/, 'commit SHA1SHA1SHA1');
-        v.gsub!(/, refs\/(remotes|heads)[^,)]*\/master/, '');
-        a.push(v) unless v =~ /^CommitDate: /;
+        v.gsub!(/^commit\s+[0-9A-Fa-f]*/, 'commit SHA1SHA1SHA1');  # make sha static, changes every run
+        v.gsub!(/, refs\/(remotes|heads)[^,)]*\/master/, '');      # remove info about what's on the remote TODO: can I remove this?
+        v.gsub!(/^( .*\|\s*[0-9]*)\s*[+-]*$/) { $1 };              # remove the git log --stat graph, it hides changes     sed -i 's/^\( .*\|\s*[0-9]*\)\s*[+-]*$/\1/' *
+        a.push(v) unless v =~ /^CommitDate: /;                     # remove CommitDate since that's different each run
         a }.join
     ENV.delete('GIT_DIR')
     filename = File.join(stats_dir, File.basename(repo).gsub(/\.git$/, '') + '.stats')

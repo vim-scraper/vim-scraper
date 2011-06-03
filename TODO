@@ -28,11 +28,6 @@ is it possible to generate docs incrementally?
 
 make it possible for 2 or more scrapers to work at the same time
 
-Submit a patch to git which allows git log --stat to display the line
-counts but not the graph.  git log --stat=0 should do it.  Nobody
-would be using 0 since it doesn't do anything useful anyway.
-
-
 https://github.com/vim-scripts/browserprint has a README.md file
 which overrides our README file.  Maybe we should skip making our
 own README if README.md already exists...?
