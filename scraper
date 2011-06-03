@@ -1112,6 +1112,10 @@ def add_version repo, version, script
 
     case actual_name
     when nil then # do nothing
+
+    # horrible special case for 3584 - checklist.vim
+    when /checklist-v0.51.zip$/ then unshell repo, script, pkgfile, ['7z', 'x']
+
     when /#{$textext}/ then smart_copy_file repo, script, actual_name, File.read(pkgfile)
     when /\.zip$/i then unshell repo, script, pkgfile, ['unzip']
     when /\.tar$/ then unshell repo, script, pkgfile, ['tar', 'xf']
