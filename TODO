@@ -75,13 +75,20 @@ http://github.com/minad/gitrb/commit/0847728518b3fa1f9fb95449fbc329b39872e55c
 
 mimemagic:
 http://github.com/minad/mimemagic/commit/84720bb8fee6bac0666c89d0f4c1fdbe5904a961
+https://github.com/minad/mimemagic/issues/1
+https://github.com/minad/mimemagic/issues/4
 
 octopussy:
 http://github.com/pengwynn/octopussy/commit/aa4de36cbd4ac2de9fdf88b75e1ad35563979af8
 http://github.com/pengwynn/octopussy/commit/25af70b9642dccc98faed7ccfbf9dc2a3efe28c4
 
-rubyzip: (unfortunately never resulted in satisfactory unzipping, but at least we know what's going on)
+rubyzip: (unfortunately never resulted in satisfactory unzipping but at least we know the problem)
 http://www.ruby-forum.com/topic/211146#936159
+
+7zip:
+https://sourceforge.net/tracker/index.php?func=detail&aid=3310980&group_id=14481&atid=114481#
+
+unzip: probably not worth filing a bug on Infozip.
 
 hpricot monkeypatch
 
