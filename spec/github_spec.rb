@@ -28,7 +28,7 @@ describe "GitHub" do
 #  end
 
   it "should hold off before hitting github limit" do
-    @github = GitHub.new :client => FakeClient.new
+    @github = GitHub.new :client => FakeClient.new, :logger => lambda { |msg| }
     @github.should_receive(:sleep).once.with(60)
     65.times { @github.turn_off_features "repo" }
     @github.client.count.should == 65

@@ -1,4 +1,4 @@
-# Utilities for the scraper to interact with GitHub
+# Helps the scraper interact with GitHub.
 
 require 'json'
 require 'hashie'
@@ -30,7 +30,7 @@ class GitHub
         if @api_calls > 60
             holdoff = 60 - (Time.now.to_i - @start)
             if holdoff > 0
-                puts "hit github limit, sleeping for #{holdoff} seconds"
+                log "hit github limit, sleeping for #{holdoff} seconds"
                 sleep holdoff
             end
             @start = Time.now.to_i
@@ -46,6 +46,7 @@ class GitHub
     end
 
 
+    # turns off the issues and wiki tabs for a new repo
     def turn_off_features name
         # TODO: make this retryable
         log "  disabling wiki+issues for #{name}"
