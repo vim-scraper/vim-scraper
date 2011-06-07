@@ -9,12 +9,13 @@ require 'retryable'
 class GitHub
     include Retryable
 
+    attr_accessor :client, :logger
 
     def initialize opts
         creds = Hashie::Mash.new(JSON.parse(File.read('creds.json')))
-        @client = Octokit::Client.new(:login => creds.login, :token => creds.token)
+        @client = opts[:client] || Octokit::Client.new(:login => creds.login, :token => creds.token)
         @logger = opts[:logger] || lambda { |msg| puts msg }
-        @start = Time.now
+        @start = Time.now.to_i
         @api_calls = 0
     end
 
@@ -24,22 +25,26 @@ class GitHub
 
 
     # sleep to avoid bumping into github's 60-per-minute API limit
-    # just make sure num requests + 60 < num seconds elapsed.
+    # Github may change at any time so make sure your code still retries when rate limited.
     def github_holdoff
-        # if @stop - start < @api_calls
-            # sleep_time = @api_calls-(stop-start)
-            # if sleep_time > 0
-                # puts "hit github limit, sleeping for #{}"
-                # sleep sleep_time
-            # end
-        # end
+        if @api_calls > 60
+            holdoff = 60 - (Time.now.to_i - @start)
+            if holdoff > 0
+                puts "hit github limit, sleeping for #{holdoff} seconds"
+                sleep holdoff
+            end
+            @start = Time.now.to_i
+            @api_calls = 0
+        end
     end
+
 
     def call_client method, *args
         github_holdoff
         @client.send method, *args
         @api_calls += 1
     end
+
 
     def turn_off_features name
         # TODO: make this retryable
@@ -50,7 +55,7 @@ class GitHub
 end
 
 
-# NOTE: this Selenium code does not work anymore.
+# This Selenium code does not work anymore.
 # it's kept around in case it is required again.
 class GitHub::Selenium < GitHub
     def start_selenium

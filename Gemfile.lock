@@ -12,6 +12,7 @@ GEM
     addressable (2.2.4)
     builder (3.0.0)
     bzip2-ruby (0.2.7)
+    crack (0.1.8)
     curb (0.7.15)
     diff-lcs (1.1.2)
     erubis (2.6.6)
@@ -67,9 +68,11 @@ GEM
     rspec-mocks (2.5.0)
     sax-machine (0.0.16)
       nokogiri (> 0.0.0)
-    selenium-client (1.2.18)
     treetop (1.4.9)
       polyglot (>= 0.3.1)
+    webmock (1.6.2)
+      addressable (>= 2.2.2)
+      crack (>= 0.1.7)
 
 PLATFORMS
   ruby
@@ -91,4 +94,4 @@ DEPENDENCIES
   octokit (~> 0.5)
   retryable!
   rspec (~> 2.5)
-  selenium-client
+  webmock (~> 1.6)

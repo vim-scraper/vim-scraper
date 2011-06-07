@@ -1,20 +1,23 @@
+Factor into modules.
+Store all scripts in a single gigantic .json file.
+Remove vim-script.json from git repos.  Make them plain repos again.
+Denormalize all author and script info into each version so that we
+  can recreate the whole archive at any time.  No need for separate test branch.
+
 Make more resilient against intermittent failures
-
-Processing script 2685: zOS-Enterprise-Compiler-PLI
-downloading http://www.vim.org/scripts/script.php?script_id=2686
-./scraper:481:in `githubify': undefined method `gsub' for nil:NilClass (NoMethodError)
-  from ./scraper:330:in `scrape_script'
-  from ./scraper:1354:in `perform_scrape'
-  from ./scraper:1401:in `perform_all'
-  from ./scraper:1467:in `perform_full'
-  from ./scraper:1486:in `perform_rss'
-  from ./scraper:1585:in `<main>'
-
-
-
-Make the scraper more robust against corrupted pages being served
 (simple reload seems to fix it every time)
 We should probably re-fetch the script at least once if hpricot dies with an error.
+
+  Processing script 2685: zOS-Enterprise-Compiler-PLI
+  downloading http://www.vim.org/scripts/script.php?script_id=2686
+  ./scraper:481:in `githubify': undefined method `gsub' for nil:NilClass (NoMethodError)
+    from ./scraper:330:in `scrape_script'
+    from ./scraper:1354:in `perform_scrape'
+    from ./scraper:1401:in `perform_all'
+    from ./scraper:1467:in `perform_full'
+    from ./scraper:1486:in `perform_rss'
+    from ./scraper:1585:in `<main>'
+
 
   Scraped scripts/0631 - cf.vim.json
   Processing script 631: cf.vim
@@ -29,6 +32,8 @@ We should probably re-fetch the script at least once if hpricot dies with an err
       from ./scraper:1564:in `<main>'
 
 
+what happened to archive_viewer.vim and coding_style.vim and indentcpp.vim?
+Make sure all these look OK:
 delete mode 100644 1093 - archive_viewer.vim.json
 delete mode 100644 2633 - coding_style.vim.json
 delete mode 100644 2636 - indentcpp.vim.json
@@ -42,18 +47,19 @@ delete mode 100644 3286 - LiteTabPage.json
 
 Check on AutoTmpl and AutoTmpl-B
 
-what happened to archive_viewer.vim and coding_style.vim and indentcpp.vim
-
 Why doesn't Lite-Tab-Page exist on github???
 
-Someone deleted everything and upload a vimball??  Need to suppress.
+Someone deleted everything and uploaded a vimball??  Need to suppress.
   https://github.com/vim-scripts/mojo.vim/commits/master
 
-BufClose and bufkill?
+Switch to Nokogiri, hpricot appears totally hopeless at charset issues.
+
+
+BufClose and bufkill?  Try to consolidate close buffer plugins.
 
 fully automate scraping
 
-is it possible to generate docs incrementally?
+is it possible to generate docs incrementally?  (n/a once the central db is done)
 
 make it possible for 2 or more scrapers to work at the same time
 
@@ -88,7 +94,9 @@ http://www.ruby-forum.com/topic/211146#936159
 7zip:
 https://sourceforge.net/tracker/index.php?func=detail&aid=3310980&group_id=14481&atid=114481#
 
-unzip: probably not worth filing a bug on Infozip.
+https://github.com/bronson/retryable
+
+unzip: probably not worth filing a bug on Infozip...  wish it could decompress newer zipfiles tho.
 
 hpricot monkeypatch
 
