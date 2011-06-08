@@ -30,6 +30,6 @@ gem 'retryable'   , :git => 'git://github.com/bronson/retryable.git'
 
 group :test do
   gem 'rspec'       ,'~> 2.5'
-  gem 'webmock'     ,'~> 1.6'
+  gem 'webmock'     , :git => 'https://github.com/afeld/webmock.git', :branch => "expectations_on_stubs"
 end
 

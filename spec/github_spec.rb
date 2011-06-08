@@ -17,14 +17,13 @@ describe "GitHub" do
       # For some reason these don't work:
         # :body => { :data => { :values => {:has_issues => false, :has_wiki => false}}},
         # :body => { :data => { "values[has_issues]" => false, "values[has_wiki]" => false}},
-    stub_request(:post, "https://loggyin%2Ftoken:tokkyen@github.com/api/v2/json/repos/show/vim-scripts/repo").
+    stub = stub_request(:post, "https://loggyin%2Ftoken:tokkyen@github.com/api/v2/json/repos/show/vim-scripts/repo").
       with(:body => "values[has_issues]=false&values[has_wiki]=false").to_return(:body => {}.to_json)
 
     @github = GitHub.new :client => Octokit::Client.new(:login => "loggyin", :token => "tokkyen"), :logger => lambda { |msg| }
     @github.turn_off_features "repo"
 
-    WebMock.should have_requested(:post, "https://loggyin%2Ftoken:tokkyen@github.com/api/v2/json/repos/show/vim-scripts/repo").
-      with(:body => "values[has_issues]=false&values[has_wiki]=false")
+    stub.should have_been_requested
   end
 
   it "should hold off before hitting github limit" do

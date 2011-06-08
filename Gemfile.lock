@@ -1,15 +1,24 @@
 GIT
   remote: git://github.com/bronson/retryable.git
-  revision: 9000008ae7e151bebeb325a814aa5086defa2fe9
+  revision: a21655fa16330382e54a9ddba583a566399ab3b1
   specs:
-    retryable (0.2.0)
+    retryable (0.9.0)
+
+GIT
+  remote: https://github.com/afeld/webmock.git
+  revision: a6e08005c5c76a8721a07047bea90fb7f13c8bf3
+  branch: expectations_on_stubs
+  specs:
+    webmock (1.6.4)
+      addressable (~> 2.2, > 2.2.5)
+      crack (>= 0.1.7)
 
 GEM
   remote: http://rubygems.org/
   specs:
     abstract (1.0.0)
     activesupport (3.0.1)
-    addressable (2.2.4)
+    addressable (2.2.6)
     builder (3.0.0)
     bzip2-ruby (0.2.7)
     crack (0.1.8)
@@ -17,12 +26,12 @@ GEM
     diff-lcs (1.1.2)
     erubis (2.6.6)
       abstract (>= 1.0.0)
-    faraday (0.5.7)
+    faraday (0.6.1)
       addressable (~> 2.2.4)
       multipart-post (~> 1.1.0)
       rack (>= 1.1.0, < 2)
-    faraday_middleware (0.3.2)
-      faraday (~> 0.5.4)
+    faraday_middleware (0.6.3)
+      faraday (~> 0.6.0)
     feedzirra (0.0.24)
       activesupport (>= 2.3.8)
       builder (>= 2.1.2)
@@ -38,41 +47,39 @@ GEM
     json (1.4.6)
     loofah (1.0.0)
       nokogiri (>= 1.3.3)
-    mail (2.2.15)
+    mail (2.2.19)
       activesupport (>= 2.3.6)
       i18n (>= 0.4.0)
       mime-types (~> 1.16)
       treetop (~> 1.4.8)
     mime-types (1.16)
     mimemagic (0.1.7)
-    multi_json (0.0.5)
-    multi_xml (0.2.2)
-    multipart-post (1.1.0)
+    multi_json (1.0.3)
+    multipart-post (1.1.2)
     nokogiri (1.4.4)
-    octokit (0.6.0)
+    octokit (0.6.3)
       addressable (~> 2.2.4)
-      faraday (~> 0.5.4)
-      faraday_middleware (~> 0.3.2)
+      faraday (~> 0.6.0)
+      faraday_middleware (~> 0.6.0)
       hashie (~> 1.0.0)
-      multi_json (~> 0.0.5)
-      multi_xml (~> 0.2.0)
+      multi_json (~> 1.0.0)
+      rash (~> 0.3.0)
     polyglot (0.3.1)
-    rack (1.2.2)
-    rspec (2.5.0)
-      rspec-core (~> 2.5.0)
-      rspec-expectations (~> 2.5.0)
-      rspec-mocks (~> 2.5.0)
-    rspec-core (2.5.1)
-    rspec-expectations (2.5.0)
+    rack (1.3.0)
+    rash (0.3.0)
+      hashie (~> 1.0.0)
+    rspec (2.6.0)
+      rspec-core (~> 2.6.0)
+      rspec-expectations (~> 2.6.0)
+      rspec-mocks (~> 2.6.0)
+    rspec-core (2.6.4)
+    rspec-expectations (2.6.0)
       diff-lcs (~> 1.1.2)
-    rspec-mocks (2.5.0)
+    rspec-mocks (2.6.0)
     sax-machine (0.0.16)
       nokogiri (> 0.0.0)
     treetop (1.4.9)
       polyglot (>= 0.3.1)
-    webmock (1.6.2)
-      addressable (>= 2.2.2)
-      crack (>= 0.1.7)
 
 PLATFORMS
   ruby
@@ -94,4 +101,4 @@ DEPENDENCIES
   octokit (~> 0.5)
   retryable!
   rspec (~> 2.5)
-  webmock (~> 1.6)
+  webmock!
