@@ -52,13 +52,24 @@ class GitHub
     end
 
 
+    #
+    #     here are the utility functions...
+    #
+
+    def info name
+        call_client :repository, "vim-scripts/#{name}"
+    end
+
     # turns off the issues and wiki tabs for a new repo
     def turn_off_features name
-        log "  disabling wiki+issues for #{name}"
         call_client :update_repository, "vim-scripts/#{name}",
             { :has_issues => false, :has_wiki => false }
     end
 
+    def create name, *args
+        call_client :create, name, *args
+        turn_off_features name
+    end
 
     def delete name
         result = call_client :delete_repository, name

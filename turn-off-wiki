@@ -19,6 +19,7 @@ ARGV.each do |name|
     name =~ /^repos\/(.*)\.git\/?$/
     name = $1 if $1
 
+    puts "  disabling wiki+issues for #{name}"
     github.turn_off_features name
 end
 
