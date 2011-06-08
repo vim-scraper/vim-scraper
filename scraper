@@ -227,6 +227,27 @@ module Hpricot
 end
 
 
+# Recursively convert a Hashie::Mash back to a plain hash
+#def convert_hash arg
+    #if arg.kind_of? Hashie::Mash
+        #hash = arg.to_hash
+        #hash.each { |k,v| hash[k] = convert_hash v }
+        #hash
+    #else
+        #arg
+    #end
+#end
+
+
+# There's a bizarre bug when passing a Hashie::Mash to JSON.pretty_generate.
+# See https://github.com/bronson/whose-bug for an attempt to track it down.
+# This routine just converts to plain hashes before generating.
+def json_pretty arg
+    arg = arg.to_hash if arg.kind_of? Hashie::Mash
+    JSON.pretty_generate(arg) + "\n"
+end
+
+
 # When running normally, we can be in one of two states: rss and full.
 # rss is when the rss is synced and we can update only the scripts that have changed.
 # full is when we're just starting or we have lost the rss sync.
@@ -238,7 +259,7 @@ end
 
 
 def write_state state
-    File.open($state_file, 'w') { |f| f.write(JSON.pretty_generate(state)+"\n") }
+    File.open($state_file, 'w') { |f| f.write json_pretty(state) }
 end
 
 
@@ -722,7 +743,7 @@ def write_script script
     File.open(filename, 'w') do |f|
         farg = fix_encoding(script)
         # check_encoding(farg)
-        f.write(JSON.pretty_generate(farg)+"\n")
+        f.write json_pretty(farg)
     end
     filename
 end
@@ -1382,7 +1403,7 @@ def perform_download script_file
 
     # store the script file in the repo it creates
     File.open(File.join(repo.path, $git_script_file), 'w') { |f|
-        f.write JSON.pretty_generate(script) + "\n"
+        f.write json_pretty(script)
     }
 
     count = store_versions_in_repo(repo, script)
