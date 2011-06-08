@@ -6,7 +6,7 @@ GIT
 
 GIT
   remote: https://github.com/afeld/webmock.git
-  revision: a6e08005c5c76a8721a07047bea90fb7f13c8bf3
+  revision: 0345d5e84e80f48a0ec8214d8c911cb360313a60
   branch: expectations_on_stubs
   specs:
     webmock (1.6.4)
@@ -17,7 +17,7 @@ GEM
   remote: http://rubygems.org/
   specs:
     abstract (1.0.0)
-    activesupport (3.0.1)
+    activesupport (3.0.8)
     addressable (2.2.6)
     builder (3.0.0)
     bzip2-ruby (0.2.7)
@@ -85,7 +85,6 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
-  activesupport (= 3.0.1)
   bzip2-ruby (~> 0.2.6)
   erubis (~> 2.6.6)
   feedzirra (~> 0.0.24)

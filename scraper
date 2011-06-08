@@ -91,7 +91,6 @@ require 'feedzirra'           # feedzirra gem
 require 'erubis'              # erubis gem
 require 'mail'                # mail gem
 require 'fileutils'
-require 'selenium/client'     # selenium-client gem
 require 'open3'
 require 'retryable'
 
@@ -227,6 +226,27 @@ module Hpricot
 end
 
 
+# Recursively convert a Hashie::Mash back to a plain hash
+#def convert_hash arg
+    #if arg.kind_of? Hashie::Mash
+        #hash = arg.to_hash
+        #hash.each { |k,v| hash[k] = convert_hash v }
+        #hash
+    #else
+        #arg
+    #end
+#end
+
+
+# There's a bizarre bug when passing a Hashie::Mash to JSON.pretty_generate.
+# See https://github.com/bronson/whose-bug for an attempt to track it down.
+# This routine just converts to plain hashes before generating.
+def json_pretty arg
+    arg = arg.to_hash if arg.kind_of? Hashie::Mash
+    JSON.pretty_generate(arg) + "\n"
+end
+
+
 # When running normally, we can be in one of two states: rss and full.
 # rss is when the rss is synced and we can update only the scripts that have changed.
 # full is when we're just starting or we have lost the rss sync.
@@ -238,7 +258,7 @@ end
 
 
 def write_state state
-    File.open($state_file, 'w') { |f| f.write(JSON.pretty_generate(state)+"\n") }
+    File.open($state_file, 'w') { |f| f.write json_pretty(state) }
 end
 
 
@@ -722,7 +742,7 @@ def write_script script
     File.open(filename, 'w') do |f|
         farg = fix_encoding(script)
         # check_encoding(farg)
-        f.write(JSON.pretty_generate(farg)+"\n")
+        f.write json_pretty(farg)
     end
     filename
 end
@@ -1244,35 +1264,6 @@ def remote_url script
 end
 
 
-def start_selenium
-    sel = Selenium::Client::Driver.new :host => 'localhost',
-          :port => 4444, :browser => 'firefox', :url => 'https://github.com'
-    sel.start
-    sel.set_context "deleee"
-    sel.open "/login"
-    sel.type "login_field", "vim-scripts"
-    password = File.read('password').chomp rescue raise("Put vim-script's password in a file named 'password'.")
-    sel.type "password", password
-    sel.click "commit", :wait_for => :page
-    sel
-end
-
-
-# github's api is claiming some repos exist when they clearly don't.  the
-# only way to fix this appears to be to create a repo of the same name and
-# delete it using the regular interface (trying to delete using the api
-# throws 500 server errors).  Hence all this Selenium.  Arg.
-
-def obliterate_repo sel, name
-    sel.open "/repositories/new"
-    sel.type "repository_name", name
-    sel.click "//button[@type='submit']", :wait_for => :page
-    sel.open "/vim-scripts/#{name}/admin"
-    sel.click "//div[@id='addons_bucket']/div[3]/div[1]/a/span"
-    sel.click "//div[@id='addons_bucket']/div[3]/div[3]/form/button"
-end
-
-
 def repo_heads repo
     path = "#{repo.path}/refs/heads"
     Dir.entries(path).select { |f|
@@ -1294,15 +1285,6 @@ def perform_push repo_name
 
     remote = github.repo("vim-scripts/#{script['name']}") rescue nil
     api_calls += 1
-
-    # if selenium is true then we must be having problems with phantom repos
-    if remote && $selenium
-        puts "  apparently #{remote.url} exists, obliterating..."
-        obliterate_repo $selenium, script['name']
-        remote = nil
-        puts "  obliterate succeeded."
-        sleep 2  # github requires a bit of time to sync
-    end
 
     if remote
         # make sure this actually is the same repo
@@ -1382,7 +1364,7 @@ def perform_download script_file
 
     # store the script file in the repo it creates
     File.open(File.join(repo.path, $git_script_file), 'w') { |f|
-        f.write JSON.pretty_generate(script) + "\n"
+        f.write json_pretty(script)
     }
 
     count = store_versions_in_repo(repo, script)
@@ -1643,12 +1625,6 @@ else
         elsif test ?f, arg
             perform_download arg
         elsif test ?d, arg
-            # the github api appears to have bugs, see obliterate_repo for more.
-            # if you're having troubles where the api claims a repo exists but can't
-            # push to it, and the regular user interface claims it doesn't exist,
-            # use selenium to create & delete the repo.  It appears to fix things.
-            #      to use selenium:   OBLITERATE=1 ./scraper repos/*
-            $selenium = start_selenium if ENV['OBLITERATE'] && !$selenium
             retryable do |retries|
                 # sometimes, and it's hard to predict why, github errors out reliably
                 # for a few minutes, then magically fixes itself.
@@ -1669,11 +1645,6 @@ else
         puts "waiting for children to finish..."
         Process.wait
     end
-end
-
-if $selenium
-    $selenium.close_current_browser_session
-    $selenium.stop
 end
 
 stop = Time.now
