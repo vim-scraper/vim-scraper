@@ -46,17 +46,32 @@ class GitHub
 
     def call_client method, *args
         github_holdoff
-        @client.send method, *args
+        result = @client.send method, *args
         @api_calls += 1
+        result
     end
 
 
     # turns off the issues and wiki tabs for a new repo
     def turn_off_features name
-        # TODO: make this retryable
         log "  disabling wiki+issues for #{name}"
         call_client :update_repository, "vim-scripts/#{name}",
             { :has_issues => false, :has_wiki => false }
+    end
+
+
+    def delete name
+        result = call_client :delete_repository, name
+        if result
+            result = call_client :delete_repository, name, :delete_token => result
+            if result.status == "deleted"
+                log "removed #{name} from github"
+            else
+                raise "Unknown response from second stage for #{name}: #{result.inspect}"
+            end
+        else
+            raise "got #{result.inspect} trying to delete #{name}"
+        end
     end
 end
 

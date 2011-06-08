@@ -3,77 +3,42 @@
 # Mass delete, just pass the names or full paths of the repos to delete
 # and both the github and local repos/* repositories will be deleted.
 #
+##
 # You might need to wait for a few hours between deleting and pushing
 # since github has a bug where quickly deleting, creating, and pushing a
 # repo with the same name will just result in a resurrection of the old
 # repo with the old contents, not an empty one.
 #
-# Now you can use FORCE=1 ./scraper 0999 to get around this.  It doesn't
+# Now you can use "FORCE=1 ./scraper 0999" to get around this.  It doesn't
 # update the script's description but usually that's not needed and it's
 # better than waiting for github to fix this bug!
 
 
-require 'rubygems'
+$:.unshift './lib'
+
 require 'bundler'
 Bundler.require
-
-require 'octokit'
-require 'json'
-
-$git_script_file = 'vim-script.json'
-creds = Hashie::Mash.new(JSON.parse(File.read('creds.json')))
-$github = Octokit::Client.new(creds)
+require 'github'
 
 
-def delete_github_repos *names
-    start = Time.now
-    call_count = 0
-    names.flatten.each do |name|
-        next unless name
-        begin
-            result = $github.delete name
-        rescue Exception => e
-            puts "could not remove #{name}: #{e}"
-            next
-        end
+scripts = {}
 
-        call_count += 1
-        if result
-            result = $github.delete name, result.delete_token
-            call_count += 1
-            if result.status == "deleted"
-                puts "removed #{name} from github"
-            else
-                puts "Unknown response from second stage for #{name}: #{result}"
-            end
-        else
-            puts "got #{result.inspect} trying to delete #{name}"
-        end
+ARGV.each do |name|
+    name =~ /^repos\/(.*)\.git\/?$/
+    name = $1 if $1
+    path = "repos/#{name}.git"
 
-        # make sure we don't bump into github's rate limit
-        if call_count >= 60
-            duration = Time.now - start
-            puts "at rate limit, sleeping for #{60 - duration} seconds"
-            sleep 60 - duration if duration < 60
-            start = Time.now
-            call_count = 0
-        end
-    end
-end
-
-
-scripts = ARGV.reduce({}) do |a,path|
-    name = File.basename(path).sub(/\.git$/, '')
-    path = "repos/#{name}.git" unless test ?d, path
     if test ?d, path
-        a[name] = path
+        scripts[name] = path
     else
         puts "warning: can't find #{path}"
     end
-    a
 end
 
-delete_github_repos scripts.keys
+github = GitHub.new
+scripts.each do |name,path|
+    github.delete name
+end
 
 scripts.each do |name,path|
     begin

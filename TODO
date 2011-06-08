@@ -1,6 +1,8 @@
 Factor into modules.
-Store all scripts in a single gigantic .json file.
+Store all scripts in a single gigantic scripts.json file.
 Remove vim-script.json from git repos.  Make them plain repos again.
+Test by parsing webcache, not just converting scripts.
+Get rid of 'scripts' database, everything is either in the webcache or scripts.json file.
 Denormalize all author and script info into each version so that we
   can recreate the whole archive at any time.  No need for separate test branch.
 
