@@ -1,5 +1,14 @@
 #!/usr/bin/env ruby
-load 'scraper'
+
+# Opens a console with all scraper gems and utilities loaded.
+
+$:.unshift './lib'
+
+require 'bundler'
+Bundler.require
+require 'github'
 require 'irb'
 
+ARGV.shift
 IRB.start
+

@@ -1,56 +1,25 @@
 #!/usr/bin/env ruby
 
 # turns off the issues and wiki tabs for the named repos
-# usage: ./turn-off-wiki repos/*
-#    or: ./turn-off-wiki 0101 0111 0112 0124
+# usage: ./turn-off-wiki reponame reponame ...
+#    or: ./turn-off-wiki repos/reponame.git repos/reponame.git ...
 
 
-require 'json'
-require 'octopussy'
+$:.unshift './lib'
+
+require 'bundler'
+Bundler.require
+require 'github'
 
 
-# http://blog.codefront.net/2008/01/14/retrying-code-blocks-in-ruby-on-exceptions-whatever/
-# modified to pass the number of retries in the arg (0,1,2 if :tries => 3)
-def retryable(options = {}, &block)
-    opts = { :tries => 1, :on => Exception, :sleep => 1 }.merge(options)
-    return if opts[:tries] < 1
-    retry_exception = opts[:on]
-    tries = 0
+github = GitHub.new
 
-    if opts[:tries] > 1
-        begin
-            return yield tries
-        rescue retry_exception
-            sleep opts[:sleep]
-            retry if (tries += 1) < opts[:tries] - 1
-        end
-    end
+ARGV.each do |name|
+    # so you can use autocompletion in the repos dir as well
+    name =~ /^repos\/(.*)\.git\/?$/
+    name = $1 if $1
 
-    # last try will throw an exception
-    yield tries+1
-end
-
-
-def repo_file file
-    return file if test ?d, file
-    Dir.glob("repos/#{file}*").first
-end
-
-
-$git_script_file = 'vim-script.json'
-creds = Hashie::Mash.new(JSON.parse(File.read('creds.json')))
-github = Octopussy::Client.new(creds)
-
-ARGV.each do |arg|
-    script = JSON.parse(File.read(File.join(repo_file(arg), $git_script_file)))
-
-    start = Time.now
-    retryable(:tries => 4, :on => Timeout::Error, :sleep => 10) do |retries|
-        puts "Turning off #{repo_file(arg)}#{retries > 0 ? "  RETRY #{retries}" : ""}"
-        github.set_repo_info('vim-scripts/' + script['name'], :has_issues => false, :has_wiki => false)
-    end
-
-    stop = Time.now
-    sleep 1-(stop-start) if stop-start < 1
+    puts "  disabling wiki+issues for #{name}"
+    github.turn_off_features name
 end
 
