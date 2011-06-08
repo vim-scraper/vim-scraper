@@ -10,10 +10,9 @@ $:.unshift './lib'
 require 'bundler'
 Bundler.require
 require 'github'
-require 'credentials'
 
 
-github = GitHub.new :client => Credentials.github_client
+github = GitHub.new
 
 ARGV.each do |name|
     # so you can use autocompletion in the repos dir as well

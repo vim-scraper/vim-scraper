@@ -11,9 +11,7 @@ class GitHub
 
     attr_accessor :client, :logger
 
-    def initialize opts
-        opts ||= {}
-
+    def initialize opts={}
         @client = opts[:client]
         unless @client
             creds = Hashie::Mash.new(JSON.parse(File.read('creds.json')))
