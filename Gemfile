@@ -19,5 +19,4 @@ gem 'erubis'      ,'~> 2.6.6'
 gem 'mail'        ,'~> 2.2.7'
 gem 'i18n'        ,'~> 0.4.1'
 gem 'retryable'   , :git => 'git://github.com/bronson/retryable.git'
-gem 'selenium-client'
 

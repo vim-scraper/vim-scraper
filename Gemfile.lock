@@ -46,7 +46,6 @@ GEM
     polyglot (0.3.1)
     sax-machine (0.0.16)
       nokogiri (> 0.0.0)
-    selenium-client (1.2.18)
     treetop (1.4.9)
       polyglot (>= 0.3.1)
 
@@ -68,4 +67,3 @@ DEPENDENCIES
   mimemagic (= 0.1.7)
   octopussy (~> 0.3.0)
   retryable!
-  selenium-client
