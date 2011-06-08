@@ -51,6 +51,8 @@ Check on AutoTmpl and AutoTmpl-B
 
 Why doesn't Lite-Tab-Page exist on github???
 
+Switch to Nokogiri, hpricot appears totally hopeless at charset issues.
+
 Someone deleted everything and uploaded a vimball??  Need to suppress.
   https://github.com/vim-scripts/mojo.vim/commits/master
 
@@ -65,9 +67,10 @@ is it possible to generate docs incrementally?  (n/a once the central db is done
 
 make it possible for 2 or more scrapers to work at the same time
 
-Submit a patch to git which allows git log --stat to display the line
-counts but not the graph.  git log --stat=0 should do it.  Nobody
-would be using 0 since it doesn't do anything useful anyway.
+https://github.com/vim-scripts/browserprint has a README.md file
+which overrides our README file.  Maybe we should skip making our
+own README if README.md already exists...?
+
 
 ----
 

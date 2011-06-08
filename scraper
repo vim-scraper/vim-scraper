@@ -329,6 +329,7 @@ def scrape_script(script_id)
 
     s = {'script_id' => script_id}
     s['display_name'], s['summary'] = doc.search('.txth1').inner_content.split(" : ", 2)
+    raise "page could not be read" unless s['display_name']
     s['name'] = githubify(s['display_name'])
     s['script_type'] = $script_type_fixes[script_id.to_i] ||
       doc.at('td[text()="script type"]').parent.next_sibling.children.first.inner_content
@@ -414,6 +415,7 @@ end
 
 
 def generate_docs
+    puts "reading scripts..."
     # a hash of all scripts (including ones abandoned by renames) indexed by script_id
     repos = Dir.entries($repos_dir).reject { |e| %w{. .. .git}.include?(e) }
     all_scripts = repos.sort.map do |dir|
@@ -426,6 +428,7 @@ def generate_docs
         Hashie::Mash.new(JSON.parse(File.read(File.join($scripts_dir, file))))
     end
 
+    puts "generating docs..."
     doc_dir = 'vim-scripts.github.com'
     Dir.mkdir doc_dir unless test ?d, doc_dir
 
@@ -436,7 +439,7 @@ def generate_docs
 
 
     File.open("#{doc_dir}/api/scripts.json", 'w') do |f|
-        f.write good_scripts.map { |s| s.name }
+        f.write good_scripts.map { |s| s.name }.to_json
     end
 
     File.open("#{doc_dir}/api/scripts_recent.json", 'w') do |f|
@@ -444,13 +447,14 @@ def generate_docs
             recent_author_name, recent_author_email = fix_email_address(s.versions.last.author)
             {
                 :n => s.name,
+                :t => s.script_type,
                 :s => s.summary,
                 :rv => s.versions.last.script_version,
                 :rd => s.versions.last.date,
                 :ra => recent_author_name,
                 :re => recent_author_email
             }
-        }
+        }.to_json
     end
 
     # each script id and its official, current name.
@@ -1055,6 +1059,9 @@ def sense_file repo, actual_name, pkgfile
             # names and magic have failed us, copy these files over raw
             copy_file(repo, actual_name, File.read(pkgfile))
             actual_name = nil
+        elsif magic_type == 'application/x-tar' && extension_type.include?('application/x-gtar')
+            # extension claims tarfile was gzipped but magic claims it wasn't.  Trust the magic.
+            actual_name += '.tar'
         elsif magic_type == 'application/zip' && extension_type.include?('application/x-java-archive')
             # jarfiles sense as zipfiles so don't let the fixup code below "correct" the package extension
         elsif magic_type == 'application/zip'
@@ -1106,6 +1113,12 @@ def add_version repo, version, script
 
     case actual_name
     when nil then # do nothing
+
+    # need to special-case 3584 - checklist.vim because the zipfile is too new.
+    # TODO: switch to unzipping all zipfiles with 7z once this bug is fixed:
+    # https://sourceforge.net/tracker/?func=detail&aid=3310980&group_id=14481&atid=114481
+    when /checklist-v0.51.zip$/ then unshell repo, script, pkgfile, ['7z', 'x']
+
     when /#{$textext}/ then smart_copy_file repo, script, actual_name, File.read(pkgfile)
     when /\.zip$/i then unshell repo, script, pkgfile, ['unzip']
     when /\.tar$/ then unshell repo, script, pkgfile, ['tar', 'xf']
@@ -1384,11 +1397,11 @@ def dump_repo repo, stats_dir
     repo = repo.gsub /\/$/, ''  # remove trailing / added by filename completion
     ENV['GIT_DIR'] = repo
     log = `git log --pretty=fuller --decorate=full --stat`
-    # remove every line with a CommitDate since that's horribly variable
     log = log.each_line.reduce([]) { |a,v|
-        v.gsub!(/^commit\s+[0-9A-Fa-f]*/, 'commit SHA1SHA1SHA1');
-        v.gsub!(/, refs\/(remotes|heads)[^,)]*\/master/, '');
-        a.push(v) unless v =~ /^CommitDate: /;
+        v.gsub!(/^commit\s+[0-9A-Fa-f]*/, 'commit SHA1SHA1SHA1');  # make sha static, changes every run
+        v.gsub!(/, refs\/(remotes|heads)[^,)]*\/master/, '');      # remove info about what's on the remote TODO: can I remove this?
+        v.gsub!(/^( .*\|\s*[0-9]*)\s*[+-]*$/) { $1 };              # remove the git log --stat graph, it hides changes     sed -i 's/^\( .*\|\s*[0-9]*\)\s*[+-]*$/\1/' *
+        a.push(v) unless v =~ /^CommitDate: /;                     # remove CommitDate since that's different each run
         a }.join
     ENV.delete('GIT_DIR')
     filename = File.join(stats_dir, File.basename(repo).gsub(/\.git$/, '') + '.stats')
