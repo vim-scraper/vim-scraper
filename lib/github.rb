@@ -12,9 +12,16 @@ class GitHub
     attr_accessor :client, :logger
 
     def initialize opts
-        creds = Hashie::Mash.new(JSON.parse(File.read('creds.json')))
-        @client = opts[:client] || Octokit::Client.new(:login => creds.login, :token => creds.token)
+        opts ||= {}
+
+        @client = opts[:client]
+        unless @client
+            creds = Hashie::Mash.new(JSON.parse(File.read('creds.json')))
+            @client = Octokit::Client.new(:login => creds.login, :token => creds.token)
+        end
+
         @logger = opts[:logger] || lambda { |msg| puts msg }
+
         @start = Time.now.to_i
         @api_calls = 0
     end
