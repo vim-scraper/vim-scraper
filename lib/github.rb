@@ -84,6 +84,19 @@ class GitHub
             raise "got #{result.inspect} trying to delete #{name}"
         end
     end
+
+    def list_all_repos
+        result = []
+        page = 1
+        loop do
+            log "fetching page #{page}"
+            bunch = call_client :repositories, 'vim-scripts', :page => page
+            break if bunch.empty?
+            result.push *bunch
+            page += 1
+        end
+        result
+    end
 end
 
 

@@ -1,0 +1,32 @@
+#!/usr/bin/env ruby
+
+# Compares the full list of repos on github with the local repos.
+# Makes sure they match, and all issues and wikis are turned off.
+
+$:.unshift './lib'
+
+require 'bundler'
+Bundler.require
+require 'github'
+
+
+github = GitHub.new
+
+
+# todo: this needs to be refactored into a module used by the scraper
+$repos_dir = ENV['REPOS_DIR'] || 'repos'
+local_repo_names = Dir.entries($repos_dir).reject { |e| %w{. .. .git}.include?(e) }
+local_repos = local_repo_names.map { |n| n.sub /\.git$/, '' }
+
+remote_repo_info = github.list_all_repos
+remote_repos = remote_repo_info.map { |r| r.name }
+
+locals_not_remote = local_repos - remote_repos
+remotes_not_local = remote_repos - local_repos
+wikis_enabled = remote_repo_info.select { |r| r.has_wiki }.map { |r| r.name }
+issues_enabled = remote_repo_info.select { |r| r.has_issues }.map { |r| r.name }
+
+puts "Local but not remote: #{locals_not_remote.join(" ")}"
+puts "Remote but not local: #{remotes_not_local.join(" ")}"
+puts "Wikis enabled: #{wikis_enabled.join(" ")}"
+puts "Issues enabled: #{issues_enabled.join(" ")}"

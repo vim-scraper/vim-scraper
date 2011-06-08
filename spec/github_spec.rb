@@ -81,6 +81,22 @@ describe "GitHub" do
     stub_b.should have_been_requested
   end
 
+  it "should list all repos" do
+    stub_a = stub_request(:get, "#{base}/repos/show/vim-scripts?page=1").
+      to_return(:body => {:repositories => [{ :name => "one" }]}.to_json )
+    stub_b = stub_request(:get, "#{base}/repos/show/vim-scripts?page=2").
+      to_return(:body => {:repositories => [{ :name => "two" }]}.to_json )
+    stub_c = stub_request(:get, "#{base}/repos/show/vim-scripts?page=3").
+      to_return(:body => {:repositories => []}.to_json )
+
+    result = github.list_all_repos
+    result.sort { |a,b| a['name'] <=> b['name'] }.should == [ { 'name' => 'one' }, { 'name' => 'two' } ]
+
+    stub_a.should have_been_requested
+    stub_b.should have_been_requested
+    stub_c.should have_been_requested
+  end
+
   it "should hold off before hitting github limit" do
     fakehub = GitHub.new :client => FakeClient.new, :logger => lambda { |msg| }
     fakehub.should_receive(:sleep).once.with(60)
