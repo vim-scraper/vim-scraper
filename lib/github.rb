@@ -103,6 +103,11 @@ class GitHub::Selenium < GitHub
         sel
     end
 
+    def stop_selenium sel
+        sel.close_current_browser_session
+        sel.stop
+    end
+
     # github's api is claiming some repos exist when they clearly don't.  the
     # only way to fix this appears to be to create a repo of the same name and
     # delete it using the regular interface (trying to delete using the api

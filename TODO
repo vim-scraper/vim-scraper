@@ -1,3 +1,4 @@
+Make retryable accept a string to log, it logs it with a retry count.
 Factor into modules.
 Store all scripts in a single gigantic scripts.json file.
 Remove vim-script.json from git repos.  Make them plain repos again.

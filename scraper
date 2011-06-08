@@ -68,6 +68,8 @@
 # locally from the start.
 
 
+$:.unshift './lib'
+
 require 'rubygems'
 require 'bundler'
 Bundler.require
@@ -93,6 +95,9 @@ require 'mail'                # mail gem
 require 'fileutils'
 require 'open3'
 require 'retryable'
+
+require 'github'
+
 
 include Retryable
 # :on => [] means that we won't retry anything unless the caller
@@ -1274,18 +1279,12 @@ end
 
 def perform_push repo_name
     return unless repo_name
-    creds = Hashie::Mash.new(JSON.parse(File.read('creds.json')))
-    github = Octokit::Client.new(creds)
+    github = GitHub.new
     repo = Gitrb::Repository.new(:path => repo_name.dup, :bare => true)
-    script = JSON.parse(File.read(File.join(repo_name, $git_script_file)))
+    script = Hashie::Mash.new(JSON.parse(File.read(File.join(repo_name, $git_script_file))))
     puts "Uploading #{script['script_id']} - #{script['name']}"
 
-    start = Time.now
-    api_calls = 0
-
-    remote = github.repo("vim-scripts/#{script['name']}") rescue nil
-    api_calls += 1
-
+    remote = github.info script.name rescue nil
     if remote
         # make sure this actually is the same repo
         puts "  remote already exists: #{remote.url}"
@@ -1299,20 +1298,11 @@ def perform_push repo_name
     unless remote
         retryable do |retries|
             puts "  creating #{script['script_id']} - #{script['name']}#{retries > 0 ? "  RETRY #{retries}" : ""}"
-            remote = github.create(
-                :name => script['name'],
-                :description => "#{script['summary']}",
-                :homepage => script_id_to_url(script['script_id']),
+            remote = github.create(script.name,
+                :description => script.summary,
+                :homepage => script_id_to_url(script.script_id),
                 :public => true)
         end
-        api_calls += 1
-
-        # turn off the issues and wiki tabs (wish 'create' would do that)
-        retryable do |retries|
-            puts "  disabling wiki+issues for #{script['script_id']} - #{script['name']}#{retries > 0 ? "  RETRY #{retries}" : ""}"
-            github.set_repo_info('vim-scripts/' + script['name'], :has_issues => false, :has_wiki => false)
-        end
-        api_calls += 1
     end
 
     repo.git_remote('rm', 'origin') rescue nil
@@ -1326,24 +1316,6 @@ def perform_push repo_name
         args.push *repo_heads(repo)
         repo.git_push(*args)
     end
-
-    # sleep to avoid bumping into github's 60-per-minute API limit
-    # the push doesn't count toward the API limit
-    stop = Time.now
-    sleep api_calls-(stop-start) if stop-start < api_calls
-
-    # we don't want any provision for forcing pushes.  if you delete
-    # and recreate a repo, you must manually delete and recreate it
-    # on github.  forcing is bad, avoid at all costs.
-
-    # we should have a script that will compare the full list of
-    # repos on github and here and print any differences.  that is
-    # not a part of this script's job.
-    # Octokit.list_repos('vim-scripts')
-    # Octokit.delete("vim-scripts/#{ghname}")
-
-    # no need to reset the remote because presumably we created this
-    # repo and the remote is already set correctly.
 end
 
 
