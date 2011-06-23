@@ -8,7 +8,6 @@ gem 'mimemagic'   ,'= 0.1.7'
 gem 'hpricot'     ,'= 0.8.2'
 
 gem 'json'        ,'~> 1.4.6'
-gem 'gitrb'       ,'~> 0.2.7'
 gem 'bzip2-ruby'  ,'~> 0.2.6'
 gem 'mime-types'  ,'~> 1.16'
 gem 'octokit'     ,'~> 0.5'
@@ -20,6 +19,7 @@ gem 'mail'        ,'~> 2.2.7'
 gem 'i18n'        ,'~> 0.4.1'
 
 gem 'retryable'   , :git => 'git://github.com/bronson/retryable.git'
+gem 'gitrb'       , :git => 'git://github.com/bronson/gitrb.git', :branch => 'patch-1'
 
 group :test do
   gem 'rspec'       ,'~> 2.5'

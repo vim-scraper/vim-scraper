@@ -1,3 +1,18 @@
+push repos/dbext.vim
+  ~/vim-scraper/repos/dbext.vim.git$ git push origin master
+  Counting objects: 17, done.
+  Delta compression using up to 2 threads.
+  Compressing objects: 100% (8/8), done.
+  Writing objects: 100% (9/9), 4.05 KiB, done.
+  Total 9 (delta 4), reused 0 (delta 0)
+  error: object 03bd05f29539d9c266815fa431c48db2be715baf:invalid author/committer line - bad time zone
+  fatal: Error in object
+  error: unpack failed: unpack-objects abnormal exit
+  To git@vim-scripts.github.com:vim-scripts/dbext.vim
+   ! [remote rejected] master -> master (n/a (unpacker error))
+   error: failed to push some refs to 'git@vim-scripts.github.com:vim-scripts/dbext.vim'
+
+
 Make retryable accept a string to log, it logs it with a retry count.
 Factor into modules.
 Store all scripts in a single gigantic scripts.json file.
@@ -10,6 +25,15 @@ Denormalize all author and script info into each version so that we
 Make more resilient against intermittent failures
 (simple reload seems to fix it every time)
 We should probably re-fetch the script at least once if hpricot dies with an error.
+
+  /home/bronson/.rvm/gems/ruby-1.9.2-p0/gems/gitrb-0.2.8/lib/gitrb/repository.rb:310:in `method_missing': git push failed (Gitrb::CommandError)
+  from ./scraper:1317:in `block in perform_push'
+  from /home/bronson/.rvm/gems/ruby-1.9.2-p0/bundler/gems/retryable-retryablea21655fa1633/lib/retryable.rb:38:in `retryable'
+  from ./scraper:1310:in `perform_push'
+  from ./scraper:1372:in `perform_all'
+  from ./scraper:1310593:in `block in <main>'
+  from ./scraper:1585:in `each'
+  from ./scrapers:1585:in `<main>'
 
   Processing script 2685: zOS-Enterprise-Compiler-PLI
   downloading http://www.vim.org/scripts/script.php?script_id=2686

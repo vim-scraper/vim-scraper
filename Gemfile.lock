@@ -1,4 +1,11 @@
 GIT
+  remote: git://github.com/bronson/gitrb.git
+  revision: b026b6a45e95e36ff2759ba1d05ea6058a161dd0
+  branch: patch-1
+  specs:
+    gitrb (0.2.8)
+
+GIT
   remote: git://github.com/bronson/retryable.git
   revision: a21655fa16330382e54a9ddba583a566399ab3b1
   specs:
@@ -39,7 +46,6 @@ GEM
       loofah (>= 0.3.1)
       nokogiri (> 0.0.0)
       sax-machine (>= 0.0.12)
-    gitrb (0.2.8)
     hashie (1.0.0)
     hpricot (0.8.2)
     htmlentities (4.2.4)
@@ -88,7 +94,7 @@ DEPENDENCIES
   bzip2-ruby (~> 0.2.6)
   erubis (~> 2.6.6)
   feedzirra (~> 0.0.24)
-  gitrb (~> 0.2.7)
+  gitrb!
   hashie (~> 1.0)
   hpricot (= 0.8.2)
   htmlentities (~> 4.2.1)

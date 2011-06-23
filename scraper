@@ -1308,7 +1308,9 @@ def perform_push repo_name
     repo.git_remote('rm', 'origin') rescue nil
     repo.git_remote('add', 'origin', remote_url(script))
     retryable do |retries|
-        # Gitrb::CommandError is as close to a network timeout error as we're going to get
+        # TODO: This is a problem, we get a Gitrb command error if there are
+        # local repo issues, AND when there's a network error.  Don't want to
+        # retry local errors.  Write our own push so we can differentiate?
         puts "  #{"force " if ENV['FORCE']}pushing #{script['script_id']} - #{script['name']}#{retries > 0 ? "  RETRY #{retries}" : ""}"
         args = ['--tags']
         args << '--force' if ENV['FORCE']
