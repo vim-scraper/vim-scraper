@@ -1504,11 +1504,17 @@ end
 
 def perform_continuous count
     state = read_state
-    state.last_script_id ||= 0
+    highest_script = highest_script_id
+
+    # Since vim.org explodes its 10-item RSS fed and forces a rescrape every few weeks,
+    # we'll never get past the first few hundred scripts if we always start from 0.
+    # Starting from a random number ensures eventually we should visit every script.
+    state.last_script_id ||= rand highest_script
+
     state.last_script_id += 1
 
     # keep looking past the last known id in case rss missed new scripts
-    if state.last_script_id > highest_script_id + 3
+    if state.last_script_id > highest_script + 3
         puts "Count is #{state.last_script_id} and the highest known script id is #{highest_script_id}.  Starting from 0!"
         state.last_script_id = 1
     end
