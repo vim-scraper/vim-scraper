@@ -1520,11 +1520,13 @@ def perform_continuous count
     end
 
     puts "Performing continuous scrape of #{state.last_script_id} through #{state.last_script_id+count-1}"
-    state.last_script_id.upto(state.last_script_id+count-1) do |script_id|
+    limit = state.last_script_id + count
+    while state.last_script_id < limit
         break if timeout_expired?
-        puts "Fetching script #{script_id} for continuous scrape"
-        perform_all(script_id, true)
+        puts "Fetching script #{state.last_script_id} for continuous scrape"
+        perform_all state.last_script_id, true
         write_state state
+        state.last_script_id += 1
     end
 end
 
