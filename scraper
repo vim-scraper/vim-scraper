@@ -9,6 +9,8 @@
 # Make sure you have unzip, unrar, 7za, and xz installed.
 #   Ubuntu: sudo apt-get install unzip unrar p7zip-full xz-utils
 #   Macintosh: sudo port install unrar p7zip xz
+# Also, for gems:
+#   Ubuntu: sudo apt-get install libxml2-dev libxslt1-dev zlib1g-dev libbz2-dev libcurl4-openssl-dev
 #
 # FULL SCRAPE:
 # To start a full scrape, do this:
