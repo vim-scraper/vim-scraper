@@ -22,7 +22,8 @@ gem 'retryable'   , :git => 'git://github.com/bronson/retryable.git'
 gem 'gitrb'       , :git => 'git://github.com/bronson/gitrb.git', :branch => 'patch-1'
 
 group :test do
-  gem 'rspec'       ,'~> 2.5'
-  gem 'webmock'     , :git => 'https://github.com/afeld/webmock.git', :branch => "expectations_on_stubs"
+  gem 'rake'      # needed by travis-ci
+  gem 'rspec'     ,'~> 2.5'
+  gem 'webmock'   , :git => 'https://github.com/afeld/webmock.git', :branch => "expectations_on_stubs"
 end
 
