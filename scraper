@@ -1379,6 +1379,7 @@ end
 
 def fetch_rss
     feed = Feedzirra::Feed.fetch_and_parse($rss_url)
+    raise "No feed -- network disconnected?" if feed == 0
     puts "feed contains #{feed.entries.map { |e| script_id_from_url(e.url) }.inspect}"
     feed
 end
