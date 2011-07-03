@@ -731,6 +731,13 @@ def resolve_renamed_scripts script
         # (the new repo shouldn't exist but it's not worth dying if it does)
         FileUtils.cp_r old_repo, new_repo unless test ?d, new_repo
 
+        # old repos have a bad timezone, use filter-branch to fix it before pushing
+        # http://vim-scripts.org/news/2011/06/23/picky-about-timezones.html
+        Dir.chdir(new_repo) do
+            system "git filter-branch --env-filter '' --tag-name-filter cat HEAD"
+            raise "git filter-branch failed: #{$?}" unless $?.success?
+        end
+
         mark_repo_as_duplicate dupe, script
         puts "  pushing obsolete repo"
         perform_push old_repo
