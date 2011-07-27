@@ -1076,7 +1076,7 @@ def sense_file repo, actual_name, pkgfile
         # need to figure out what's going on and fix it.
         if (magic_type.nil? || magic_type.text?) && actual_name =~ /#{$textext}/
             # no problem, it's a textfile
-        elsif actual_name =~ /\.vba$|\.vimball$/
+        elsif actual_name =~ /\.vba$|\.vmb$|\.vimball$/
             # arg, a vimball.  let it through.  see sense_zipped_file for vimball sensing.
         elsif actual_name =~ /^[^a-z]*\.VIM$/
             # i guess dos users might do everything in caps
@@ -1161,7 +1161,7 @@ def add_version repo, version, script
     when /\.xz$/ then unxz(pkgfile) { |contents| sense_zipped_file(repo, script, version['filename'].sub(/\.xz$/, ''), contents) }
     when /\.7z$/ then unshell repo, script, pkgfile, ['7za', 'x']
     when /\.rar$/ then unshell repo, script, pkgfile, ['unrar', 'x']
-    when /\.vba$|\.vimball$/ then unvimball repo, script, pkgfile
+    when /\.vba$|\.vmb$|\.vimball$/ then unvimball repo, script, pkgfile
     when /\.jar$/ then copy_file repo, actual_name, File.read(pkgfile)
     when /\.gif$|\.jpe?g$|\.png$/ then copy_file repo, actual_name, File.read(pkgfile)
     else
