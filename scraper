@@ -176,7 +176,7 @@ class SourceForgeError < ScrapeError; end   # sourceforge being stupid
 class NoContentError < ScrapeError; end     # page appears to be rendered incorrectly
 
 def retryable_errors
-    [ScrapeError, Errno::ECONNRESET, Timeout::Error, OpenURI::HTTPError]
+    [ScrapeError, Errno::ECONNRESET, Timeout::Error, OpenURI::HTTPError, SocketError]
 end
 
 # http://github.com/hpricot/hpricot/issues#issue/25
