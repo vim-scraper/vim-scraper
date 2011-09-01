@@ -175,6 +175,9 @@ class ScrapeError < RuntimeError; end       # retryable problem when scraping
 class SourceForgeError < ScrapeError; end   # sourceforge being stupid
 class NoContentError < ScrapeError; end     # page appears to be rendered incorrectly
 
+def retryable_errors
+    [ScrapeError, Errno::ECONNRESET, Timeout::Error, OpenURI::HTTPError]
+end
 
 # http://github.com/hpricot/hpricot/issues#issue/25
 # super ugly that hpricot manages to screw up charset encodings so badly.
@@ -351,7 +354,7 @@ def scrape_script(script_id)
 
     s = {'script_id' => script_id}
     doc = nil
-    retryable(:on => [ScrapeError, OpenURI::HTTPError]) do |retries|
+    retryable(:on => retryable_errors) do |retries|
         doc = scrape_page script_id_to_url(script_id), retries
 
         if doc.search('title').inner_text == "Error : vim online"
@@ -396,7 +399,7 @@ def scrape_script(script_id)
         v['script_version'] = row.siblings_at(1).inner_content
         v['date'] = row.siblings_at(2).inner_content
         v['vim_version'] = row.siblings_at(3).inner_content
-        retryable(:on => [ScrapeError, OpenURI::HTTPError]) do |retries|
+        retryable(:on => retryable_errors) do |retries|
             v['author'] = scrape_author(row.siblings_at(4).at('a').attributes['href'].match(/\d+/)[0], retries)
         end
         v['release_notes'] = row.siblings_at(5).inner_content.gsub("\r", "\n")
