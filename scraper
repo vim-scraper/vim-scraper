@@ -171,8 +171,9 @@ Dir.mkdir $webcache_dir unless test ?d, $webcache_dir
 # this mime magic is far too vague.  it false-triggers all the time.
 MimeMagic.remove 'application/x-gmc-link'
 
-class SourceForgeError < RuntimeError; end
-class NoContentError < RuntimeError; end
+class ScrapeError < RuntimeError; end       # retryable problem when scraping
+class SourceForgeError < ScrapeError; end   # sourceforge being stupid
+class NoContentError < ScrapeError; end     # page appears to be rendered incorrectly
 
 
 # http://github.com/hpricot/hpricot/issues#issue/25
@@ -312,9 +313,11 @@ def scrape_author user_id, retries
     $authors ||= []
     unless $authors[user_id.to_i]
         doc = scrape_page "http://www.vim.org/account/profile.php?user_id=#{user_id}", retries
-        # How strange.  If the next line throws an "uknown next_sibling method for nil" error, vim-scripts
-        # probably is suffering a temporary error.  Try the query again and it should succeed.  :-/
-        doc.at('td[text()="user name"]').next_sibling.inner_content
+        unless doc.at('td[text()="user name"]')
+            puts "    no content received #{retries}"
+            raise NoContentError.new "bad page"
+        end
+
         u = {'user_id' => user_id }
         u['user_name'] = doc.at('td[text()="user name"]').next_sibling.inner_content
         u['first_name'] = doc.at('td[text()="first name"]').next_sibling.inner_content
@@ -348,7 +351,7 @@ def scrape_script(script_id)
 
     s = {'script_id' => script_id}
     doc = nil
-    retryable(:on => [SourceForgeError, NoContentError, OpenURI::HTTPError]) do |retries|
+    retryable(:on => [ScrapeError, OpenURI::HTTPError]) do |retries|
         doc = scrape_page script_id_to_url(script_id), retries
 
         if doc.search('title').inner_text == "Error : vim online"
@@ -358,6 +361,7 @@ def scrape_script(script_id)
 
         s['display_name'], s['summary'] = doc.search('.txth1').inner_content.split(" : ", 2)
         unless s['display_name']
+            puts "    no content received #{retries}"
             raise NoContentError.new "bad page"
         end
     end
@@ -392,7 +396,7 @@ def scrape_script(script_id)
         v['script_version'] = row.siblings_at(1).inner_content
         v['date'] = row.siblings_at(2).inner_content
         v['vim_version'] = row.siblings_at(3).inner_content
-        retryable(:on => [SourceForgeError, OpenURI::HTTPError]) do |retries|
+        retryable(:on => [ScrapeError, OpenURI::HTTPError]) do |retries|
             v['author'] = scrape_author(row.siblings_at(4).at('a').attributes['href'].match(/\d+/)[0], retries)
         end
         v['release_notes'] = row.siblings_at(5).inner_content.gsub("\r", "\n")
