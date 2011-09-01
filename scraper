@@ -172,6 +172,7 @@ Dir.mkdir $webcache_dir unless test ?d, $webcache_dir
 MimeMagic.remove 'application/x-gmc-link'
 
 class SourceForgeError < RuntimeError; end
+class NoContentError < RuntimeError; end
 
 
 # http://github.com/hpricot/hpricot/issues#issue/25
@@ -292,27 +293,25 @@ def cached_open url, retries
 end
 
 
-def scrape_page url
-    retryable(:on => [SourceForgeError, OpenURI::HTTPError]) do |retries|
-        doc = cached_open(url, retries) { |f| Hpricot(f) }
+def scrape_page url, retries
+    doc = cached_open(url, retries) { |f| Hpricot(f) }
 
-        # vim.org (SourceForge) seems to have a bug where every thousand requests or so
-        # it returns a page indicating that it's lost its head.  No big deal, immediately
-        # retrying always seems to fix it.
-        if doc.search('title').inner_text == "Unknown Site"
-            puts "Sourceforge lost its head for #{url} on try #{retries}, trying again."
-            raise SourceForgeError.new "Sourceforge blew #{url}"
-        end
-
-        return doc
+    # vim.org (SourceForge) seems to have a bug where every thousand requests or so
+    # it returns a page indicating that it's lost its head.  No big deal, immediately
+    # retrying always seems to fix it.
+    if doc.search('title').inner_text == "Unknown Site"
+        puts "Sourceforge lost its head for #{url} on try #{retries}, trying again."
+        raise SourceForgeError.new "Sourceforge blew #{url}"
     end
+
+    return doc
 end
 
 
-def scrape_author(user_id)
+def scrape_author user_id, retries
     $authors ||= []
     unless $authors[user_id.to_i]
-        doc = scrape_page "http://www.vim.org/account/profile.php?user_id=#{user_id}"
+        doc = scrape_page "http://www.vim.org/account/profile.php?user_id=#{user_id}", retries
         # How strange.  If the next line throws an "uknown next_sibling method for nil" error, vim-scripts
         # probably is suffering a temporary error.  Try the query again and it should succeed.  :-/
         doc.at('td[text()="user name"]').next_sibling.inner_content
@@ -347,16 +346,22 @@ def scrape_script(script_id)
         return nil
     end
 
-    doc = scrape_page script_id_to_url(script_id)
+    s = {'script_id' => script_id}
+    doc = nil
+    retryable(:on => [SourceForgeError, NoContentError, OpenURI::HTTPError]) do |retries|
+        doc = scrape_page script_id_to_url(script_id), retries
 
-    if doc.search('title').inner_text == "Error : vim online"
-        puts "Skipped #{script_id} -- doesn't exist."
-        return nil
+        if doc.search('title').inner_text == "Error : vim online"
+            puts "Skipped #{script_id} -- doesn't exist."
+            return nil
+        end
+
+        s['display_name'], s['summary'] = doc.search('.txth1').inner_content.split(" : ", 2)
+        unless s['display_name']
+            raise NoContentError.new "bad page"
+        end
     end
 
-    s = {'script_id' => script_id}
-    s['display_name'], s['summary'] = doc.search('.txth1').inner_content.split(" : ", 2)
-    raise "page could not be read" unless s['display_name']
     s['name'] = githubify(s['display_name'])
     s['script_type'] = $script_type_fixes[script_id.to_i] ||
       doc.at('td[text()="script type"]').parent.next_sibling.children.first.inner_content
@@ -387,7 +392,9 @@ def scrape_script(script_id)
         v['script_version'] = row.siblings_at(1).inner_content
         v['date'] = row.siblings_at(2).inner_content
         v['vim_version'] = row.siblings_at(3).inner_content
-        v['author'] = scrape_author(row.siblings_at(4).at('a').attributes['href'].match(/\d+/)[0])
+        retryable(:on => [SourceForgeError, OpenURI::HTTPError]) do |retries|
+            v['author'] = scrape_author(row.siblings_at(4).at('a').attributes['href'].match(/\d+/)[0], retries)
+        end
         v['release_notes'] = row.siblings_at(5).inner_content.gsub("\r", "\n")
         v
     end
