@@ -175,9 +175,20 @@ class ScrapeError < RuntimeError; end       # retryable problem when scraping
 class SourceForgeError < ScrapeError; end   # sourceforge being stupid
 class NoContentError < ScrapeError; end     # page appears to be rendered incorrectly
 
+
+# Turns out Ruby isn't very good about limiting the types of errors
+# we need to handle...  These are the ones that make sense to retry.
 def retryable_errors
-    [ScrapeError, Errno::ECONNRESET, Timeout::Error, OpenURI::HTTPError, SocketError]
+    [
+        ScrapeError,        # errors we raise, discovered while parsing
+        Errno::ECONNRESET,
+        Timeout::Error,
+        Errno::ETIMEDOUT,   # Connection timed out - connect(2) (Errno::ETIMEDOUT)
+        OpenURI::HTTPError,
+        SocketError,        # getaddrinfo: Name or service not known (SocketError)
+    ]
 end
+
 
 # http://github.com/hpricot/hpricot/issues#issue/25
 # super ugly that hpricot manages to screw up charset encodings so badly.
