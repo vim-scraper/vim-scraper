@@ -530,7 +530,7 @@ end
 def gittagify(s)
     # replace any chars git might take issue with (space, backslash, ^:)?]
     # git doesn't like it when a tag begins or ends with periods or dashes
-    s.gsub(/^\s*|\s*$/, '').gsub(/[^A-Za-z0-9_\-!#\@\$%&;<>+=(){|},.\]]/, '-').gsub(/^\./, '0.').gsub(/\.$/, '.0').gsub(/^-*|-*$/, '').gsub(/^\./, '0.').gsub(/\.$/, '.0')
+    s.gsub(/^\s*|\s*$/, '').gsub(/[^A-Za-z0-9_\-!#\@\$%&;<>+=(){|},.\]]/, '-').gsub(/^\./, '0.').gsub(/\.$/, '.0').gsub(/^-*|-*$/, '').gsub(/^\./, '0.').gsub(/\.$/, '.0').gsub(/\.\./, '._')
 end
 
 
@@ -1201,6 +1201,7 @@ def tag_version repo, version, branch
     ENV['GIT_COMMITTER_NAME'] = $vimscripts_name
     ENV['GIT_COMMITTER_EMAIL'] = $vimscripts_email
     sver = script_version(version)
+    puts "  tagging with #{gittagify(sver)} from #{sver}"
     repo.git_tag '-a', gittagify(sver), '-m', "tag #{sver}", branch
     ENV.delete 'GIT_COMMITTER_NAME'
     ENV.delete 'GIT_COMMITTER_EMAIL'
