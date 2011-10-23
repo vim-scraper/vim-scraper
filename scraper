@@ -508,7 +508,7 @@ def generate_doc_files doc_dir
     }
 
     files.each do |name,proc|
-        puts "  writing #{doc_dir}/api/#{name}"
+        puts "  generating #{doc_dir}/api/#{name}"
         File.open("#{doc_dir}/api/#{name}", 'w') do |f|
             f.write proc.call
         end
@@ -519,27 +519,44 @@ end
 
 
 def generate_docs
-    doc_dir = 'vim-scripts.github.com'
+    doc_dir = 'vim-scraper.github.com'
     puts "generating docs"
-    raise "#{doc_dir} does not exist!" unless test ?d, doc_dir
 
-    # TODO: should make vim-scripts.github.com a bare repo
+    unless test ?d, doc_dir
+        # wish we could use a bare repo but apparently it's impossible to merge
+        retryable do |retries|
+            puts "  cloning vim-scraper.github.com#{retries > 0 ? "  RETRY #{retries}" : ""}"
+            output = `git clone git@github.com:vim-scraper/vim-scraper.github.com.git 2>&1`
+            raise "git clone failed: #{output}" unless $?.success?
+        end
+        Dir.chdir(doc_dir) {
+            output = `git remote add vim-scripts git@github.com:vim-scraper/vim-scripts.git 2>&1`
+            raise "git remote add vim-scripts git@github.com:vim-scraper/vim-scripts.git failed: #{output}" unless $?.success?
+        }
+    end
+
     docs_repo = Gitrb::Repository.new :path => doc_dir
     retryable do |retries|
         puts "  pulling from vim-scripts template#{retries > 0 ? "  RETRY #{retries}" : ""}"
-        docs_repo.git_pull 'vim-scripts', 'master'
+        docs_repo.git_pull '--no-rebase', 'vim-scripts', 'master'
         # TODO: what happens when the pull fails?
         # Can we tell the difference between a network error, which we want to retry,
         # and a merge error, which we want to fail immediately?
     end
 
     updated_docs = generate_doc_files doc_dir
-    #docs_repo.git_commit '-a'
+    Dir.chdir(doc_dir) {
+        output = `git commit -a -m 'new scrape' 2>&1`
+        if output =~ /nothing to commit/
+            puts "  no changes"
+            return
+        end
+        raise "git commit -a -m 'new scrape' failed: #{output}" unless $?.success?
+    }
 
     retryable do |retries|
         puts "  pushing to vim-scraper.github.com#{retries > 0 ? "  RETRY #{retries}" : ""}"
         docs_repo.git_push 'origin', 'master'
-        # TODO: what happens when the push fails?
     end
 end
 
