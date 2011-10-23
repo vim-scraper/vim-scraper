@@ -162,6 +162,9 @@ $file_location_fixes = {
 # this forces package names matching the regex out to a different branch
 $branch_versions = { 790 => { :branch => 'python3', :regex => /^python3\.0\.vim$/ } }
 
+# Version nazi
+raise "Must run under Ruby 1.9.2" unless RUBY_VERSION == "1.9.2"
+
 
 Dir.mkdir $scripts_dir unless test ?d, $scripts_dir
 Dir.mkdir $repos_dir unless test ?d, $repos_dir
