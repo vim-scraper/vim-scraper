@@ -531,32 +531,36 @@ def generate_docs
         end
         Dir.chdir(doc_dir) {
             output = `git remote add vim-scripts git@github.com:vim-scraper/vim-scripts.git 2>&1`
-            raise "git remote add vim-scripts git@github.com:vim-scraper/vim-scripts.git failed: #{output}" unless $?.success?
+            raise "generate_docs: git remote add vim-scripts git@github.com:vim-scraper/vim-scripts.git failed: #{output}" unless $?.success?
         }
     end
 
-    docs_repo = Gitrb::Repository.new :path => doc_dir
     retryable do |retries|
         puts "  pulling from vim-scripts template#{retries > 0 ? "  RETRY #{retries}" : ""}"
-        docs_repo.git_pull '--no-rebase', 'vim-scripts', 'master'
-        # TODO: what happens when the pull fails?
-        # Can we tell the difference between a network error, which we want to retry,
-        # and a merge error, which we want to fail immediately?
+        Dir.chdir(doc_dir) {
+            # Can we tell the difference between a network error, which we want to retry,
+            # and a merge error, which we want to fail immediately?
+            output = `git pull --no-rebase vim-scripts master 2>&1`
+            raise "generate_docs: git pull --no-rebase vim-scripts master failed: #{output}" unless $?.success?
+        }
     end
 
     updated_docs = generate_doc_files doc_dir
     Dir.chdir(doc_dir) {
         output = `git commit -a -m 'new scrape' 2>&1`
         if output =~ /nothing to commit/
-            puts "  no changes"
-            return
+            puts "  no changes to generated files"
+        else
+            raise "generate_docs: git commit -a -m 'new scrape' failed: #{output}" unless $?.success?
         end
-        raise "git commit -a -m 'new scrape' failed: #{output}" unless $?.success?
     }
 
     retryable do |retries|
         puts "  pushing to vim-scraper.github.com#{retries > 0 ? "  RETRY #{retries}" : ""}"
-        docs_repo.git_push 'origin', 'master'
+        Dir.chdir(doc_dir) {
+            output = `git push origin master 2>&1`
+            raise "generate_docs: git push origin master failed: #{output}" unless $?.success?
+        }
     end
 end
 
