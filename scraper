@@ -469,8 +469,25 @@ def h(*args)
 end
 
 
-def generate_docs
-    puts "reading scripts..."
+def scripts_recent good_scripts
+    good_scripts.map { |s|
+        recent_author_name, recent_author_email = fix_email_address(s.versions.last.author)
+        {
+            :n => s.name,
+            :t => s.script_type,
+            :s => s.summary,
+            :rv => s.versions.last.script_version,
+            :rd => s.versions.last.date,
+            :ra => recent_author_name,
+            :re => recent_author_email
+        }
+    }.to_json
+end
+
+
+def generate_doc_files doc_dir
+    puts "  reading scripts"
+
     # a hash of all scripts (including ones abandoned by renames) indexed by script_id
     repos = Dir.entries($repos_dir).reject { |e| %w{. .. .git}.include?(e) }
     all_scripts = repos.sort.map do |dir|
@@ -483,37 +500,46 @@ def generate_docs
         Hashie::Mash.new(JSON.parse(File.read(File.join($scripts_dir, file))))
     end
 
-    puts "generating docs..."
+    files = {
+        'scripts.json'               => lambda { good_scripts.map { |s| s.name }.to_json },
+        'script_ids.json'            => lambda { good_scripts.reduce({}) { |a,v| a[v.script_id.to_i] = v.name; a }.to_json },
+        'script_original_names.json' => lambda { all_scripts.reduce({}) { |a,v| a[v.display_name] = v.name; a }.to_json },
+        'scripts_recent.json'        => lambda { scripts_recent good_scripts }
+    }
+
+    files.each do |name,proc|
+        puts "  writing #{doc_dir}/api/#{name}"
+        File.open("#{doc_dir}/api/#{name}", 'w') do |f|
+            f.write proc.call
+        end
+    end
+
+    files.keys.map { |name| "api/#{name}" }
+end
+
+
+def generate_docs
     doc_dir = 'vim-scripts.github.com'
-    Dir.mkdir doc_dir unless test ?d, doc_dir
+    puts "generating docs"
+    raise "#{doc_dir} does not exist!" unless test ?d, doc_dir
 
-    File.open("#{doc_dir}/api/scripts.json", 'w') do |f|
-        f.write good_scripts.map { |s| s.name }.to_json
+    # TODO: should make vim-scripts.github.com a bare repo
+    docs_repo = Gitrb::Repository.new :path => doc_dir
+    retryable do |retries|
+        puts "  pulling from vim-scripts template#{retries > 0 ? "  RETRY #{retries}" : ""}"
+        docs_repo.git_pull 'vim-scripts', 'master'
+        # TODO: what happens when the pull fails?
+        # Can we tell the difference between a network error, which we want to retry,
+        # and a merge error, which we want to fail immediately?
     end
 
-    File.open("#{doc_dir}/api/scripts_recent.json", 'w') do |f|
-        f.write good_scripts.map { |s|
-            recent_author_name, recent_author_email = fix_email_address(s.versions.last.author)
-            {
-                :n => s.name,
-                :t => s.script_type,
-                :s => s.summary,
-                :rv => s.versions.last.script_version,
-                :rd => s.versions.last.date,
-                :ra => recent_author_name,
-                :re => recent_author_email
-            }
-        }.to_json
-    end
+    updated_docs = generate_doc_files doc_dir
+    #docs_repo.git_commit '-a'
 
-    # each script id and its official, current name.
-    File.open("#{doc_dir}/api/script_ids.json", 'w') do |f|
-        f.write good_scripts.reduce({}) { |a,v| a[v.script_id.to_i] = v.name; a }.to_json
-    end
-
-    # original display name for scripts, and their IDs.
-    File.open("#{doc_dir}/api/script_original_names.json", 'w') do |f|
-        f.write all_scripts.reduce({}) { |a,v| a[v.display_name] = v.name; a }.to_json
+    retryable do |retries|
+        puts "  pushing to vim-scraper.github.com#{retries > 0 ? "  RETRY #{retries}" : ""}"
+        docs_repo.git_push 'origin', 'master'
+        # TODO: what happens when the push fails?
     end
 end
 
