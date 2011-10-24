@@ -7,7 +7,7 @@ GIT
 
 GIT
   remote: git://github.com/bronson/retryable.git
-  revision: a96cedfb6321f2640cf09a4a34d8d1acbf7ec0fc
+  revision: 5a10ec299969275847580ed5369c88323912e4cd
   specs:
     retryable (0.9.0)
 
