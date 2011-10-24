@@ -174,21 +174,23 @@ Dir.mkdir $webcache_dir unless test ?d, $webcache_dir
 # this mime magic is far too vague.  it false-triggers all the time.
 MimeMagic.remove 'application/x-gmc-link'
 
+
 class ScrapeError < RuntimeError; end       # retryable problem when scraping
 class SourceForgeError < ScrapeError; end   # sourceforge being stupid
 class NoContentError < ScrapeError; end     # page appears to be rendered incorrectly
-
+class GitError < RuntimeError; end          # shelling out to git failed
 
 # Turns out Ruby isn't very good about limiting the types of errors
 # we need to handle...  These are the ones that make sense to retry.
 def retryable_errors
     [
-        ScrapeError,        # errors we raise, discovered while parsing
+        ScrapeError,
         Errno::ECONNRESET,
         Timeout::Error,
         Errno::ETIMEDOUT,   # Connection timed out - connect(2) (Errno::ETIMEDOUT)
         OpenURI::HTTPError,
         SocketError,        # getaddrinfo: Name or service not known (SocketError)
+        GitError,
     ]
 end
 
@@ -523,25 +525,23 @@ def generate_docs
     puts "generating docs"
 
     unless test ?d, doc_dir
-        # wish we could use a bare repo but apparently it's impossible to merge
-        retryable do |retries|
-            puts "  cloning vim-scraper.github.com#{retries > 0 ? "  RETRY #{retries}" : ""}"
+        # wish we could use a bare repo but apparently they don't support merging
+        retryable(:task => "  cloning vim-scraper.github.com") do |retries|
             output = `git clone git@github.com:vim-scraper/vim-scraper.github.com.git 2>&1`
-            raise "git clone failed: #{output}" unless $?.success?
+            raise GitError.new("git clone failed: #{output}") unless $?.success?
         end
         Dir.chdir(doc_dir) {
             output = `git remote add vim-scripts git@github.com:vim-scraper/vim-scripts.git 2>&1`
-            raise "generate_docs: git remote add vim-scripts git@github.com:vim-scraper/vim-scripts.git failed: #{output}" unless $?.success?
+            raise GitError.new("generate_docs: git remote add vim-scripts git@github.com:vim-scraper/vim-scripts.git failed: #{output}") unless $?.success?
         }
     end
 
-    retryable do |retries|
-        puts "  pulling from vim-scripts template#{retries > 0 ? "  RETRY #{retries}" : ""}"
+    retryable(:task => "  pulling from vim-scripts template") do |retries|
         Dir.chdir(doc_dir) {
             # Can we tell the difference between a network error, which we want to retry,
             # and a merge error, which we want to fail immediately?
             output = `git pull --no-rebase vim-scripts master 2>&1`
-            raise "generate_docs: git pull --no-rebase vim-scripts master failed: #{output}" unless $?.success?
+            raise GitError.new("generate_docs: git pull --no-rebase vim-scripts master failed: #{output}") unless $?.success?
         }
     end
 
@@ -551,12 +551,11 @@ def generate_docs
         if output =~ /nothing to commit/
             puts "  no changes to generated files"
         else
-            raise "generate_docs: git commit -a -m 'new scrape' failed: #{output}" unless $?.success?
+            raise GitError.new("generate_docs: git commit -a -m 'new scrape' failed: #{output}") unless $?.success?
         end
     }
 
-    retryable do |retries|
-        puts "  pushing to vim-scraper.github.com#{retries > 0 ? "  RETRY #{retries}" : ""}"
+    retryable(:task => "  pushing to vim-scraper.github.com") do |retries|
         Dir.chdir(doc_dir) {
             output = `git push origin master 2>&1`
             raise "generate_docs: git push origin master failed: #{output}" unless $?.success?
@@ -852,8 +851,7 @@ end
 
 
 def download_file url, dest
-    retryable(:on => OpenURI::HTTPError) do |retries|
-        puts "  downloading #{url} to #{dest}#{retries > 0 ? "  RETRY #{retries}" : ""}"
+    retryable(:on => OpenURI::HTTPError, :task => "  downloading #{url} to #{dest}") do |retries|
         open(url, 'rb') do |u|
             File.open(dest, 'wb') { |f| f.write(u.read) }
         end
@@ -1375,8 +1373,7 @@ def perform_push repo_name
     end
 
     unless remote
-        retryable do |retries|
-            puts "  creating #{script['script_id']} - #{script['name']}#{retries > 0 ? "  RETRY #{retries}" : ""}"
+        retryable(:task => "  creating #{script['script_id']} - #{script['name']}") do |retries|
             remote = github.create(script.name,
                 :description => script.summary,
                 :homepage => script_id_to_url(script.script_id),
@@ -1386,11 +1383,10 @@ def perform_push repo_name
 
     repo.git_remote('rm', 'origin') rescue nil
     repo.git_remote('add', 'origin', remote_url(script))
-    retryable do |retries|
+    retryable(:task => "  #{"force " if ENV['FORCE']}pushing #{script['script_id']} - #{script['name']}") do |retries|
         # TODO: This is a problem, we get a Gitrb command error if there are
         # local repo issues, AND when there's a network error.  Don't want to
         # retry local errors.  Write our own push so we can differentiate?
-        puts "  #{"force " if ENV['FORCE']}pushing #{script['script_id']} - #{script['name']}#{retries > 0 ? "  RETRY #{retries}" : ""}"
         args = ['--tags']
         args << '--force' if ENV['FORCE']
         args << 'origin'
@@ -1687,10 +1683,9 @@ else
         elsif test ?f, arg
             perform_download arg
         elsif test ?d, arg
-            retryable do |retries|
+            retryable(:task => "pushing #{arg}") do |retries|
                 # sometimes, and it's hard to predict why, github errors out reliably
                 # for a few minutes, then magically fixes itself.
-                puts "Upload failed, retry #{retries}" if retries > 0
                 perform_push arg
             end
         elsif (f=Dir.glob("#{$scripts_dir}/???? - #{arg}.json")) && !f.empty? && test(?f, f.first)
