@@ -11,6 +11,7 @@
 #   Macintosh: sudo port install unrar p7zip xz
 # Also, for gems:
 #   Ubuntu: sudo apt-get install libxml2-dev libxslt1-dev zlib1g-dev libbz2-dev libcurl4-openssl-dev
+#   Fedora: sudo yum install bzip2-devel libxml2-devel libxslt-devel libcurl-devel
 #
 # FULL SCRAPE:
 # To start a full scrape, do this:
@@ -483,6 +484,7 @@ def generate_doc_files doc_dir
     all_scripts = repos.sort.map do |dir|
         Hashie::Mash.new(JSON.parse(File.read(File.join($repos_dir, dir, $git_script_file))))
     end
+    return nil if all_scripts.empty?
 
     # just the official scripts -- no renames, no deletions
     script_files = Dir.entries($scripts_dir).reject { |e| %w{. .. .git}.include?(e) }
@@ -504,7 +506,7 @@ def generate_doc_files doc_dir
         end
     end
 
-    files.keys.map { |name| "api/#{name}" }
+    return files.keys.map { |name| "api/#{name}" }
 end
 
 
@@ -523,9 +525,9 @@ def generate_docs
     site.pull 'vim-scripts', 'master'
 
     updated_docs = generate_doc_files doc_dir
-
     # todo: get rid of commit_all, only add and commit updated_docs
-    site.commit_all 'new scrape'
+    site.commit_all 'new scrape' if updated_docs
+
     site.push 'origin', 'master'
 end
 
