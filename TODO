@@ -1,3 +1,5 @@
+todo: make relevant calls in lib/github.rb and lib/repo.rb retryable
+
 What happens if we try to tag the same tag twice?
 
 WTF happened to 2387?  Its description is now <td>Wisely add </td>?

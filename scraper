@@ -99,6 +99,7 @@ require 'open3'
 require 'retryable'
 
 require 'github'
+require 'gitrepo'
 
 
 include Retryable
@@ -178,7 +179,6 @@ MimeMagic.remove 'application/x-gmc-link'
 class ScrapeError < RuntimeError; end       # retryable problem when scraping
 class SourceForgeError < ScrapeError; end   # sourceforge being stupid
 class NoContentError < ScrapeError; end     # page appears to be rendered incorrectly
-class GitError < RuntimeError; end          # shelling out to git failed
 
 # Turns out Ruby isn't very good about limiting the types of errors
 # we need to handle...  These are the ones that make sense to retry.
@@ -190,7 +190,7 @@ def retryable_errors
         Errno::ETIMEDOUT,   # Connection timed out - connect(2) (Errno::ETIMEDOUT)
         OpenURI::HTTPError,
         SocketError,        # getaddrinfo: Name or service not known (SocketError)
-        GitError,
+        GitRepo::GitError,
     ]
 end
 
@@ -252,18 +252,6 @@ module Hpricot
         alias_method :inner_content, :content
     end
 end
-
-
-# Recursively convert a Hashie::Mash back to a plain hash
-#def convert_hash arg
-    #if arg.kind_of? Hashie::Mash
-        #hash = arg.to_hash
-        #hash.each { |k,v| hash[k] = convert_hash v }
-        #hash
-    #else
-        #arg
-    #end
-#end
 
 
 # There's a bizarre bug when passing a Hashie::Mash to JSON.pretty_generate.
@@ -521,46 +509,24 @@ end
 
 
 def generate_docs
+    # wish we could use a bare repo to keep the docs but they don't support merging
     doc_dir = 'vim-scraper.github.com'
     puts "generating docs"
 
+    site = nil
     unless test ?d, doc_dir
-        # wish we could use a bare repo but apparently they don't support merging
-        retryable(:task => "  cloning vim-scraper.github.com") do |retries|
-            output = `git clone git@github.com:vim-scraper/vim-scraper.github.com.git 2>&1`
-            raise GitError.new("git clone failed: #{output}") unless $?.success?
-        end
-        Dir.chdir(doc_dir) {
-            output = `git remote add vim-scripts git@github.com:vim-scraper/vim-scripts.git 2>&1`
-            raise GitError.new("generate_docs: git remote add vim-scripts git@github.com:vim-scraper/vim-scripts.git failed: #{output}") unless $?.success?
-        }
+        site = GitRepo.new :root => doc_dir, :clone => "git@github.com:vim-scraper/vim-scraper.github.com.git"
+        site.remote_add 'vim-scripts', "git@github.com:vim-scraper/vim-scripts.git"
     end
 
-    retryable(:task => "  pulling from vim-scripts template") do |retries|
-        Dir.chdir(doc_dir) {
-            # Can we tell the difference between a network error, which we want to retry,
-            # and a merge error, which we want to fail immediately?
-            output = `git pull --no-rebase vim-scripts master 2>&1`
-            raise GitError.new("generate_docs: git pull --no-rebase vim-scripts master failed: #{output}") unless $?.success?
-        }
-    end
+    site ||= GitRepo.new :root => doc_dir
+    site.pull 'vim-scripts', 'master'
 
     updated_docs = generate_doc_files doc_dir
-    Dir.chdir(doc_dir) {
-        output = `git commit -a -m 'new scrape' 2>&1`
-        if output =~ /nothing to commit/
-            puts "  no changes to generated files"
-        else
-            raise GitError.new("generate_docs: git commit -a -m 'new scrape' failed: #{output}") unless $?.success?
-        end
-    }
 
-    retryable(:task => "  pushing to vim-scraper.github.com") do |retries|
-        Dir.chdir(doc_dir) {
-            output = `git push origin master 2>&1`
-            raise "generate_docs: git push origin master failed: #{output}" unless $?.success?
-        }
-    end
+    # todo: get rid of commit_all, only add and commit updated_docs
+    site.commit_all 'new scrape'
+    site.push 'origin', 'master'
 end
 
 
