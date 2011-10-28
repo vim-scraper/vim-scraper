@@ -5,7 +5,7 @@
 # Released under the MIT License.
 #
 # DEPENDENCIES
-# This script requires Ruby 1.9.2+.
+# This script requires Ruby 1.9.2.
 # Make sure you have unzip, unrar, 7za, and xz installed.
 #   Ubuntu: sudo apt-get install unzip unrar p7zip-full xz-utils
 #   Macintosh: sudo port install unrar p7zip xz
@@ -81,7 +81,6 @@ require 'hpricot'             # hpricot gem
 require 'open-uri'
 require 'cgi'
 require 'json'                # json gem
-require 'gitrb'               # gitrb gem
 require 'zlib'
 require 'bzip2'               # bzip2-ruby gem
 require 'mime/types'
@@ -732,19 +731,17 @@ end
 
 def open_repo script_id, script_name
     repo_path = repo_filename script_id, script_name
-    # if gitrb is dying on the following line, you need to upgrade
-    Gitrb::Repository.new(:path => repo_path, :bare => true, :create => true)
+    GitRepo.new(:root => repo_path, :bare => true, :create => true)
 end
 
 
 def mark_repo_as_duplicate dupe, new_script
     # add a commit that deletes all files and creates a README pointing to the new repo
     repo = open_repo(script_extract_id(dupe), script_extract_name(dupe))
-    committer = Gitrb::User.new($vimscripts_name, $vimscripts_email)
-    repo.transaction("Renamed to #{new_script['display_name']}", committer, committer) do
-        repo.root.to_a.map { |name,value| repo.root.delete(name) }
-        repo.root['README'] = Gitrb::Blob.new(:data => "This script has been renamed " +
-          "to #{new_script['display_name']}.\n\n#{repo_url new_script}\n")
+    committer = { :name => $vimscripts_name, :email => $vimscripts_email }
+    repo.commit("Renamed to #{new_script['display_name']}", committer, committer) do |commit|
+        commit.empty
+        commit.add 'README', "This script has been renamed to #{new_script['display_name']}.\n\n#{repo_url new_script}\n"
     end
 end
 
@@ -827,13 +824,13 @@ def download_file url, dest
 end
 
 
-def copy_file repo, filename, contents
+def copy_file commit, filename, contents
     # an empty file is represented by the empty string.  contents==nil indicates an internal error.
     raise "no data in #{filename}: #{contents.inspect}" unless contents
 
     # skip swapfiles or crap Apple files that authors accidentally check in
     unless filename =~ /\.[^\/]+\.sw[n-p]$/ || filename =~ /~$/ || filename =~ /\.(?:_\.)?DS_Store$/ || filename =~ /(?:^|\/)\._/
-        repo.root[filename] = Gitrb::Blob.new(:data => contents)
+        commit.add filename, contents
     end
 end
 
@@ -1207,32 +1204,12 @@ def add_version repo, version, script
 end
 
 
-def tag_version repo, version, branch
-    ENV['GIT_COMMITTER_NAME'] = $vimscripts_name
-    ENV['GIT_COMMITTER_EMAIL'] = $vimscripts_email
-    sver = script_version(version)
-    puts "  tagging with #{gittagify(sver)} from #{sver}"
-    repo.git_tag '-a', gittagify(sver), '-m', "tag #{sver}", branch
-    ENV.delete 'GIT_COMMITTER_NAME'
-    ENV.delete 'GIT_COMMITTER_EMAIL'
-end
-
-
-def find_version repo, version
-    tagname = gittagify(script_version(version))
-    # gitrb doesn't handle annotated tags so we call git directly
-    tag = repo.git_tag('-l', tagname).chomp
-    tag = nil if tag =~ /^\s*$/
-    return tag
-end
-
-
-def check_for_readme_file repo
+def check_for_readme_file commit
     # we drop a README file into each repo.  don't want to conflict with one already there.
-    repo.root.to_a.each do |name, value|
+    commit.entries.each do |name, value|
         if name =~ /^README$/i
-            raise "already have a readme.orig!" if repo.root.to_a.find { |n,v| n =~ /^readme\.orig$/i }
-            repo.root[name + '.orig'] = repo.root.delete(name)
+            raise "already have a readme.orig!" if commit.entries.find { |n,v| n =~ /^readme\.orig$/i }
+            commit.add name+'.orig', commit.remove(name)
         end
     end
 end
@@ -1264,33 +1241,42 @@ end
 
 
 def store_versions_in_repo repo, script
-    committer = Gitrb::User.new($vimscripts_name, $vimscripts_email)
+    committer = { :name => $vimscripts_name, :email => $vimscripts_email }
     puts "Processing script #{script['script_id']}: #{script['name']}"
     count = 0
+
     script['versions'].reverse.each do |version|
+        # todo: get rid of this...  we only mirror the master branch.  and branch below
         branch = 'master'
         matcher = $branch_versions[script['script_id'].to_i]
         if matcher && version['filename'] =~ matcher[:regex]
             branch = matcher[:branch]
         end
         repo.branch = branch unless repo.branch == branch
+        # endtodo
+
+        # todo: rather than bailing, we should bit-for-bit verify
+        tagname = gittagify(script_version(version))
+        next if repo.read_tag(tagname)
+
+        next if corrupted_package(script, version)
 
         author_name, author_email = fix_email_address(version['author'])
-        author = Gitrb::User.new(author_name, author_email, Time.new(*version['date'].split('-'), 0, 0, 0, 0))
-        unless corrupted_package(script, version) || find_version(repo, version)
-            catch :corrupt do
-                puts "  adding #{version['filename']} #{version['date']} #{script_version(version)} to branch #{branch}"
-                repo.transaction(fix_release_notes(version), author, committer) do
-                    # delete all existing blobs since we replace everything with the new commit
-                    repo.root.to_a.map { |name,value| repo.root.delete(name) }
-                    add_version repo, version, script
-                    check_for_keymap_helper repo, script
-                    check_for_readme_file repo
-                    copy_file(repo, 'README', "This is a mirror of #{script_id_to_url(script['script_id'])}\n\n" + script['description'] + "\n") unless repo.root['README']
-                end
-                tag_version repo, version, branch
-                count += 1
+        author = { :name => author_name, :email => author_email,
+                   :date => Time.new(*version['date'].split('-'), 0, 0, 0, 0)) }
+
+        catch :corrupt do
+            puts "  adding #{version['filename']} #{version['date']} #{script_version(version)} to branch #{branch}"
+            repo.commit(fix_release_notes(version), author, committer) do |commit|
+                commit.empty
+                add_version commit, version, script
+                check_for_keymap_helper repo, script
+                check_for_readme_file commit
+                copy_file(commit, 'README', "This is a mirror of #{script_id_to_url(script['script_id'])}\n\n" + script['description'] + "\n") unless repo.root['README']
             end
+            sver = script_version(version)
+            repo.create_tag gittagify(sver), "tag #{sver}", committer, branch
+            count += 1
         end
     end
     count
@@ -1325,7 +1311,7 @@ end
 def perform_push repo_name
     return unless repo_name
     github = GitHub.new
-    repo = Gitrb::Repository.new(:path => repo_name.dup, :bare => true)
+    repo = GitRepo.new :root => repo_name, :bare => true
     script = Hashie::Mash.new(JSON.parse(File.read(File.join(repo_name, $git_script_file))))
     puts "Uploading #{script['script_id']} - #{script['name']}"
 
@@ -1349,17 +1335,14 @@ def perform_push repo_name
         end
     end
 
-    repo.git_remote('rm', 'origin') rescue nil
-    repo.git_remote('add', 'origin', remote_url(script))
+    repo.remote_remove 'origin' rescue nil
+    repo.remote_add 'origin', remote_url(script)
     retryable(:task => "  #{"force " if ENV['FORCE']}pushing #{script['script_id']} - #{script['name']}") do |retries|
-        # TODO: This is a problem, we get a Gitrb command error if there are
-        # local repo issues, AND when there's a network error.  Don't want to
-        # retry local errors.  Write our own push so we can differentiate?
         args = ['--tags']
         args << '--force' if ENV['FORCE']
         args << 'origin'
         args.push *repo_heads(repo)
-        repo.git_push(*args)
+        repo.push *args
     end
 end
 
@@ -1380,14 +1363,14 @@ def perform_download script_file
     dedup_script_versions script
 
     # store the script file in the repo it creates
-    File.open(File.join(repo.path, $git_script_file), 'w') { |f|
+    File.open(File.join(repo.root, $git_script_file), 'w') { |f|
         f.write json_pretty(script)
     }
 
     count = store_versions_in_repo(repo, script)
-    dump_repo "#{$repo_dir}/#{repo.path}", ENV['DUMP_REPO'] if ENV['DUMP_REPO']
-    FileUtils.rm_rf "#{$repo_dir}/#{repo.path}" if ENV['PURGE_REPOS']
-    [repo.path, count]
+    dump_repo "#{$repo_dir}/#{repo.root}", ENV['DUMP_REPO'] if ENV['DUMP_REPO']
+    FileUtils.rm_rf "#{$repo_dir}/#{repo.root}" if ENV['PURGE_REPOS']
+    [repo.root, count]
 end
 
 
@@ -1596,6 +1579,7 @@ def fork_jobs args
     end
     args
 end
+
 
 if __FILE__ == $0
 $start_time = Time.now

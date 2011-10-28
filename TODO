@@ -6,6 +6,8 @@ WTF happened to 2387?  Its description is now <td>Wisely add </td>?
 
 Also https://github.com/vim-scripts/DBGp-client--Lancien is jacked
 
+Remember last_script_id, even when doing a full scrape.  Only set it to a random number
+when first setting a scraper up.
 
 push repos/dbext.vim
   ~/vim-scraper/repos/dbext.vim.git$ git push origin master
