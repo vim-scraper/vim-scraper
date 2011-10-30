@@ -21,6 +21,10 @@ gem 'i18n'        ,'~> 0.4.1'
 gem 'retryable'   , :git => 'git://github.com/bronson/retryable.git'
 gem 'gitrb'       , :git => 'git://github.com/bronson/gitrb.git', :branch => 'patch-1'
 
+group :development do
+  gem 'guard-rspec'
+end
+
 group :test do
   gem 'rake'      # needed by travis-ci
   gem 'rspec'     ,'~> 2.5'
