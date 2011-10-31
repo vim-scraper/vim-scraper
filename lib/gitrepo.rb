@@ -4,6 +4,7 @@
 # todo: make a way for caller to tell Repo to indent all messages
 
 require 'gitrb'
+require 'retryable'
 
 
 class GitRepo
@@ -24,7 +25,9 @@ class GitRepo
                 output = `git clone #{opts[:clone]} #{opts[:root]} #{bare} 2>&1`
                 raise GitError.new("git clone failed: #{output}") unless $?.success?
             end
-        else
+        end
+
+        unless opts[:create]    # unless we're creating it, repo needs to exist by now
             raise "#{@root} doesn't exist" unless test ?d, @root
         end
 
@@ -128,7 +131,7 @@ class GitRepo
         end
 
         def add name, contents
-            @repo.root[name] = Gitrb::Blob.new(:data => value)
+            @repo.root[name] = Gitrb::Blob.new(:data => contents)
         end
 
         # todo: this returns |name,value| ????
@@ -138,11 +141,11 @@ class GitRepo
     end
 
 
-    def commit message, author, committer
+    def commit message, author, committer=author
         author    = Gitrb::User.new(author[:name],    author[:email],    author[:date] || Time.now)
         committer = Gitrb::User.new(committer[:name], committer[:email], committer[:date] || Time.now)
         @repo.transaction(message, author, committer) do
-            yield CommitHelper.new repo
+            yield CommitHelper.new @repo
         end
     end
 end
