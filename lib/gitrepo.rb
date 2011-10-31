@@ -39,6 +39,28 @@ class GitRepo
         @root
     end
 
+    def git *args
+        args = args.map { |a| a.to_s }
+        Dir.chdir(@root) do
+            out = IO.popen('-', 'r') do |io|
+                if io
+                    # parent, read the git output
+                    block_given? ? yield(io) : io.read
+                else
+                    STDERR.reopen STDOUT
+                    exec 'git', *args
+                end
+            end
+
+            if $?.exitstatus > 0
+                # return '' if $?.exitstatus == 1 && out == ''
+                raise GitError.new("git #{args.join(' ')}: #{out}")
+            end
+
+            out
+        end
+    end
+
     # i.e. remote_add 'rails', 'http://github.com/rails/rails.git'
     def remote_add name, remote
         Dir.chdir(@root) {

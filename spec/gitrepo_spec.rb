@@ -36,7 +36,10 @@ describe 'GitRepo' do
 
   it "should allow remotes to be added and removed" do
     with_git_commit(:bare => true) do |repo|
-
+      repo.remote_add :origin, 'http://example.com/'
+      repo.git(:remote).should == "origin\n"
+      repo.remote_remove :origin
+      repo.git(:remote).should == ""
     end
   end
 end
