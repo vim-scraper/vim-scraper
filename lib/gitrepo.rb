@@ -88,25 +88,19 @@ class GitRepo
         }
     end
 
+
     def pull *args
-        Dir.chdir(@root) do
-            retryable(:task => "pulling #{args.join ' '}") do
-                # Can we tell the difference between a network error, which we want to retry,
-                # and a merge error, which we want to fail immediately?
-                output = `git pull --no-rebase #{args.join ' '} 2>&1`
-                raise GitError.new("git pull failed: #{output}") unless $?.success?
-            end
+        # Can we tell the difference between a network error, which we want to retry,
+        # and a merge error, which we want to fail immediately?
+        retryable(:task => "pulling #{args.join ' '}") do
+            git :pull, '--no-rebase',  *args
         end
     end
 
-    # TODO: how can we differentiate local errors from network errors?  We want to retry
-    # network errors, we definitely do not want to retry local errors.
     def push *args
-        Dir.chdir(@root) do
-            retryable(:task => "pushing #{args.join ' '}") do
-                output = `git push #{args.join ' '} 2>&1`
-                raise "generate_docs: git push failed: #{output}" unless $?.success?
-            end
+        # like pull, can we tell the difference between a network error and local error?
+        retryable(:task => "pushing #{args.join ' '}") do
+            git :push, *args
         end
     end
 

@@ -8,7 +8,7 @@ require 'tmpdir'
 
 describe 'GitRepo' do
   # creates an empty Git repo.
-  def with_git_repo args, &block
+  def with_git_repo args={}, &block
     stub = lambda { |tmpdir|
       options = { :root => "#{tmpdir}/repo", :create => true }
       options.merge! args
@@ -40,6 +40,20 @@ describe 'GitRepo' do
       repo.git(:remote).should == "origin\n"
       repo.remote_remove :origin
       repo.git(:remote).should == ""
+    end
+  end
+
+  it "should allow pulling" do
+    with_git_repo do |repo|
+      repo.should_receive(:git).once.with(:pull, '--no-rebase', :origin, :master)
+      repo.pull :origin, :master
+    end
+  end
+
+  it "should allow pushing" do
+    with_git_repo do |repo|
+      repo.should_receive(:git).once.with(:push, :origin, :master)
+      repo.push :origin, :master
     end
   end
 end
