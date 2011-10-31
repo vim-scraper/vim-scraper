@@ -61,20 +61,14 @@ class GitRepo
         end
     end
 
-    # i.e. remote_add 'rails', 'http://github.com/rails/rails.git'
     def remote_add name, remote
-        Dir.chdir(@root) {
-            output = `git remote add #{name} #{remote} 2>&1`
-            raise GitError.new("git remote add #{name} failed: #{output}") unless $?.success?
-        }
+        git :remote, :add, name, remote
     end
 
     def remote_remove name
-        Dir.chdir(@root) {
-            output = `git remote rm #{name} 2>&1`
-            raise GitError.new("git remote add #{name} failed: #{output}") unless $?.success?
-        }
+        git :remote, :rm, name
     end
+
 
     # todo: get rid of this call, should be regular git add / git commit
     def commit_all message
@@ -105,28 +99,26 @@ class GitRepo
     end
 
 
-    def create_tag name, message, committer, branch = 'master'
-        # todo: this blows away the environment, is there a better way of doing this?
+    # todo: get rid of branch since we should only ever produce commits on master.
+    def create_tag name, message, committer, branch='master'
+        # gitrb doesn't handle annotated tags so we call git directly
+        # todo: this blows away the environment, should set env after forking & before execing
         ENV['GIT_COMMITTER_NAME'] = committer[:name]
         ENV['GIT_COMMITTER_EMAIL'] = committer[:email]
-        puts "  tagging with #{gittagify(name)} from #{name}"
-        Dir.chdir(@root) {
-            output = `git tag -a #{gittagify(name)} -m 'tag #{name}' #{branch} 2>&1`
-            raise GitError.new("create git tag failed: #{output}") unless $?.success?
-        }
+        ENV['GIT_COMMITTER_DATE'] = (committer[:date] || Time.now).strftime("%s %z")
+
+        result = git :tag, '-a', name, '-m', message, branch
+
         ENV.delete 'GIT_COMMITTER_NAME'
         ENV.delete 'GIT_COMMITTER_EMAIL'
+        ENV.delete 'GIT_COMMITTER_DATE'
+
+        result
     end
 
-
-    def read_tag tagname
-        # gitrb doesn't handle annotated tags so we call git directly
-        Dir.chdir(@root) {
-            output = `git tag -l #{tagname} 2>&1`
-            raise GitError.new("read git tag failed: #{output}") unless $?.success?
-            output = nil if tag =~ /^\s*$/
-            return output
-        }
+    def find_tag tagname
+        tag = git :tag, '-l', tagname
+        return !tag || tag =~ /^\s*$/ ? nil : tag.chomp
     end
 
 

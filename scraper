@@ -1257,7 +1257,7 @@ def store_versions_in_repo repo, script
 
         # todo: rather than bailing, we should bit-for-bit verify
         tagname = gittagify(script_version(version))
-        next if repo.read_tag(tagname)
+        next if repo.find_tag(tagname)
 
         next if corrupted_package(script, version)
 
@@ -1275,6 +1275,7 @@ def store_versions_in_repo repo, script
                 copy_file(commit, 'README', "This is a mirror of #{script_id_to_url(script['script_id'])}\n\n" + script['description'] + "\n") unless repo.root['README']
             end
             sver = script_version(version)
+            puts "  tagging with #{gittagify(sver)} from #{sver}"
             repo.create_tag gittagify(sver), "tag #{sver}", committer, branch
             count += 1
         end
