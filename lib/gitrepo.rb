@@ -1,7 +1,5 @@
 # interface for working on git repos, insulates app from underlying implementation
 
-# todo: make a way for caller to tell GitRepo to indent all log messages?
-
 require 'gitrb'
 require 'retryable'
 
@@ -10,12 +8,16 @@ class GitRepo
     include Retryable   # only for network operations
 
     class GitError < RuntimeError; end
+    attr_reader :root, :bare
 
     # required: :root, the directory to contain the repo
     # optional: :clone a repo to clone (:bare => true if it should be bare)
     #           :create to create a new empty repo if it doesn't already exist
     def initialize opts
         @root = opts[:root]
+        @bare = opts[:bare]
+
+        retryable_options opts[:retryable_options] if opts[:retryable_options]
 
         if opts[:clone]
             retryable(:task => "cloning #{opts[:clone]}") do
@@ -23,35 +25,37 @@ class GitRepo
                 args.push '--bare' if opts[:bare]
                 git_exec :clone, *args
             end
+        elsif opts[:create]
+            Dir.mkdir opts[:root] unless test ?d, opts[:root]
+            if opts[:bare]
+                git :init, '--bare'
+            else
+                git :init
+            end
         end
 
-        unless opts[:create]    # unless we're creating it, repo needs to exist by now
-            raise "#{@root} doesn't exist" unless test ?d, @root
+        # a little sanity checking, catch simple errors early
+        raise GitError.new "#{@root} does not exist" unless test ?d, @root
+        if opts[:bare]
+            raise GitError.new "#{@root} does not appear to be a bare repo" unless test(?d, File.join(@root, 'objects'))
+        else
+            raise GitError.new "#{@root}/.git does not exist" unless test(?d, File.join(@root, '.git'))
+            raise GitError.new "#{@root}/.git does not appear to be a git repo" unless test(?d, File.join(@root, '.git', 'objects'))
         end
-
-        # todo: move gitrb so it only exists in CommitHelper
-        # gitrb has a bug where it will complain about frozen strings unless you dup the path
-        @repo = Gitrb::Repository.new(:path => @root.dup, :bare => opts[:bare], :create => opts[:create])
-    end
-
-    def root
-        @root
     end
 
     def git_exec *args
         args = args.map { |a| a.to_s }
         out = IO.popen('-', 'r') do |io|
-            if io
-                # parent, read the git output
+            if io    # parent
                 block_given? ? yield(io) : io.read
-            else
+            else     # child
                 STDERR.reopen STDOUT
                 exec 'git', *args
             end
         end
 
         if $?.exitstatus > 0
-            # return '' if $?.exitstatus == 1 && out == ''
             raise GitError.new("git #{args.join(' ')}: #{out}")
         end
 
@@ -143,8 +147,10 @@ class GitRepo
     def commit message, author, committer=author
         author    = Gitrb::User.new(author[:name],    author[:email],    author[:date] || Time.now)
         committer = Gitrb::User.new(committer[:name], committer[:email], committer[:date] || Time.now)
-        @repo.transaction(message, author, committer) do
-            yield CommitHelper.new @repo
+        # gitrb has a bug where it will complain about frozen strings unless you dup the path
+        repo = Gitrb::Repository.new(:path => root.dup, :bare => bare, :create => false)
+        repo.transaction(message, author, committer) do
+            yield CommitHelper.new(repo)
         end
     end
 end

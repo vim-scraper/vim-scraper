@@ -27,7 +27,7 @@ describe 'GitRepo' do
     end
   end
 
-  # creates a git repo with one commit (git can get psychotic when a repo has 0 commits)
+  # creates a git repo with one commit ugit can get psychotic when a repo has 0 commits)
   def with_git_commit *args
     with_git_repo(*args) do |repo|
       author = { :name => "test author", :email => "testemail@example.com" }
@@ -35,6 +35,69 @@ describe 'GitRepo' do
         commit.add "README", "This is a test readme file\n"
       end
       yield repo
+    end
+  end
+
+
+  it "should create a regular repo" do
+    Dir.mktmpdir 'gitrepo-test-' do |dir|
+      GitRepo.new :root => dir, :create => true
+      raise "no .git" unless test ?d, File.join(dir, '.git')
+      raise "no .git/objects" unless test ?d, File.join(dir, '.git', 'objects')
+      GitRepo.new :root => dir
+    end
+  end
+
+  it "should create a bare repo" do
+    Dir.mktmpdir 'gitrepo-test-' do |dir|
+      GitRepo.new :root => dir, :bare => true, :create => true
+      raise "no objects" unless test ?d, File.join(dir, 'objects')
+      GitRepo.new :root => dir, :bare => true
+    end
+  end
+
+  it "should error out if no repo" do
+    lambda {
+      GitRepo.new :root => '/usr/haha'
+    }.should raise_error(GitRepo::GitError, /does not exist/)
+  end
+
+  it "should refuse to open a bare repo as regular" do
+    with_git_repo(:bare => true) do |repo|
+      lambda {
+        GitRepo.new :root => repo.root
+      }.should raise_error(GitRepo::GitError, /does not exist/)
+    end
+  end
+
+  it "should refuse to open a regular repo as bare" do
+    with_git_repo do |repo|
+      lambda {
+        GitRepo.new :root => repo.root, :bare => true
+      }.should raise_error(GitRepo::GitError, /does not appear to be a bare repo/)
+    end
+  end
+
+  it "should clone a regular repo" do
+    Dir.mktmpdir 'gitrepo-test-' do |dir|
+      root = "#{dir}/thedir"
+      GitRepo.any_instance.should_receive(:git_exec).once.with(:clone, 'feta', root).and_return { |a,b,c,d|
+        Dir.mkdir root     # need to make it look like git ran the clone, otherwise sanity checks fail
+        Dir.mkdir File.join(root, '.git')
+        Dir.mkdir File.join(root, '.git', 'objects')
+      }
+      GitRepo.new :root => root, :clone => 'feta', :retryable_options => { :logger => lambda { |task,retries,error| } }
+    end
+  end
+
+  it "should clone a bare repo" do
+    Dir.mktmpdir 'gitrepo-test-' do |dir|
+      root = "#{dir}/thedir"
+      GitRepo.any_instance.should_receive(:git_exec).once.with(:clone, 'feta', root, '--bare').and_return { |a,b,c,d|
+        Dir.mkdir root     # need to make it look like git ran the clone, otherwise sanity checks fail
+        Dir.mkdir File.join(root, 'objects')
+      }
+      GitRepo.new :root => root, :clone => 'feta', :bare => true, :retryable_options => { :logger => lambda { |task,retries,error| } }
     end
   end
 
