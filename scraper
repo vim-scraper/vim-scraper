@@ -505,7 +505,7 @@ def generate_doc_files doc_dir
         end
     end
 
-    return files.keys.map { |name| "api/#{name}" }
+    return files.keys.map { |name| "#{doc_dir}/api/#{name}" }
 end
 
 
@@ -524,8 +524,12 @@ def generate_docs
     site.pull 'vim-scripts', 'master'
 
     updated_docs = generate_doc_files doc_dir
-    # todo: get rid of commit_all, only add and commit updated_docs
-    site.commit_all 'new scrape' if updated_docs
+    if updated_docs
+        author = { :name => $vimscripts_name, :email => $vimscripts_email }
+        site.commit('new scrape', author) do |commit|
+            updated_docs.each { |file| commit.add file, File.read(file) }
+        end
+    end
 
     site.push 'origin', 'master'
 end
@@ -1203,9 +1207,9 @@ end
 
 def check_for_readme_file commit
     # we drop a README file into each repo.  don't want to conflict with one already there.
-    commit.entries.each do |name, value|
+    commit.entries.each do |name|
         if name =~ /^README$/i
-            raise "already have a readme.orig!" if commit.entries.find { |n,v| n =~ /^readme\.orig$/i }
+            raise "already have a readme.orig!" if commit.entries.find { |n| n =~ /^readme\.orig$/i }
             commit.add name+'.orig', commit.remove(name)
         end
     end
@@ -1260,7 +1264,7 @@ def store_versions_in_repo repo, script
 
         author_name, author_email = fix_email_address(version['author'])
         author = { :name => author_name, :email => author_email,
-                   :date => Time.new(*version['date'].split('-'), 0, 0, 0, 0)) }
+                   :date => Time.new(*version['date'].split('-'), 0, 0, 0, 0) }
 
         catch :corrupt do
             puts "  adding #{version['filename']} #{version['date']} #{script_version(version)} to branch #{branch}"

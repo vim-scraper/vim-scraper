@@ -1,6 +1,5 @@
 # interface for working on git repos, insulates app from underlying implementation
 
-# todo: only call git via array so no shell interp issues
 # todo: make a way for caller to tell GitRepo to indent all log messages?
 
 require 'gitrb'
@@ -20,10 +19,9 @@ class GitRepo
 
         if opts[:clone]
             retryable(:task => "cloning #{opts[:clone]}") do
-                # todo: add support for :bare
-                bare = '--bare' if opts[:bare]
-                output = `git clone #{opts[:clone]} #{opts[:root]} #{bare} 2>&1`
-                raise GitError.new("git clone failed: #{output}") unless $?.success?
+                args = [opts[:clone], opts[:root]]
+                args.push '--bare' if opts[:bare]
+                git_exec :clone, *args
             end
         end
 
@@ -40,25 +38,29 @@ class GitRepo
         @root
     end
 
-    def git *args
+    def git_exec *args
         args = args.map { |a| a.to_s }
+        out = IO.popen('-', 'r') do |io|
+            if io
+                # parent, read the git output
+                block_given? ? yield(io) : io.read
+            else
+                STDERR.reopen STDOUT
+                exec 'git', *args
+            end
+        end
+
+        if $?.exitstatus > 0
+            # return '' if $?.exitstatus == 1 && out == ''
+            raise GitError.new("git #{args.join(' ')}: #{out}")
+        end
+
+        out
+    end
+
+    def git *args
         Dir.chdir(@root) do
-            out = IO.popen('-', 'r') do |io|
-                if io
-                    # parent, read the git output
-                    block_given? ? yield(io) : io.read
-                else
-                    STDERR.reopen STDOUT
-                    exec 'git', *args
-                end
-            end
-
-            if $?.exitstatus > 0
-                # return '' if $?.exitstatus == 1 && out == ''
-                raise GitError.new("git #{args.join(' ')}: #{out}")
-            end
-
-            out
+            git_exec *args
         end
     end
 
@@ -68,19 +70,6 @@ class GitRepo
 
     def remote_remove name
         git :remote, :rm, name
-    end
-
-
-    # todo: get rid of this call, should be regular git add / git commit
-    def commit_all message
-        Dir.chdir(@root) {
-            output = `git commit -a -m '#{message}' 2>&1`
-            if output =~ /nothing to commit/
-                puts "  no changes to generated files"
-            else
-                raise GitError.new("git commit failed: #{output}") unless $?.success?
-            end
-        }
     end
 
 
