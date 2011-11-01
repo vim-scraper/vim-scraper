@@ -38,6 +38,7 @@ describe 'GitRepo' do
     end
   end
 
+
   it "should allow remotes to be added and removed" do
     with_git_commit(:bare => true) do |repo|
       repo.remote_add :origin, 'http://example.com/'
@@ -46,6 +47,7 @@ describe 'GitRepo' do
       repo.git(:remote).should == ""
     end
   end
+
 
   it "should allow pulling" do
     with_git_repo do |repo|
@@ -92,9 +94,85 @@ describe 'GitRepo' do
   end
 
 
-  # testing commits:
-  #   committer same as author
-  #   omit committer
-  #   empty commit
-  #   -700 in commits
+  it "should commit with correct dates" do
+    with_git_repo(:bare => true) do |repo|
+      authordate =    Time.new 2010, 9, 5, 15,30,0, '-07:00'
+      committerdate = Time.new 2010,10,10, 16,40,0, '-07:00'
+      author =    { :name => "the author",    :email => "auemail@example.com",  :date => authordate }
+      committer = { :name => "the committer", :email => "comemail@example.com", :date => committerdate }
+      repo.commit("date commit", author, committer) do |commit|
+        commit.add "README", "This is a test readme file\n"
+      end
+
+      # This ensures the time is represented as -0700, not -700.  http://vim-scripts.org/news/2011/06/23/picky-about-timezones.html
+      repo.git(:log, '--pretty=raw').should match /^commit [0-9a-f]+\ntree [0-9a-f]+\nauthor the author <auemail@example.com> 1283725800 -0700\ncommitter the committer <comemail@example.com> 1286754000 -0700\n\n\s*date commit/
+    end
+  end
+
+  it "should replace files" do
+    with_git_commit(:bare => true) do |repo|
+      author = { :name => "replace author", :email => "auemail@example.com" }
+      repo.commit("replace commit", author) do |commit|
+        commit.entries.should == ['README']
+        commit.remove('README').should == "This is a test readme file\n"
+        commit.add 'zarg one', 'some content for zarg\n'
+        commit.entries.should == ['zarg one']
+      end
+      repo.git('log', '--pretty=oneline').split("\n").length.should == 2   # 2 commits
+      repo.git('ls-tree', 'HEAD').should match /^[^\n]+zarg one$/          # only one file
+    end
+  end
+
+  def git_tree repo, spec
+    # returns an array of all entries in the tree in the format ["blob r", "tree s"]
+    repo.git('ls-tree', spec).split("\n").map { |s| s =~ /^[0-9]+ (\S+) [0-9a-f]+\t(.*)$/; "#{$1} #{$2}" }.sort
+  end
+
+  it "should handle trees" do
+    with_git_commit(:bare => true) do |repo|
+      author = { :name => "tree author", :email => "auemail@example.com" }
+      repo.commit("tree commit", author) do |commit|
+        commit.add 'a/b/c dir/d/e.txt', "e text file contents\n"
+        commit.add 'a/b/c dir/d/f.txt', "f text file contents\n"
+        commit.entries.sort.should == ['README', 'a']
+      end
+      repo.git('log', '--pretty=oneline').split("\n").length.should == 2
+      git_tree(repo, 'HEAD').should == ['blob README', 'tree a']
+      git_tree(repo, 'HEAD:a/b/c dir/d').should == ['blob e.txt', 'blob f.txt']
+    end
+  end
+
+  it "should not commit null blob contents" do
+    with_git_commit(:bare => true) do |repo|
+      author = { :name => "tree author", :email => "auemail@example.com" }
+      repo.commit("tree commit", author) do |commit|
+        lambda {
+          commit.add "nilbog", nil
+        }.should raise_error(GitRepo::GitError, /no data in nilbog: nil/)
+      end
+      # ensure we didn't create another commit
+      repo.git('log', '--pretty=oneline').split("\n").length.should == 1
+    end
+  end
+
+  it "should create empty commits" do
+    with_git_commit(:bare => true) do |repo|
+      author = { :name => "an author", :email => "auemail@example.com" }
+      repo.commit("empty commit", author) do |commit|
+        commit.empty_index
+        commit.entries.empty?.should == true
+      end
+      repo.git('ls-tree', 'HEAD').should == ''
+    end
+  end
+
+  it "should not create nop commits" do
+    # dunno why not but it's the current behavior
+    with_git_commit(:bare => true) do |repo|
+      author = { :name => "nop author", :email => "nop@example.com" }
+      repo.commit("nop commit", author) { |commit| 'do nothing' }
+      repo.git(:log, '--pretty=raw').should match /^commit [0-9a-f]+\ntree [0-9a-f]+\nauthor test author <testemail@example.com>/
+      repo.git('ls-tree', 'HEAD').should match /^[^\n]+README$/
+    end
+  end
 end

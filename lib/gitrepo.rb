@@ -1,7 +1,7 @@
 # interface for working on git repos, insulates app from underlying implementation
 
 # todo: only call git via array so no shell interp issues
-# todo: make a way for caller to tell Repo to indent all messages
+# todo: make a way for caller to tell GitRepo to indent all log messages?
 
 require 'gitrb'
 require 'retryable'
@@ -31,6 +31,7 @@ class GitRepo
             raise "#{@root} doesn't exist" unless test ?d, @root
         end
 
+        # todo: move gitrb so it only exists in CommitHelper
         # gitrb has a bug where it will complain about frozen strings unless you dup the path
         @repo = Gitrb::Repository.new(:path => @root.dup, :bare => opts[:bare], :create => opts[:create])
     end
@@ -129,22 +130,23 @@ class GitRepo
         end
 
         # this empties out the commit tree so you can start fresh
-        def empty
-            @repo.root.to_a.map { |name,value| remove name }
+        def empty_index
+            entries.each { |name| remove name }
         end
 
         # to test: returns the value of the deleted object
         def remove name
-            @repo.root.delete name
+            @repo.root.delete(name).data
         end
 
         def add name, contents
+            # an empty file is represented by the empty string so contents==nil is an error
+            raise GitError.new "no data in #{name}: #{contents.inspect}" unless contents
             @repo.root[name] = Gitrb::Blob.new(:data => contents)
         end
 
-        # todo: this returns |name,value| ????
         def entries
-            @repo.root.to_a
+            @repo.root.to_a.map { |name,value| name }
         end
     end
 
