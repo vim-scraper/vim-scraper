@@ -211,6 +211,16 @@ describe 'GitRepo' do
         commit.add 'a/b/c dir/d/e.txt', "e text file contents\n"
         commit.add 'a/b/c dir/d/f.txt', "f text file contents\n"
         commit.entries.sort.should == ['README', 'a']
+        # exercise the entry function
+        commit.entry('a', :tree).should == ['b']
+        commit.entry('a/b/c dir/d').sort.should == ['e.txt', 'f.txt']
+        commit.entry('a/b/c dir/d/e.txt', :blob).should == "e text file contents\n"
+        lambda {
+          commit.entry('a', :blob)
+        }.should raise_error(GitRepo::GitError, /type was tree not blob/)
+        lambda {
+          commit.entry('a/b/c dir/d/e.txt', :tree)
+        }.should raise_error(GitRepo::GitError, /type was blob not tree/)
       end
       repo.git('log', '--pretty=oneline').split("\n").length.should == 2
       git_tree(repo, 'HEAD').should == ['blob README', 'tree a']

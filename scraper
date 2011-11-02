@@ -1212,19 +1212,19 @@ def check_for_readme_file commit
 end
 
 
-def check_for_keymap_helper repo, script
+def check_for_keymap_helper commit, script
     # It's easy to autodetect keymap files (see is_keymap_file above)
     # but some keymaps come with additional scripts that are not so common
-    return unless repo.root['keymap'] && repo.root['plugin']
-    names = repo.root['keymap'].map { |n,v| n }
+    return unless commit.entry('keymap') && commit.entry('plugin')
+    names = commit.entry('keymap', :tree)
     namesre = Regexp.union names
-    repo.root['plugin'].each do |name, node|
-        contents = node.data.dup
+    commit.entry('plugin', :tree).each do |name|
+        contents = commit.entry("plugin/#{name}").dup
         contents.force_encoding "ASCII-8BIT"
         if contents.lines.find { |line| line =~ /^\s*source\s+<sfile>:p:h\/#{namesre}/ }
             # yep, it's a keymap helper.
-            blob = repo.root['plugin'].delete(name)
-            copy_file repo, "keymap/#{name}", blob.data
+            data = commit.remove "plugin/#{name}"
+            copy_file commit, "keymap/#{name}", data
         end
     end
 end
@@ -1258,7 +1258,7 @@ def store_versions_in_repo repo, script
             repo.commit(fix_release_notes(version), author, committer) do |commit|
                 commit.empty_index
                 add_version commit, version, script
-                check_for_keymap_helper repo, script
+                check_for_keymap_helper commit, script
                 check_for_readme_file commit
                 copy_file(commit, 'README', "This is a mirror of #{script_id_to_url(script['script_id'])}\n\n" + script['description'] + "\n") unless repo.root['README']
             end

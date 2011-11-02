@@ -48,6 +48,7 @@ class GitRepo
         options = { :before_exec => lambda { } }
         options.merge! args.pop if args[-1].is_a? Hash
         args = args.map { |a| a.to_s }
+
         out = IO.popen('-', 'r') do |io|
             if io    # parent
                 block_given? ? yield(io) : io.read
@@ -134,6 +135,15 @@ class GitRepo
 
         def entries
             @repo.root.to_a.map { |name,value| name }
+        end
+
+        # If the entry is a tree, returns an array of the names in the tree.
+        # If a blob, returns the blob data.  Othewise returns nil.
+        def entry name, type=nil
+            data = @repo.root[name]
+            raise GitError.new "type was #{data.type} not #{type}" if type && type != data.type
+            return data.map { |n,v| n } if data && data.type == :tree
+            return data.dump if data && data.type == :blob
         end
     end
 
