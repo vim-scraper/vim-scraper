@@ -160,10 +160,6 @@ $file_location_fixes = {
     3027 => { /^root\/\.vim\/(.*)$/ => '\1'              }, # grsecurity balled up his entire root dir
 }
 
-# at least one script is actually multiple scripts -- 790 has python.vim and python3.0.vim
-# this forces package names matching the regex out to a different branch
-$branch_versions = { 790 => { :branch => 'python3', :regex => /^python3\.0\.vim$/ } }
-
 # Version nazi
 raise "Must run under Ruby 1.9.2" unless RUBY_VERSION == "1.9.2"
 
@@ -1207,12 +1203,12 @@ def add_version repo, version, script
 end
 
 
-def tag_version repo, version, branch
+def tag_version repo, version
     ENV['GIT_COMMITTER_NAME'] = $vimscripts_name
     ENV['GIT_COMMITTER_EMAIL'] = $vimscripts_email
     sver = script_version(version)
     puts "  tagging with #{gittagify(sver)} from #{sver}"
-    repo.git_tag '-a', gittagify(sver), '-m', "tag #{sver}", branch
+    repo.git_tag '-a', gittagify(sver), '-m', "tag #{sver}"
     ENV.delete 'GIT_COMMITTER_NAME'
     ENV.delete 'GIT_COMMITTER_EMAIL'
 end
@@ -1268,18 +1264,11 @@ def store_versions_in_repo repo, script
     puts "Processing script #{script['script_id']}: #{script['name']}"
     count = 0
     script['versions'].reverse.each do |version|
-        branch = 'master'
-        matcher = $branch_versions[script['script_id'].to_i]
-        if matcher && version['filename'] =~ matcher[:regex]
-            branch = matcher[:branch]
-        end
-        repo.branch = branch unless repo.branch == branch
-
         author_name, author_email = fix_email_address(version['author'])
         author = Gitrb::User.new(author_name, author_email, Time.new(*version['date'].split('-'), 0, 0, 0, 0))
         unless corrupted_package(script, version) || find_version(repo, version)
             catch :corrupt do
-                puts "  adding #{version['filename']} #{version['date']} #{script_version(version)} to branch #{branch}"
+                puts "  adding #{version['filename']} #{version['date']} #{script_version(version)}"
                 repo.transaction(fix_release_notes(version), author, committer) do
                     # delete all existing blobs since we replace everything with the new commit
                     repo.root.to_a.map { |name,value| repo.root.delete(name) }
@@ -1288,7 +1277,7 @@ def store_versions_in_repo repo, script
                     check_for_readme_file repo
                     copy_file(repo, 'README', "This is a mirror of #{script_id_to_url(script['script_id'])}\n\n" + script['description'] + "\n") unless repo.root['README']
                 end
-                tag_version repo, version, branch
+                tag_version repo, version
                 count += 1
             end
         end
