@@ -128,7 +128,7 @@ class GitRepo
 
         # to test: returns the value of the deleted object
         def remove name
-            @repo.root.delete(name).data
+            @repo.root.delete(name).dump
         end
 
         def add name, contents
