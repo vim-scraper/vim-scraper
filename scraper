@@ -159,10 +159,6 @@ $file_location_fixes = {
     3027 => { /^root\/\.vim\/(.*)$/ => '\1'              }, # grsecurity balled up his entire root dir
 }
 
-# at least one script is actually multiple scripts -- 790 has python.vim and python3.0.vim
-# this forces package names matching the regex out to a different branch
-$branch_versions = { 790 => { :branch => 'python3', :regex => /^python3\.0\.vim$/ } }
-
 # Version nazi
 raise "Must run under Ruby 1.9.2" unless RUBY_VERSION == "1.9.2"
 
@@ -1247,15 +1243,6 @@ def store_versions_in_repo repo, script
     count = 0
 
     script['versions'].reverse.each do |version|
-        # todo: get rid of this...  we only mirror the master branch.  and branch below
-        branch = 'master'
-        matcher = $branch_versions[script['script_id'].to_i]
-        if matcher && version['filename'] =~ matcher[:regex]
-            branch = matcher[:branch]
-        end
-        repo.branch = branch unless repo.branch == branch
-        # endtodo
-
         # todo: rather than bailing, we should bit-for-bit verify
         tagname = gittagify(script_version(version))
         next if repo.find_tag(tagname)
@@ -1267,7 +1254,7 @@ def store_versions_in_repo repo, script
                    :date => Time.new(*version['date'].split('-'), 0, 0, 0, 0) }
 
         catch :corrupt do
-            puts "  adding #{version['filename']} #{version['date']} #{script_version(version)} to branch #{branch}"
+            puts "  adding #{version['filename']} #{version['date']} #{script_version(version)}"
             repo.commit(fix_release_notes(version), author, committer) do |commit|
                 commit.empty_index
                 add_version commit, version, script
@@ -1277,7 +1264,7 @@ def store_versions_in_repo repo, script
             end
             sver = script_version(version)
             puts "  tagging with #{gittagify(sver)} from #{sver}"
-            repo.create_tag gittagify(sver), "tag #{sver}", committer, branch
+            repo.create_tag gittagify(sver), "tag #{sver}", committer
             count += 1
         end
     end

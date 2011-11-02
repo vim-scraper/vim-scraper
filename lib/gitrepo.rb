@@ -93,15 +93,14 @@ class GitRepo
     end
 
 
-    # todo: get rid of branch since we should only ever produce commits on master.
-    def create_tag name, message, committer, branch='master'
+    def create_tag name, message, committer
         # gitrb doesn't handle annotated tags so we call git directly
         # todo: this blows away the environment, should set env after forking & before execing
         ENV['GIT_COMMITTER_NAME'] = committer[:name]
         ENV['GIT_COMMITTER_EMAIL'] = committer[:email]
         ENV['GIT_COMMITTER_DATE'] = (committer[:date] || Time.now).strftime("%s %z")
 
-        result = git :tag, '-a', name, '-m', message, branch
+        result = git :tag, '-a', name, '-m', message
 
         ENV.delete 'GIT_COMMITTER_NAME'
         ENV.delete 'GIT_COMMITTER_EMAIL'
