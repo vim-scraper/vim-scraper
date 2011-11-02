@@ -128,6 +128,11 @@ describe 'GitRepo' do
 
 
   it "should create a tag at the right date" do
+    # sentinels to ensure we don't modify the environment
+    ENV['GIT_COMMITTER_NAME'] = "abc"
+    ENV['GIT_COMMITTER_EMAIL'] = "def"
+    ENV['GIT_COMMITTER_DATE'] = "ghi"
+
     with_git_commit(:bare => true) do |repo|
       date = Time.new 2010,10,10, 16,40,0, '-07:00'
       committer = { :name => "test committer", :email => "testemail@example.com", :date => date }
@@ -135,6 +140,14 @@ describe 'GitRepo' do
       # wish there was a better way of checking this but git show doesn't support --format for tags.
       repo.git(:show, '1.2').should match /^tag 1.2\nTagger: test committer <testemail@example.com>\nDate:\s*Sun Oct 10 16:40:00 2010 -0700\n\ntag 1.2\n/
     end
+
+    ENV['GIT_COMMITTER_NAME'].should == "abc"
+    ENV['GIT_COMMITTER_EMAIL'].should == "def"
+    ENV['GIT_COMMITTER_DATE'].should == "ghi"
+
+    ENV.delete 'GIT_COMMITTER_NAME'
+    ENV.delete 'GIT_COMMITTER_EMAIL'
+    ENV.delete 'GIT_COMMITTER_DATE'
   end
 
   it "should not create an invalid tag" do

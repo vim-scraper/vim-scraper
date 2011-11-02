@@ -45,12 +45,15 @@ class GitRepo
     end
 
     def git_exec *args
+        options = { :before_exec => lambda { } }
+        options.merge! args.pop if args[-1].is_a? Hash
         args = args.map { |a| a.to_s }
         out = IO.popen('-', 'r') do |io|
             if io    # parent
                 block_given? ? yield(io) : io.read
             else     # child
                 STDERR.reopen STDOUT
+                options[:before_exec].call
                 exec 'git', *args
             end
         end
@@ -95,18 +98,11 @@ class GitRepo
 
     def create_tag name, message, committer
         # gitrb doesn't handle annotated tags so we call git directly
-        # todo: this blows away the environment, should set env after forking & before execing
-        ENV['GIT_COMMITTER_NAME'] = committer[:name]
-        ENV['GIT_COMMITTER_EMAIL'] = committer[:email]
-        ENV['GIT_COMMITTER_DATE'] = (committer[:date] || Time.now).strftime("%s %z")
-
-        result = git :tag, '-a', name, '-m', message
-
-        ENV.delete 'GIT_COMMITTER_NAME'
-        ENV.delete 'GIT_COMMITTER_EMAIL'
-        ENV.delete 'GIT_COMMITTER_DATE'
-
-        result
+        git :tag, '-a', name, '-m', message, :before_exec => lambda {
+            ENV['GIT_COMMITTER_NAME'] = committer[:name]
+            ENV['GIT_COMMITTER_EMAIL'] = committer[:email]
+            ENV['GIT_COMMITTER_DATE'] = (committer[:date] || Time.now).strftime("%s %z")
+        }
     end
 
     def find_tag tagname
