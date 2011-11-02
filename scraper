@@ -1289,14 +1289,6 @@ def remote_url script
 end
 
 
-def repo_heads repo
-    path = "#{repo.path}/refs/heads"
-    Dir.entries(path).select { |f|
-        test ?f, "#{path}/#{f}"
-    }
-end
-
-
 def perform_push repo_name
     return unless repo_name
     github = GitHub.new
@@ -1330,7 +1322,7 @@ def perform_push repo_name
         args = ['--tags']
         args << '--force' if ENV['FORCE']
         args << 'origin'
-        args.push *repo_heads(repo)
+        args << 'master'
         repo.push *args
     end
 end
