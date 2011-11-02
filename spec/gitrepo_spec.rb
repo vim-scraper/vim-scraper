@@ -238,4 +238,15 @@ describe 'GitRepo' do
       repo.git('ls-tree', 'HEAD').should match /^[^\n]+README$/
     end
   end
+
+  it "should return the original object when deleting" do
+    with_git_commit(:bare => true) do |repo|
+      author = { :name => "delete author", :email => "del@example.com" }
+      repo.commit("delete commit", author) do |commit|
+        del = commit.remove "README"
+        del.should == "This is a test readme file\n"
+      end
+      repo.git('ls-tree', 'HEAD').should == ""
+    end
+  end
 end

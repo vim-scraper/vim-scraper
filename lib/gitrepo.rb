@@ -126,7 +126,6 @@ class GitRepo
             entries.each { |name| remove name }
         end
 
-        # to test: returns the value of the deleted object
         def remove name
             @repo.root.delete(name).dump
         end
