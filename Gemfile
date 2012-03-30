@@ -19,7 +19,7 @@ gem 'octokit'     ,'~> 0.5'
 gem 'mimemagic', '= 0.1.7'
 
 # scraper problems with 0.8.3, mad monkeypatching for 0.8.2.  Only viable fix is to convert to Nokogiri.
-gem 'hpricot','= 0.8.2'
+gem 'hpricot', '= 0.8.2'
 
 # we use some convenience features that other retryables don't support (yet?)
 gem 'retryable', :git => 'git://github.com/bronson/retryable.git'
@@ -34,9 +34,8 @@ group :development do
 end
 
 group :test do
-  gem 'rake'      # needed by travis-ci
-  gem 'rspec'     ,'~> 2.5'
-  # to mock github requests:
-  gem 'webmock'   , :git => 'https://github.com/afeld/webmock.git', :branch => "expectations_on_stubs"
+  gem 'rake'                # needed by travis-ci
+  gem 'rspec', '~> 2.5'
+  gem 'webmock', '~> 1.8'   # to mock github requests
 end
 
