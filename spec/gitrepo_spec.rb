@@ -3,8 +3,7 @@
 #
 # to run specs with 'date' in the name and preserve the results: PRESERVE=1 bundle exec rspec spec/* -e date
 
-require File.dirname(File.absolute_path(__FILE__)) + '/../lib/gitrepo'
-
+require 'gitrepo'
 require 'tmpdir'
 
 

@@ -1,7 +1,6 @@
-require File.dirname(File.absolute_path(__FILE__)) + '/../lib/github'
-
+puts "WEBMOCK/RSPEC INCLUDED"
 require 'webmock/rspec'
-include WebMock::API
+require 'github'
 
 
 describe "GitHub" do
