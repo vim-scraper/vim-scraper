@@ -1,4 +1,3 @@
-puts "WEBMOCK/RSPEC INCLUDED"
 require 'webmock/rspec'
 require 'github'
 
