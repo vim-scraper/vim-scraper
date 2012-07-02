@@ -3,13 +3,13 @@ source 'http://rubygems.org'
 gem 'bzip2-ruby'  ,'~> 0.2.6'
 gem 'erubis'      ,'~> 2.6.6'
 gem 'feedzirra'   ,'~> 0.0.24'
-gem 'hashie'      ,'~> 1.0'
+gem 'hashie'      ,'~> 1.2'
 gem 'htmlentities','~> 4.2.1'
 gem 'i18n'        ,'~> 0.4.1'
 gem 'json'        ,'~> 1.4.6'
 gem 'mail'        ,'~> 2.2.7'
 gem 'mime-types'  ,'~> 1.16'
-gem 'octokit'     ,'~> 0.5'
+gem 'octokit'     ,'1.8.1'
 
 
 # the following gems are, ah, special...
