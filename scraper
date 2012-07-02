@@ -1296,7 +1296,12 @@ def perform_push repo_name
     script = Hashie::Mash.new(JSON.parse(File.read(File.join(repo_name, $git_script_file))))
     puts "Uploading #{script['script_id']} - #{script['name']}"
 
-    remote = github.info script.name rescue nil
+    remote = begin
+        github.info script.name
+      rescue Octokit::NotFound
+        nil
+      end
+
     if remote
         # make sure this actually is the same repo
         puts "  remote already exists: #{remote.url}"
