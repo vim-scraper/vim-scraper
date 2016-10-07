@@ -35,10 +35,6 @@ GEM
       loofah (>= 0.3.1)
       nokogiri (> 0.0.0)
       sax-machine (>= 0.0.12)
-    guard (0.8.8)
-      thor (~> 0.14.6)
-    guard-rspec (0.5.1)
-      guard (>= 0.8.4)
     hashie (1.2.0)
     hpricot (0.8.2)
     htmlentities (4.2.4)
@@ -74,7 +70,6 @@ GEM
     rspec-mocks (2.9.0)
     sax-machine (0.1.0)
       nokogiri (> 0.0.0)
-    thor (0.14.6)
     treetop (1.4.9)
       polyglot (>= 0.3.1)
     webmock (1.8.5)
@@ -89,7 +84,6 @@ DEPENDENCIES
   erubis (~> 2.6.6)
   feedzirra (~> 0.0.24)
   gitrb!
-  guard-rspec
   hashie (~> 1.2)
   hpricot (= 0.8.2)
   htmlentities (~> 4.2.1)
@@ -103,3 +97,6 @@ DEPENDENCIES
   retryable!
   rspec (~> 2.5)
   webmock (~> 1.8)
+
+BUNDLED WITH
+   1.10.6
