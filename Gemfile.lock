@@ -55,7 +55,7 @@ GEM
     mimemagic (0.1.7)
     multi_json (1.3.6)
     multipart-post (1.1.5)
-    nokogiri (1.4.4)
+    nokogiri (1.5.5)
     octokit (1.8.1)
       addressable (~> 2.2)
       faraday (~> 0.8)

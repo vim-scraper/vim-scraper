@@ -1,3 +1,12 @@
+- get rid of hpricot in favor of nokogiri
+- get rid of gitrb in favor of rugged
+- get rid of bzip2-ruby
+- update to ruby 2.3
+
+
+
+probably never:
+
 todo: make relevant calls in lib/github.rb and lib/repo.rb retryable
 
 What happens if we try to tag the same tag twice?
