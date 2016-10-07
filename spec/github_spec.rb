@@ -74,8 +74,10 @@ describe "GitHub" do
   end
 
   it "should delete a repository" do
-    pending
     stub_a = stub_request(:delete, "https://api.github.com/repos/repo/").
+         with(:headers => {'Accept'=>'*/*', 'User-Agent'=>'Ruby'}).
+         to_return(:status => 200, :body => {:status => 'deleted' }.to_json, :headers => {})
+    stub_a = stub_request(:delete, "https://api.github.com/repos/repo/?delete_token%5Bstatus%5D=deleted").
          with(:headers => {'Accept'=>'*/*', 'User-Agent'=>'Ruby'}).
          to_return(:status => 200, :body => {:status => 'deleted' }.to_json, :headers => {})
 
@@ -110,4 +112,3 @@ describe "GitHub" do
     fakehub.client.count.should == 65
   end
 end
-
