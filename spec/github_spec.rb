@@ -47,18 +47,18 @@ describe "GitHub" do
         # :body => { :data => { :values => {:has_issues => false, :has_wiki => false}}},
         # :body => { :data => { "values[has_issues]" => false, "values[has_wiki]" => false}},
     stub = stub_request(:patch, "https://api.github.com/repos/vim-scripts/repo").
-         with(:body => "{\"has_issues\":false,\"has_wiki\":false}",
-              :headers => {'Accept'=>'*/*', 'Content-Type'=>'application/json', 'User-Agent'=>'Ruby'}).
-         to_return(:status => 200, :body => "", :headers => {})
+      with(:body => "{\"has_issues\":false,\"has_wiki\":false}",
+        :headers => {'Accept'=>'*/*', 'Content-Type'=>'application/json', 'User-Agent'=>'Ruby'}).
+      to_return(:status => 200, :body => "", :headers => {})
     github.turn_off_features "repo"
     stub.should have_been_requested
   end
 
   it "should create a repository" do
     stub_a = stub_request(:post, "https://api.github.com/user/repos").
-         with(:body => "{\"description\":\"description\",\"homepage\":\"http://homepage\",\"public\":true,\"name\":\"repo\"}",
-              :headers => {'Accept'=>'*/*', 'Content-Type'=>'application/json', 'User-Agent'=>'Ruby'}).
-         to_return(:status => 200, :body => "", :headers => {})
+      with(:body => "{\"description\":\"description\",\"homepage\":\"http://homepage\",\"public\":true,\"name\":\"repo\"}",
+        :headers => {'Accept'=>'*/*', 'Content-Type'=>'application/json', 'User-Agent'=>'Ruby'}).
+      to_return(:status => 200, :body => "", :headers => {})
     stub_b = stub_request(:patch, "https://api.github.com/repos/vim-scripts/repo").
          with(:body => "{\"has_issues\":false,\"has_wiki\":false}",
               :headers => {'Accept'=>'*/*', 'Content-Type'=>'application/json', 'User-Agent'=>'Ruby'}).
@@ -75,11 +75,11 @@ describe "GitHub" do
 
   it "should delete a repository" do
     stub_a = stub_request(:delete, "https://api.github.com/repos/repo/").
-         with(:headers => {'Accept'=>'*/*', 'User-Agent'=>'Ruby'}).
-         to_return(:status => 200, :body => {:status => 'deleted' }.to_json, :headers => {})
+      with(:headers => {'Accept'=>'*/*', 'User-Agent'=>'Ruby'}).
+      to_return(:status => 200, :body => {:status => 'deleted' }.to_json, :headers => {})
     stub_a = stub_request(:delete, "https://api.github.com/repos/repo/?delete_token%5Bstatus%5D=deleted").
-         with(:headers => {'Accept'=>'*/*', 'User-Agent'=>'Ruby'}).
-         to_return(:status => 200, :body => {:status => 'deleted' }.to_json, :headers => {})
+      with(:headers => {'Accept'=>'*/*', 'User-Agent'=>'Ruby'}).
+      to_return(:status => 200, :body => {:status => 'deleted' }.to_json, :headers => {})
 
     github.delete "repo"
 
@@ -88,14 +88,14 @@ describe "GitHub" do
 
   it "should list all repos" do
     stub_a = stub_request(:get, "https://api.github.com/users/vim-scripts/repos?page=1").
-         with(:headers => {'Accept'=>'*/*', 'Accept-Encoding'=>'gzip;q=1.0,deflate;q=0.6,identity;q=0.3', 'User-Agent'=>'Ruby'}).
-         to_return(:status => 200, :body => [{ :name => "one" }].to_json, :headers => {})
+      with(:headers => {'Accept'=>'*/*', 'Accept-Encoding'=>'gzip;q=1.0,deflate;q=0.6,identity;q=0.3', 'User-Agent'=>'Ruby'}).
+      to_return(:status => 200, :body => [{ :name => "one" }].to_json, :headers => {})
     stub_b = stub_request(:get, "https://api.github.com/users/vim-scripts/repos?page=2").
-         with(:headers => {'Accept'=>'*/*', 'Accept-Encoding'=>'gzip;q=1.0,deflate;q=0.6,identity;q=0.3', 'User-Agent'=>'Ruby'}).
-         to_return(:status => 200, :body => [{ :name => "two" }].to_json, :headers => {})
+      with(:headers => {'Accept'=>'*/*', 'Accept-Encoding'=>'gzip;q=1.0,deflate;q=0.6,identity;q=0.3', 'User-Agent'=>'Ruby'}).
+      to_return(:status => 200, :body => [{ :name => "two" }].to_json, :headers => {})
     stub_c = stub_request(:get, "https://api.github.com/users/vim-scripts/repos?page=3").
-         with(:headers => {'Accept'=>'*/*', 'Accept-Encoding'=>'gzip;q=1.0,deflate;q=0.6,identity;q=0.3', 'User-Agent'=>'Ruby'}).
-         to_return(:status => 200, :body => [].to_json, :headers => {})
+      with(:headers => {'Accept'=>'*/*', 'Accept-Encoding'=>'gzip;q=1.0,deflate;q=0.6,identity;q=0.3', 'User-Agent'=>'Ruby'}).
+      to_return(:status => 200, :body => [].to_json, :headers => {})
 
     result = github.list_all_repos
     result.sort { |a,b| a['name'] <=> b['name'] }.should == [ { 'name' => 'one' }, { 'name' => 'two' } ]

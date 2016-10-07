@@ -106,7 +106,7 @@ include Retryable
 # :on => [] means that we won't retry anything unless the caller
 # specifies the exact exceptions that it wants to be retried.
 retryable_options :detect_nesting => true, :tries => 4,
-    :sleep => lambda { |n| 4 ** n }, :on => []
+  :sleep => lambda { |n| 4 ** n }, :on => []
 
 # This is the name and email address of the git committer.
 $vimscripts_name = "Able Scraper"
@@ -135,8 +135,8 @@ $deleted_scripts = %w{364 548 549 550 762 1032 1129 1263 1280 1295 1301 1430 143
 # not sure why an author would leave a corrupt package on vim scripts forever but owell.
 # also we can't trust the script version and date pair to be unique: script 2709 SudoEdit.vim
 $skip_packages = {
-    1609 =>  ["2006-10-06 3.8", "2006-10-13 3.9", "2006-11-07 4.1.0", "2006-11-08 4.2.0", "2006-11-18 4.3.0"],
-    3075 => ["2010-07-28 0.12", "2010-07-28 0.11"],
+  1609 =>  ["2006-10-06 3.8", "2006-10-13 3.9", "2006-11-07 4.1.0", "2006-11-08 4.2.0", "2006-11-18 4.3.0"],
+  3075 => ["2010-07-28 0.12", "2010-07-28 0.11"],
 }
 
 # some scripts were created with the wrong type.  this fixes the ones that matter.
@@ -144,19 +144,19 @@ $skip_packages = {
 # note that you must re-scrape after adding a fix ("./scraper 1780").
 # regenerating ("./scraper scripts/1780*") is not sufficient in this case.
 $script_type_fixes = {
-    93   => 'ftplugin',
-    1780 => 'syntax',
+  93   => 'ftplugin',
+  1780 => 'syntax',
 }
 
 # if the regex matches the path, it is run through gsub and the result
 # used as the new path.  If the replace string is nil, the file is
 # suppressed.   Doesn't work for gifs and a few others (easy to fix).
 $file_location_fixes = {
-    284  => {      /([^\/]+\.vim)$/ => 'ftplugin/tex/\1' }, # all .vim files go in ftplugin/tex
-    1095 => { /^.*\/([^\/]+\.vim)$/ => 'ftplugin/tex/\1' }, # all .vim files go in ftplugin/tex
-    1771 => { /readme$/ => nil                           }, # has identical README and readme files.
-    2651 => { /^(.*)Syntax(.*)$/ => '\1syntax\2'         }, # breaks on case sensitive filesystems
-    3027 => { /^root\/\.vim\/(.*)$/ => '\1'              }, # grsecurity balled up his entire root dir
+  284  => {      /([^\/]+\.vim)$/ => 'ftplugin/tex/\1' }, # all .vim files go in ftplugin/tex
+  1095 => { /^.*\/([^\/]+\.vim)$/ => 'ftplugin/tex/\1' }, # all .vim files go in ftplugin/tex
+  1771 => { /readme$/ => nil                           }, # has identical README and readme files.
+  2651 => { /^(.*)Syntax(.*)$/ => '\1syntax\2'         }, # breaks on case sensitive filesystems
+  3027 => { /^root\/\.vim\/(.*)$/ => '\1'              }, # grsecurity balled up his entire root dir
 }
 
 # Version nazi
@@ -179,15 +179,15 @@ class NoContentError < ScrapeError; end     # page appears to be rendered incorr
 # Turns out Ruby isn't very good about limiting the types of errors
 # we need to handle...  These are the ones that make sense to retry.
 def retryable_errors
-    [
-        ScrapeError,
-        Errno::ECONNRESET,
-        Timeout::Error,
-        Errno::ETIMEDOUT,   # Connection timed out - connect(2) (Errno::ETIMEDOUT)
-        OpenURI::HTTPError,
-        SocketError,        # getaddrinfo: Name or service not known (SocketError)
-        GitRepo::GitError,
-    ]
+  [
+    ScrapeError,
+    Errno::ECONNRESET,
+    Timeout::Error,
+    Errno::ETIMEDOUT,   # Connection timed out - connect(2) (Errno::ETIMEDOUT)
+    OpenURI::HTTPError,
+    SocketError,        # getaddrinfo: Name or service not known (SocketError)
+    GitRepo::GitError,
+  ]
 end
 
 
@@ -196,57 +196,56 @@ end
 
 # hopefully the next version of hpricot allows us to get rid of these monkeypatches
 module Hpricot
-    module Traverse
-        def inner_text
-            if respond_to?(:children) and children
-#                children.map { |x| x.inner_text }.join
-                children.map { |x| str = x.inner_text;
-                    str = str.dup.force_encoding('ISO-8859-1').encode('UTF-8') if str.encoding.to_s == 'ASCII-8BIT' || str.encoding.to_s == 'ISO-8859-1';
-                    str
-                }.join
-            else
-                ""
-            end
-        end
+  module Traverse
+    def inner_text
+      if respond_to?(:children) and children
+        children.map { |x| str = x.inner_text;
+          str = str.dup.force_encoding('ISO-8859-1').encode('UTF-8') if str.encoding.to_s == 'ASCII-8BIT' || str.encoding.to_s == 'ISO-8859-1';
+          str
+        }.join
+      else
+        ""
+      end
     end
+  end
 
-    def self.uxs(str)
-        str = str.to_s
-        str = str.dup.force_encoding('ISO-8859-1').encode('UTF-8') if str.encoding.to_s == 'ASCII-8BIT' || str.encoding.to_s == 'ISO-8859-1'
-        str.gsub(/\&(\w+);/) { [NamedCharacters[$1] || 63].pack("U*") }.
-            gsub(/\&\#(\d+);/) { [$1.to_i].pack("U*") }
-    end
+  def self.uxs(str)
+    str = str.to_s
+    str = str.dup.force_encoding('ISO-8859-1').encode('UTF-8') if str.encoding.to_s == 'ASCII-8BIT' || str.encoding.to_s == 'ISO-8859-1'
+    str.gsub(/\&(\w+);/) { [NamedCharacters[$1] || 63].pack("U*") }.
+      gsub(/\&\#(\d+);/) { [$1.to_i].pack("U*") }
+  end
 end
 
 # and and hopefully a future version will allow us to remove these monkeypatches
 module Hpricot
-    module Traverse
-        def inner_content
-            if respond_to?(:children) and children
-                children.map { |x| x.inner_content }.join
-            else
-                ''
-            end
-        end
+  module Traverse
+    def inner_content
+      if respond_to?(:children) and children
+        children.map { |x| x.inner_content }.join
+      else
+        ''
+      end
     end
+  end
 
-    class Elements < Array
-        def inner_content
-            map { |x| x.inner_content }.join
-        end
+  class Elements < Array
+    def inner_content
+      map { |x| x.inner_content }.join
     end
+  end
 
-    class Text
-        def inner_content
-            str = content.to_s
-            str = str.force_encoding('ISO-8859-1').encode("UTF-8") if str.encoding.to_s == 'ASCII-8BIT'
-            CGI.unescapeHTML(HTMLEntities.new.decode(str.gsub(/&nbsp;/, " ")))
-        end
+  class Text
+    def inner_content
+      str = content.to_s
+      str = str.force_encoding('ISO-8859-1').encode("UTF-8") if str.encoding.to_s == 'ASCII-8BIT'
+      CGI.unescapeHTML(HTMLEntities.new.decode(str.gsub(/&nbsp;/, " ")))
     end
+  end
 
-    class CData
-        alias_method :inner_content, :content
-    end
+  class CData
+    alias_method :inner_content, :content
+  end
 end
 
 
@@ -254,8 +253,8 @@ end
 # See https://github.com/bronson/whose-bug for an attempt to track it down.
 # This routine just converts to plain hashes before generating.
 def json_pretty arg
-    arg = arg.to_hash if arg.kind_of? Hashie::Mash
-    JSON.pretty_generate(arg) + "\n"
+  arg = arg.to_hash if arg.kind_of? Hashie::Mash
+  JSON.pretty_generate(arg) + "\n"
 end
 
 
@@ -264,1016 +263,1016 @@ end
 # full is when we're just starting or we have lost the rss sync.
 
 def read_state
-    json = JSON.parse(File.read($state_file)) rescue nil
-    Hashie::Mash.new json
+  json = JSON.parse(File.read($state_file)) rescue nil
+  Hashie::Mash.new json
 end
 
 
 def write_state state
-    File.open($state_file, 'w') { |f| f.write json_pretty(state) }
+  File.open($state_file, 'w') { |f| f.write json_pretty(state) }
 end
 
 
 # vim.org has added a new email obfuscation trick: replacing @ and . with images.
 def unfuddle_email elem
-    elem.search('img[@src*=emailat]' ).each { |e| e.swap("@") }
-    elem.search('img[@src*=emaildot]').each { |e| e.swap(".") }
-    elem.inner_text
+  elem.search('img[@src*=emailat]' ).each { |e| e.swap("@") }
+  elem.search('img[@src*=emaildot]').each { |e| e.swap(".") }
+  elem.inner_text
 end
 
 
 def cached_open url, retries
-    path = File.join $webcache_dir, filenameify(url)
-    # ignore_cache should be true if we're running a real scrape and should
-    # never use stale data.  Otherwise, leave it false so your testing and
-    # debugging will just use the local file system.
-    if $ignore_cache || !File.exist?(path) || File.size(path) <= 0
-        File.open(path, 'w') do |f|
-            puts "downloading #{url}#{retries > 0 ? "  RETRY #{retries}" : ""}"
-            open(url) { |u| f.write(u.read) }
-        end
+  path = File.join $webcache_dir, filenameify(url)
+  # ignore_cache should be true if we're running a real scrape and should
+  # never use stale data.  Otherwise, leave it false so your testing and
+  # debugging will just use the local file system.
+  if $ignore_cache || !File.exist?(path) || File.size(path) <= 0
+    File.open(path, 'w') do |f|
+      puts "downloading #{url}#{retries > 0 ? "  RETRY #{retries}" : ""}"
+      open(url) { |u| f.write(u.read) }
     end
-    File.open(path) { |f| yield f }
+  end
+  File.open(path) { |f| yield f }
 end
 
 
 def scrape_page url, retries
-    doc = cached_open(url, retries) { |f| Hpricot(f) }
+  doc = cached_open(url, retries) { |f| Hpricot(f) }
 
-    # vim.org (SourceForge) seems to have a bug where every thousand requests or so
-    # it returns a page indicating that it's lost its head.  No big deal, immediately
-    # retrying always seems to fix it.
-    if doc.search('title').inner_text == "Unknown Site"
-        puts "Sourceforge lost its head for #{url} on try #{retries}, trying again."
-        raise SourceForgeError.new "Sourceforge blew #{url}"
-    end
+  # vim.org (SourceForge) seems to have a bug where every thousand requests or so
+  # it returns a page indicating that it's lost its head.  No big deal, immediately
+  # retrying always seems to fix it.
+  if doc.search('title').inner_text == "Unknown Site"
+    puts "Sourceforge lost its head for #{url} on try #{retries}, trying again."
+    raise SourceForgeError.new "Sourceforge blew #{url}"
+  end
 
-    return doc
+  return doc
 end
 
 
 def scrape_author user_id, retries
-    $authors ||= []
-    unless $authors[user_id.to_i]
-        doc = scrape_page "http://www.vim.org/account/profile.php?user_id=#{user_id}", retries
-        unless doc.at('td[text()="user name"]')
-            puts "    no content received #{retries}"
-            raise NoContentError.new "bad page"
-        end
-
-        u = {'user_id' => user_id }
-        u['user_name'] = doc.at('td[text()="user name"]').next_sibling.inner_content
-        u['first_name'] = doc.at('td[text()="first name"]').next_sibling.inner_content
-        u['last_name'] = doc.at('td[text()="last name"]').next_sibling.inner_content
-        u['email'] = unfuddle_email doc.at('td[text()="email"]').next_sibling
-        u['homepage'] = doc.at('td[text()="homepage"]').next_sibling.inner_content
-        $authors[user_id.to_i] = u
+  $authors ||= []
+  unless $authors[user_id.to_i]
+    doc = scrape_page "http://www.vim.org/account/profile.php?user_id=#{user_id}", retries
+    unless doc.at('td[text()="user name"]')
+      puts "    no content received #{retries}"
+      raise NoContentError.new "bad page"
     end
-    return $authors[user_id.to_i]
+
+    u = {'user_id' => user_id }
+    u['user_name'] = doc.at('td[text()="user name"]').next_sibling.inner_content
+    u['first_name'] = doc.at('td[text()="first name"]').next_sibling.inner_content
+    u['last_name'] = doc.at('td[text()="last name"]').next_sibling.inner_content
+    u['email'] = unfuddle_email doc.at('td[text()="email"]').next_sibling
+    u['homepage'] = doc.at('td[text()="homepage"]').next_sibling.inner_content
+    $authors[user_id.to_i] = u
+  end
+  return $authors[user_id.to_i]
 end
 
 
 def script_id_to_url(script_id)
-    "http://www.vim.org/scripts/script.php?script_id=#{script_id}"
+  "http://www.vim.org/scripts/script.php?script_id=#{script_id}"
 end
 
 
 def script_id_from_url(url)
-    url =~ /[?&;]script_id=(\d+)/ or raise "Could not parse a script id from <<#{url}>>"
-    $1
+  url =~ /[?&;]script_id=(\d+)/ or raise "Could not parse a script id from <<#{url}>>"
+  $1
 end
 
 
 def scrape_script(script_id)
-    script_id = script_id.to_s
+  script_id = script_id.to_s
 
-    if $deleted_scripts.include? script_id
-        puts "Skipped #{script_id} -- deleted."
-        return nil
+  if $deleted_scripts.include? script_id
+    puts "Skipped #{script_id} -- deleted."
+    return nil
+  end
+
+  s = {'script_id' => script_id}
+  doc = nil
+  retryable(:on => retryable_errors) do |retries|
+    doc = scrape_page script_id_to_url(script_id), retries
+
+    if doc.search('title').inner_text == "Error : vim online"
+      puts "Skipped #{script_id} -- doesn't exist."
+      return nil
     end
 
-    s = {'script_id' => script_id}
-    doc = nil
+    s['display_name'], s['summary'] = doc.search('.txth1').inner_content.split(" : ", 2)
+    unless s['display_name']
+      puts "    no content received #{retries}"
+      raise NoContentError.new "bad page"
+    end
+  end
+
+  s['name'] = githubify(s['display_name'])
+  s['script_type'] = $script_type_fixes[script_id.to_i] ||
+  doc.at('td[text()="script type"]').parent.next_sibling.children.first.inner_content
+
+  desc = doc.at('td[text()="description"]').parent.next_sibling.children.first
+  desc.search('br').each do |br|
+    # restore the newline to every element preceeding a br.
+    prev = br.previous;
+    if prev && prev.text?
+      prev.content = prev.content + "\r" unless prev.content.end_with?("\r")
+    else
+      br.before "\r"
+    end
+  end
+  s['description'] = desc.inner_content.gsub("\r", "\n")
+
+  if false     # we don't use this info and it generates too much noise
+    doc.search('td.lightbg~td').find { |e| e.inner_text =~ /Rating.*\s(-?\d+)\/(\d+),.*Downloaded[^\d]*(\d+)/m }
+    s['rating_total'], s['rating_votes'], s['downloads'] = $1, $2, $3      # http://www.vim.org/karma.php
+  end
+
+  s['install_details'] = doc.at('td[text()="install details"]').parent.next_sibling.children.first.inner_content.gsub("\r", "\n")
+  # reject links with targets so download links in the description don't appear to be a version (script 1843)
+  s['versions'] = doc.search('a[@href*="download_script.php?"]').select { |e| e.attributes['target'].empty? }.to_a.map do |a|
+    v = {'url' => 'http://www.vim.org/scripts/' + a.attributes['href'],
+      'filename' => a.inner_content}
+    row = a.parent
+    v['script_version'] = row.siblings_at(1).inner_content
+    v['date'] = row.siblings_at(2).inner_content
+    v['vim_version'] = row.siblings_at(3).inner_content
     retryable(:on => retryable_errors) do |retries|
-        doc = scrape_page script_id_to_url(script_id), retries
-
-        if doc.search('title').inner_text == "Error : vim online"
-            puts "Skipped #{script_id} -- doesn't exist."
-            return nil
-        end
-
-        s['display_name'], s['summary'] = doc.search('.txth1').inner_content.split(" : ", 2)
-        unless s['display_name']
-            puts "    no content received #{retries}"
-            raise NoContentError.new "bad page"
-        end
+      v['author'] = scrape_author(row.siblings_at(4).at('a').attributes['href'].match(/\d+/)[0], retries)
     end
-
-    s['name'] = githubify(s['display_name'])
-    s['script_type'] = $script_type_fixes[script_id.to_i] ||
-      doc.at('td[text()="script type"]').parent.next_sibling.children.first.inner_content
-
-    desc = doc.at('td[text()="description"]').parent.next_sibling.children.first
-    desc.search('br').each do |br|
-        # restore the newline to every element preceeding a br.
-        prev = br.previous;
-        if prev && prev.text?
-            prev.content = prev.content + "\r" unless prev.content.end_with?("\r")
-        else
-            br.before "\r"
-        end
-    end
-    s['description'] = desc.inner_content.gsub("\r", "\n")
-
-    if false     # we don't use this info and it generates too much noise
-        doc.search('td.lightbg~td').find { |e| e.inner_text =~ /Rating.*\s(-?\d+)\/(\d+),.*Downloaded[^\d]*(\d+)/m }
-        s['rating_total'], s['rating_votes'], s['downloads'] = $1, $2, $3      # http://www.vim.org/karma.php
-    end
-
-    s['install_details'] = doc.at('td[text()="install details"]').parent.next_sibling.children.first.inner_content.gsub("\r", "\n")
-    # reject links with targets so download links in the description don't appear to be a version (script 1843)
-    s['versions'] = doc.search('a[@href*="download_script.php?"]').select { |e| e.attributes['target'].empty? }.to_a.map do |a|
-        v = {'url' => 'http://www.vim.org/scripts/' + a.attributes['href'],
-            'filename' => a.inner_content}
-        row = a.parent
-        v['script_version'] = row.siblings_at(1).inner_content
-        v['date'] = row.siblings_at(2).inner_content
-        v['vim_version'] = row.siblings_at(3).inner_content
-        retryable(:on => retryable_errors) do |retries|
-            v['author'] = scrape_author(row.siblings_at(4).at('a').attributes['href'].match(/\d+/)[0], retries)
-        end
-        v['release_notes'] = row.siblings_at(5).inner_content.gsub("\r", "\n")
-        v
-    end
-    if s['versions'].empty?
-        puts "Skipped #{script_id} -- empty."
-        return nil
-    end
-    s
+    v['release_notes'] = row.siblings_at(5).inner_content.gsub("\r", "\n")
+    v
+  end
+  if s['versions'].empty?
+    puts "Skipped #{script_id} -- empty."
+    return nil
+  end
+  s
 end
 
 
 def fix_encoding(h)
-    # see the Hpricot monkey patch above.  It gave us random encodings,
-    # we need to force them back to their default before converting to utf8.
-    # ugly!!
-    if h.kind_of? Hash
-        o = Hash.new
-        h.each_pair { |k,v| o[fix_encoding(k)] = fix_encoding(v) }
-        o
-    elsif h.kind_of? Array
-        a = Array.new
-        h.each { |v| a.push fix_encoding(v) }
-        a
-    elsif h.kind_of? String
-        if h.encoding.to_s == 'ASCII-8BIT' || h.encoding.to_s == 'ISO-8859-1'
-            h = h.dup.force_encoding('ISO-8859-1').encode('UTF-8')
-        end
-        h
-    else
-        h
+  # see the Hpricot monkey patch above.  It gave us random encodings,
+  # we need to force them back to their default before converting to utf8.
+  # ugly!!
+  if h.kind_of? Hash
+    o = Hash.new
+    h.each_pair { |k,v| o[fix_encoding(k)] = fix_encoding(v) }
+    o
+  elsif h.kind_of? Array
+    a = Array.new
+    h.each { |v| a.push fix_encoding(v) }
+    a
+  elsif h.kind_of? String
+    if h.encoding.to_s == 'ASCII-8BIT' || h.encoding.to_s == 'ISO-8859-1'
+      h = h.dup.force_encoding('ISO-8859-1').encode('UTF-8')
     end
+    h
+  else
+    h
+  end
 end
 
 
 def check_encoding(h)
-    # recursively prints the encoding of every key/value/element etc
-    if h.kind_of? Hash
-        h.each_pair { |k,v| check_encoding(k); check_encoding(v) }
-    elsif h.kind_of? Array
-        h.each { |v| check_encoding(v) }
-    elsif h.kind_of? String
-        puts "#{h.encoding}: #{h[0..50]}"
-    else
-        h
-    end
+  # recursively prints the encoding of every key/value/element etc
+  if h.kind_of? Hash
+    h.each_pair { |k,v| check_encoding(k); check_encoding(v) }
+  elsif h.kind_of? Array
+    h.each { |v| check_encoding(v) }
+  elsif h.kind_of? String
+    puts "#{h.encoding}: #{h[0..50]}"
+  else
+    h
+  end
 end
 
 
 def h(*args)
-    CGI.escapeHTML(*args)
+  CGI.escapeHTML(*args)
 end
 
 
 def scripts_recent good_scripts
-    good_scripts.map { |s|
-        recent_author_name, recent_author_email = fix_email_address(s.versions.last.author)
-        {
-            :n => s.name,
-            :t => s.script_type,
-            :s => s.summary,
-            :rv => s.versions.last.script_version,
-            :rd => s.versions.last.date,
-            :ra => recent_author_name,
-            :re => recent_author_email
-        }
-    }.to_json
+  good_scripts.map { |s|
+    recent_author_name, recent_author_email = fix_email_address(s.versions.last.author)
+    {
+      :n => s.name,
+      :t => s.script_type,
+      :s => s.summary,
+      :rv => s.versions.last.script_version,
+      :rd => s.versions.last.date,
+      :ra => recent_author_name,
+      :re => recent_author_email
+    }
+  }.to_json
 end
 
 
 def generate_doc_files doc_dir
-    puts "  reading scripts"
+  puts "  reading scripts"
 
-    # a hash of all scripts (including ones abandoned by renames) indexed by script_id
-    repos = Dir.entries($repos_dir).reject { |e| %w{. .. .git}.include?(e) }
-    all_scripts = repos.sort.map do |dir|
-        Hashie::Mash.new(JSON.parse(File.read(File.join($repos_dir, dir, $git_script_file))))
+  # a hash of all scripts (including ones abandoned by renames) indexed by script_id
+  repos = Dir.entries($repos_dir).reject { |e| %w{. .. .git}.include?(e) }
+  all_scripts = repos.sort.map do |dir|
+    Hashie::Mash.new(JSON.parse(File.read(File.join($repos_dir, dir, $git_script_file))))
+  end
+  return nil if all_scripts.empty?
+
+  # just the official scripts -- no renames, no deletions
+  script_files = Dir.entries($scripts_dir).reject { |e| %w{. .. .git}.include?(e) }
+  good_scripts = script_files.sort.map do |file|
+    Hashie::Mash.new(JSON.parse(File.read(File.join($scripts_dir, file))))
+  end
+
+  files = {
+    'scripts.json'               => lambda { good_scripts.map { |s| s.name }.to_json },
+    'script_ids.json'            => lambda { good_scripts.reduce({}) { |a,v| a[v.script_id.to_i] = v.name; a }.to_json },
+    'script_original_names.json' => lambda { all_scripts.reduce({}) { |a,v| a[v.display_name] = v.name; a }.to_json },
+    'scripts_recent.json'        => lambda { scripts_recent good_scripts }
+  }
+
+  files.each do |name,proc|
+    puts "  generating #{doc_dir}/api/#{name}"
+    File.open("#{doc_dir}/api/#{name}", 'w') do |f|
+      f.write proc.call
     end
-    return nil if all_scripts.empty?
+  end
 
-    # just the official scripts -- no renames, no deletions
-    script_files = Dir.entries($scripts_dir).reject { |e| %w{. .. .git}.include?(e) }
-    good_scripts = script_files.sort.map do |file|
-        Hashie::Mash.new(JSON.parse(File.read(File.join($scripts_dir, file))))
-    end
-
-    files = {
-        'scripts.json'               => lambda { good_scripts.map { |s| s.name }.to_json },
-        'script_ids.json'            => lambda { good_scripts.reduce({}) { |a,v| a[v.script_id.to_i] = v.name; a }.to_json },
-        'script_original_names.json' => lambda { all_scripts.reduce({}) { |a,v| a[v.display_name] = v.name; a }.to_json },
-        'scripts_recent.json'        => lambda { scripts_recent good_scripts }
-    }
-
-    files.each do |name,proc|
-        puts "  generating #{doc_dir}/api/#{name}"
-        File.open("#{doc_dir}/api/#{name}", 'w') do |f|
-            f.write proc.call
-        end
-    end
-
-    return files.keys.map { |name| "#{doc_dir}/api/#{name}" }
+  return files.keys.map { |name| "#{doc_dir}/api/#{name}" }
 end
 
 
 def generate_docs
-    # wish we could use a bare repo to keep the docs but they don't support merging
-    doc_dir = 'vim-scraper.github.com'
-    puts "generating docs"
+  # wish we could use a bare repo to keep the docs but they don't support merging
+  doc_dir = 'vim-scraper.github.com'
+  puts "generating docs"
 
-    site = nil
-    unless test ?d, doc_dir
-        site = GitRepo.new :root => doc_dir, :clone => "git@github.com:vim-scraper/vim-scraper.github.com.git"
-        site.remote_add 'vim-scripts', "git@github.com:vim-scraper/vim-scripts.git"
+  site = nil
+  unless test ?d, doc_dir
+    site = GitRepo.new :root => doc_dir, :clone => "git@github.com:vim-scraper/vim-scraper.github.com.git"
+    site.remote_add 'vim-scripts', "git@github.com:vim-scraper/vim-scripts.git"
+  end
+
+  site ||= GitRepo.new :root => doc_dir
+  site.pull 'vim-scripts', 'master'
+
+  updated_docs = generate_doc_files doc_dir
+  if updated_docs
+    author = { :name => $vimscripts_name, :email => $vimscripts_email }
+    site.commit('new scrape', author) do |commit|
+      updated_docs.each { |file| commit.add file, File.read(file) }
     end
+  end
 
-    site ||= GitRepo.new :root => doc_dir
-    site.pull 'vim-scripts', 'master'
-
-    updated_docs = generate_doc_files doc_dir
-    if updated_docs
-        author = { :name => $vimscripts_name, :email => $vimscripts_email }
-        site.commit('new scrape', author) do |commit|
-            updated_docs.each { |file| commit.add file, File.read(file) }
-        end
-    end
-
-    site.push 'origin', 'master'
+  site.push 'origin', 'master'
 end
 
 
 def filenameify(s)
-    # replace unsafe path chars.  keep posessive Michaels, not Michael-s
-    s.gsub(/^\s*|\s*$/, '').gsub(/'s/i, 's').gsub(/[^ A-Za-z0-9_\-!#\@\$^%&:;<?>+=(){|},.\[\]]/, '-')
+  # replace unsafe path chars.  keep posessive Michaels, not Michael-s
+  s.gsub(/^\s*|\s*$/, '').gsub(/'s/i, 's').gsub(/[^ A-Za-z0-9_\-!#\@\$^%&:;<?>+=(){|},.\[\]]/, '-')
 end
 
 
 def gittagify(s)
-    # replace any chars git might take issue with (space, backslash, ^:)?]
-    # git doesn't like it when a tag begins or ends with periods or dashes
-    s.gsub(/^\s*|\s*$/, '').gsub(/[^A-Za-z0-9_\-!#\@\$%&;<>+=(){|},.\]]/, '-').gsub(/^\./, '0.').gsub(/\.$/, '.0').gsub(/^-*|-*$/, '').gsub(/^\./, '0.').gsub(/\.$/, '.0').gsub(/\.\./, '._')
+  # replace any chars git might take issue with (space, backslash, ^:)?]
+  # git doesn't like it when a tag begins or ends with periods or dashes
+  s.gsub(/^\s*|\s*$/, '').gsub(/[^A-Za-z0-9_\-!#\@\$%&;<>+=(){|},.\]]/, '-').gsub(/^\./, '0.').gsub(/\.$/, '.0').gsub(/^-*|-*$/, '').gsub(/^\./, '0.').gsub(/\.$/, '.0').gsub(/\.\./, '._')
 end
 
 
 def githubify(s)
-    # these guys only allow A-Za-z0-9._- yet we need to try to keep the name readable.
-    s.gsub(/^\s*|\s*$/, '').gsub(/\s+-|-\s+/, '-').gsub(/\+\+/, 'pp').gsub(/([CF])#/i, "#{$1}sharp").gsub('::', '.').gsub('&', 'and').gsub(/\s+|:|\+/, '-').gsub(/^-|-$/, '').gsub(/[^A-Za-z0-9_.-]/, '')
+  # these guys only allow A-Za-z0-9._- yet we need to try to keep the name readable.
+  s.gsub(/^\s*|\s*$/, '').gsub(/\s+-|-\s+/, '-').gsub(/\+\+/, 'pp').gsub(/([CF])#/i, "#{$1}sharp").gsub('::', '.').gsub('&', 'and').gsub(/\s+|:|\+/, '-').gsub(/^-|-$/, '').gsub(/[^A-Za-z0-9_.-]/, '')
 end
 
 
 def script_version(version)
-    # some scripts don't assign a version so just use the date
-    s = version['script_version']
-    s = version['date'] if s =~ /^\s*$/
-    s
+  # some scripts don't assign a version so just use the date
+  s = version['script_version']
+  s = version['date'] if s =~ /^\s*$/
+  s
 end
 
 
 def hashkeyify name
-    # converts a repo name into something worthy of matching against
-    name.downcase
+  # converts a repo name into something worthy of matching against
+  name.downcase
 end
 
 
 def script_filename(script)
-    # if you change the filename format, also change script_extract_*
-    File.join($scripts_dir, "#{'%04d' % script['script_id']} - #{filenameify(script['name'])}.json")
+  # if you change the filename format, also change script_extract_*
+  File.join($scripts_dir, "#{'%04d' % script['script_id']} - #{filenameify(script['name'])}.json")
 end
 
 
 def script_extract_id script_name
-    # ignore leading 0s, otherwise to_i might mistakenly think it's octal
-    script_name =~ /^0*([0-9]+) - .+\.json$/ or raise "can't match #{script_name}"
-    $1
+  # ignore leading 0s, otherwise to_i might mistakenly think it's octal
+  script_name =~ /^0*([0-9]+) - .+\.json$/ or raise "can't match #{script_name}"
+  $1
 end
 
 
 def script_extract_name script_name
-    script_name =~ /^[0-9]+ - (.+)\.json$/ or raise "can't match #{script_name}";
-    $1
+  script_name =~ /^[0-9]+ - (.+)\.json$/ or raise "can't match #{script_name}";
+  $1
 end
 
 
 def repo_filename script_id, script_name
-    File.join($repos_dir, "#{filenameify(script_name)}.git")
+  File.join($repos_dir, "#{filenameify(script_name)}.git")
 end
 
 
 def repo_extract_name repo_name
-    repo_name =~ /^(.+)\.git$/ or raise "can't match #{repo_name}";
-    $1
+  repo_name =~ /^(.+)\.git$/ or raise "can't match #{repo_name}";
+  $1
 end
 
 
 def list_existing_scripts
-    # returns a hash of key=script name, value=filename
-    Hash[Dir.entries($repos_dir).reject { |e| %w{. .. .git}.include?(e) }.
-        map { |e| [hashkeyify(repo_extract_name(e)), e]}]
+  # returns a hash of key=script name, value=filename
+  Hash[Dir.entries($repos_dir).reject { |e| %w{. .. .git}.include?(e) }.
+    map { |e| [hashkeyify(repo_extract_name(e)), e]}]
 end
 
 
 def highest_script_id
-    Dir.entries($scripts_dir).reject { |e| %w{. .. .git}.include?(e) }.
-        map { |e| script_extract_id(e).to_i }.max
+  Dir.entries($scripts_dir).reject { |e| %w{. .. .git}.include?(e) }.
+    map { |e| script_extract_id(e).to_i }.max
 end
 
 
 # if a script has been renamed, it will have multiple repos with
 # the same id (the old ones will have a README pointing to the new one)
 def find_scripts_by_id script_id
-    Dir.entries($scripts_dir).reject { |e| %w{. .. .git}.include?(e) }.
-        select { |e| script_extract_id(e).to_i == script_id.to_i }
+  Dir.entries($scripts_dir).reject { |e| %w{. .. .git}.include?(e) }.
+    select { |e| script_extract_id(e).to_i == script_id.to_i }
 end
 
 
 # we don't try too hard to unobfuscate addresses but we definitely want them to be legal
 # these rules were created by fiddling until most results looked plausible and all were legal.
 def fix_email_address author
-    email = author['email'].dup
-    email = "unspecified@example.com" if email =~ /^\s*$/
-    email.gsub!(/\s+[\[(]?at[)\]]?\s+/i, '@')
-    email.gsub!(/\s+[\[(]?dot[)\]]?\s+/i, '.')
-    # not sure how this next one will do with IDNs?
-    # actually, without it we only fail on 9 of 1643 addresses
-    # email.gsub!(/[^A-Za-z0-9!#\$%&'*+\/=?^`{|}~_@.-]/, '-')
-    email.gsub!(/\s+|[:<>\[\]()"]/, '-')     # some common evil chars
-    email.gsub!(/^\-+|\-+$/, '')             # no dashes at start or end
-    email = "unspecified@example.com" if email =~ /^\s*$/
-    email = "X#{email}" if email =~ /^@/     # fix "@gmail" with no local part
-    email = "invalid@#{email}" unless email.include?('@')
-    email = "#{email}.example.com" unless email =~ /[A-Za-z0-9]$/
-    addr = Mail::Address.new(email) rescue Mail::Address.new("unparseable@example.com")
-    addr.display_name = [author['first_name'], author['last_name']].select { |s| s =~ /\S/ }.join(' ').gsub(/\s+/, ' ')
-    [addr.display_name, addr.address]
+  email = author['email'].dup
+  email = "unspecified@example.com" if email =~ /^\s*$/
+  email.gsub!(/\s+[\[(]?at[)\]]?\s+/i, '@')
+  email.gsub!(/\s+[\[(]?dot[)\]]?\s+/i, '.')
+  # not sure how this next one will do with IDNs?
+  # actually, without it we only fail on 9 of 1643 addresses
+  # email.gsub!(/[^A-Za-z0-9!#\$%&'*+\/=?^`{|}~_@.-]/, '-')
+  email.gsub!(/\s+|[:<>\[\]()"]/, '-')     # some common evil chars
+  email.gsub!(/^\-+|\-+$/, '')             # no dashes at start or end
+  email = "unspecified@example.com" if email =~ /^\s*$/
+  email = "X#{email}" if email =~ /^@/     # fix "@gmail" with no local part
+  email = "invalid@#{email}" unless email.include?('@')
+  email = "#{email}.example.com" unless email =~ /[A-Za-z0-9]$/
+  addr = Mail::Address.new(email) rescue Mail::Address.new("unparseable@example.com")
+  addr.display_name = [author['first_name'], author['last_name']].select { |s| s =~ /\S/ }.join(' ').gsub(/\s+/, ' ')
+  [addr.display_name, addr.address]
 end
 
 
 def fix_release_notes version
-    msg = version['release_notes']
-    msg.gsub!(/[ \t]+$/u, '')      # remove trailing whitespace on each line
-    if msg.length > 70 || msg.include?("\n")
-        # message is too long, we'll insert our own first line
-        msg = "Version #{version['script_version']}\n\n#{msg}"
-    else
-        msg = "Version #{version['script_version']}: #{msg}"
-    end
-    msg + "\n"
+  msg = version['release_notes']
+  msg.gsub!(/[ \t]+$/u, '')      # remove trailing whitespace on each line
+  if msg.length > 70 || msg.include?("\n")
+    # message is too long, we'll insert our own first line
+    msg = "Version #{version['script_version']}\n\n#{msg}"
+  else
+    msg = "Version #{version['script_version']}: #{msg}"
+  end
+  msg + "\n"
 end
 
 
 def author script
-    # returns the author's first and last name or nil if this script has multiple authors.
-    # can't just check author id because a number of authors have abandoned old accounts and created new ones
-    first_name = script['versions'][0]['author']['first_name']
-    last_name  = script['versions'][0]['author']['last_name']
-    if first_name =~ /^\s*$/ && last_name =~ /^\s*$/
-        # user declined to state first and last name so we're forced to check by login
-        last_name = script['versions'][0]['author']['user_name']
-        script['versions'][1..-1].each { |v|
-            return nil unless v['author']['user_name'] == last_name
-        }
-    else
-        if last_name =~ /^\s*$/
-            # if author states first name but not last name, we swap em.
-            last_name = first_name
-            first_name = ""
-        end
-        script['versions'][1..-1].each { |v|
-            return nil unless v['author']['first_name'] == first_name && v['author']['last_name'] == last_name
-        }
+  # returns the author's first and last name or nil if this script has multiple authors.
+  # can't just check author id because a number of authors have abandoned old accounts and created new ones
+  first_name = script['versions'][0]['author']['first_name']
+  last_name  = script['versions'][0]['author']['last_name']
+  if first_name =~ /^\s*$/ && last_name =~ /^\s*$/
+    # user declined to state first and last name so we're forced to check by login
+    last_name = script['versions'][0]['author']['user_name']
+    script['versions'][1..-1].each { |v|
+      return nil unless v['author']['user_name'] == last_name
+    }
+  else
+    if last_name =~ /^\s*$/
+      # if author states first name but not last name, we swap em.
+      last_name = first_name
+      first_name = ""
     end
-    return [first_name, last_name]
+    script['versions'][1..-1].each { |v|
+      return nil unless v['author']['first_name'] == first_name && v['author']['last_name'] == last_name
+    }
+  end
+  return [first_name, last_name]
 end
 
 
 def name_conflict_exists all_scripts, script
-    # if the script's name doesn't conflict with any script in all_scripts,
-    repo_dir = all_scripts[hashkeyify(script['name'])]
-    return nil unless repo_dir    # no conflict
+  # if the script's name doesn't conflict with any script in all_scripts,
+  repo_dir = all_scripts[hashkeyify(script['name'])]
+  return nil unless repo_dir    # no conflict
 
-    # or if it's the same script, then that's OK.
-    new_script = JSON.parse(File.read(File.join($repos_dir, repo_dir, $git_script_file)))
-    return nil if new_script['script_id'].to_i == script['script_id'].to_i
+  # or if it's the same script, then that's OK.
+  new_script = JSON.parse(File.read(File.join($repos_dir, repo_dir, $git_script_file)))
+  return nil if new_script['script_id'].to_i == script['script_id'].to_i
 
-    # there's a conflict.  return the conflicting script.
-    new_script
+  # there's a conflict.  return the conflicting script.
+  new_script
 end
 
 
 # can't have two scripts with the same name on github.
 # try to figure out an intelligent name for the newer repo.
 def resolve_name_conflicts script
-    return nil unless script
-    all_scripts = list_existing_scripts
+  return nil unless script
+  all_scripts = list_existing_scripts
 
-    existing_script = name_conflict_exists(all_scripts, script)
-    return script unless existing_script
+  existing_script = name_conflict_exists(all_scripts, script)
+  return script unless existing_script
 
-    # if the author is different, try that first
-    script_author = author(script)
-    if script_author && script_author != author(existing_script)
-        script['display_name'] += ' -- ' + script_author[1]
-        script['name'] += '--' + githubify(script_author[1])
-    end
-    existing_script = name_conflict_exists(all_scripts, script)
-    return script unless existing_script
+  # if the author is different, try that first
+  script_author = author(script)
+  if script_author && script_author != author(existing_script)
+    script['display_name'] += ' -- ' + script_author[1]
+    script['name'] += '--' + githubify(script_author[1])
+  end
+  existing_script = name_conflict_exists(all_scripts, script)
+  return script unless existing_script
 
-    # otherwise, see if we can differentiate by type
-    if script['script_type'] != existing_script['script_type']
-        script['display_name'] += ' ' + script['script_type']
-        script['name'] += '-' + githubify(script['script_type'])
-    end
-    existing_script = name_conflict_exists(all_scripts, script)
-    return script unless existing_script
+  # otherwise, see if we can differentiate by type
+  if script['script_type'] != existing_script['script_type']
+    script['display_name'] += ' ' + script['script_type']
+    script['name'] += '-' + githubify(script['script_type'])
+  end
+  existing_script = name_conflict_exists(all_scripts, script)
+  return script unless existing_script
 
-    script['display_name'] += ' B'
-    script['name'] += '-B'
-    # otherwise, just tack a sequence letter on the end. didn't want to use a
-    # number because "php.vim 2" looks like a newer release of "php.vim")
-    while existing_script = name_conflict_exists(all_scripts, script)
-        script['name'][-1] = (script['name'][-1].ord + 1).chr
-        script['display_name'][-1] = (script['name'][-1].ord + 1).chr
-        raise "what the heck?" if script['name'][-1] > 'Z'
-    end
+  script['display_name'] += ' B'
+  script['name'] += '-B'
+  # otherwise, just tack a sequence letter on the end. didn't want to use a
+  # number because "php.vim 2" looks like a newer release of "php.vim")
+  while existing_script = name_conflict_exists(all_scripts, script)
+    script['name'][-1] = (script['name'][-1].ord + 1).chr
+    script['display_name'][-1] = (script['name'][-1].ord + 1).chr
+    raise "what the heck?" if script['name'][-1] > 'Z'
+  end
 
-    script
+  script
 end
 
 
 def open_repo script_id, script_name
-    repo_path = repo_filename script_id, script_name
-    GitRepo.new(:root => repo_path, :bare => true, :create => true)
+  repo_path = repo_filename script_id, script_name
+  GitRepo.new(:root => repo_path, :bare => true, :create => true)
 end
 
 
 def mark_repo_as_duplicate dupe, new_script
-    # add a commit that deletes all files and creates a README pointing to the new repo
-    repo = open_repo(script_extract_id(dupe), script_extract_name(dupe))
-    committer = { :name => $vimscripts_name, :email => $vimscripts_email }
-    repo.commit("Renamed to #{new_script['display_name']}", committer, committer) do |commit|
-        commit.empty_index
-        commit.add 'README', "This script has been renamed to #{new_script['display_name']}.\n\n#{repo_url new_script}\n"
-    end
+  # add a commit that deletes all files and creates a README pointing to the new repo
+  repo = open_repo(script_extract_id(dupe), script_extract_name(dupe))
+  committer = { :name => $vimscripts_name, :email => $vimscripts_email }
+  repo.commit("Renamed to #{new_script['display_name']}", committer, committer) do |commit|
+    commit.empty_index
+    commit.add 'README', "This script has been renamed to #{new_script['display_name']}.\n\n#{repo_url new_script}\n"
+  end
 end
 
 
 # when a script gets renamed we copy the local repo so the git
 # objects don't change and then install a README file in the old repo
 def resolve_renamed_scripts script
-    return nil unless script
-    dupes = find_scripts_by_id(script['script_id']).reject do |x|
-        # the new script isn't a duplicate
-        script_extract_name(x) == script['name']
+  return nil unless script
+  dupes = find_scripts_by_id(script['script_id']).reject do |x|
+    # the new script isn't a duplicate
+    script_extract_name(x) == script['name']
+  end
+
+  dupes.each do |dupe|
+    puts "RENAMED: #{dupe} to #{script['display_name']}"
+
+    new_repo = repo_filename(script['script_id'], script['name'])
+    old_repo = repo_filename(script_extract_id(dupe), script_extract_name(dupe))
+    # copy the existing repo so the objects don't change
+    # (the new repo shouldn't exist but it's not worth dying if it does)
+    FileUtils.cp_r old_repo, new_repo unless test ?d, new_repo
+
+    # old repos have a bad timezone, use filter-branch to fix it before pushing
+    # http://vim-scripts.org/news/2011/06/23/picky-about-timezones.html
+    Dir.chdir(new_repo) do
+      system "git filter-branch --env-filter '' --tag-name-filter cat HEAD"
+      raise "git filter-branch failed: #{$?}" unless $?.success?
     end
 
-    dupes.each do |dupe|
-        puts "RENAMED: #{dupe} to #{script['display_name']}"
+    mark_repo_as_duplicate dupe, script
+    puts "  pushing obsolete repo"
+    perform_push old_repo
+    # delete the obsolete script file
+    File.delete File.join($scripts_dir, dupe)
+  end
 
-        new_repo = repo_filename(script['script_id'], script['name'])
-        old_repo = repo_filename(script_extract_id(dupe), script_extract_name(dupe))
-        # copy the existing repo so the objects don't change
-        # (the new repo shouldn't exist but it's not worth dying if it does)
-        FileUtils.cp_r old_repo, new_repo unless test ?d, new_repo
-
-        # old repos have a bad timezone, use filter-branch to fix it before pushing
-        # http://vim-scripts.org/news/2011/06/23/picky-about-timezones.html
-        Dir.chdir(new_repo) do
-            system "git filter-branch --env-filter '' --tag-name-filter cat HEAD"
-            raise "git filter-branch failed: #{$?}" unless $?.success?
-        end
-
-        mark_repo_as_duplicate dupe, script
-        puts "  pushing obsolete repo"
-        perform_push old_repo
-        # delete the obsolete script file
-        File.delete File.join($scripts_dir, dupe)
-    end
-
-    script
+  script
 end
 
 
 def write_script script
-    return unless script
-    filename = script_filename(script)
-    puts "Scraped #{filename}"
-    File.open(filename, 'w') do |f|
-        farg = fix_encoding(script)
-        # check_encoding(farg)
-        f.write json_pretty(farg)
-    end
-    filename
+  return unless script
+  filename = script_filename(script)
+  puts "Scraped #{filename}"
+  File.open(filename, 'w') do |f|
+    farg = fix_encoding(script)
+    # check_encoding(farg)
+    f.write json_pretty(farg)
+  end
+  filename
 end
 
 
 def compute_unique_tag tag, seen
-    while seen[tag]
-        # ack, it's a dupe!
-        tag.sub! /@(\d+)$/, ''
-        tag += "@" + (($1||0).to_i + 1).to_s
-    end
-    seen[tag] = true
-    tag
+  while seen[tag]
+    # ack, it's a dupe!
+    tag.sub! /@(\d+)$/, ''
+    tag += "@" + (($1||0).to_i + 1).to_s
+  end
+  seen[tag] = true
+  tag
 end
 
 
 def dedup_script_versions script
-    # some scripts have versions with identical version numbers.  :(
-    seen = {}
-    script['versions'].reverse.each do |version|
-        version['script_version'] = compute_unique_tag version['script_version'], seen
-    end
+  # some scripts have versions with identical version numbers.  :(
+  seen = {}
+  script['versions'].reverse.each do |version|
+    version['script_version'] = compute_unique_tag version['script_version'], seen
+  end
 end
 
 
 def download_file url, dest
-    retryable(:on => OpenURI::HTTPError, :task => "  downloading #{url} to #{dest}") do |retries|
-        open(url, 'rb') do |u|
-            File.open(dest, 'wb') { |f| f.write(u.read) }
-        end
+  retryable(:on => OpenURI::HTTPError, :task => "  downloading #{url} to #{dest}") do |retries|
+    open(url, 'rb') do |u|
+      File.open(dest, 'wb') { |f| f.write(u.read) }
     end
+  end
 end
 
 
 def copy_file commit, filename, contents
-    # skip swapfiles or crap Apple files that authors accidentally check in
-    unless filename =~ /\.[^\/]+\.sw[n-p]$/ || filename =~ /~$/ || filename =~ /\.(?:_\.)?DS_Store$/ || filename =~ /(?:^|\/)\._/
-        commit.add filename, contents
-    end
+  # skip swapfiles or crap Apple files that authors accidentally check in
+  unless filename =~ /\.[^\/]+\.sw[n-p]$/ || filename =~ /~$/ || filename =~ /\.(?:_\.)?DS_Store$/ || filename =~ /(?:^|\/)\._/
+    commit.add filename, contents
+  end
 end
 
 
 def cleanpath path     # lifted from git-wiki
-    path = path.gsub /^[\/\s]*/, ''
-    names = path.split('/').reject { |str| str =~ /^\s*$/ }
-    i = 0
-    while i < names.length
-        case names[i]
-        when '..'
-            names.delete_at(i)
-            if i>0
-                names.delete_at(i-1)
-                i-=1
-            end
-        when '.'
-            names.delete_at(i)
-        else
-            i+=1
-        end
+  path = path.gsub /^[\/\s]*/, ''
+  names = path.split('/').reject { |str| str =~ /^\s*$/ }
+  i = 0
+  while i < names.length
+    case names[i]
+    when '..'
+      names.delete_at(i)
+      if i>0
+        names.delete_at(i-1)
+        i-=1
+      end
+    when '.'
+      names.delete_at(i)
+    else
+      i+=1
     end
-    names.join('/')
+  end
+  names.join('/')
 end
 
 
 # wish the site had a compiler file type.  as it is, we need to
 # sniff the file contents to determine if it's a compiler plugin.
 def is_compiler_file contents
-    contents.lines.each do |l|
-        next if l =~ /^\s*("|$)/;  # skip blank lines and comments
-        # afaict 'if exists("current_compiler")' on the first line means compiler plugin
-        return l =~ /^\s*if\s*\(?\s*exists\s*\(\s*["']current_compiler["']\s*\)/
-    end
-    return false
+  contents.lines.each do |l|
+    next if l =~ /^\s*("|$)/;  # skip blank lines and comments
+    # afaict 'if exists("current_compiler")' on the first line means compiler plugin
+    return l =~ /^\s*if\s*\(?\s*exists\s*\(\s*["']current_compiler["']\s*\)/
+  end
+  return false
 end
 
 
 # sniff file contents to determine if it's a keymap file
 def is_keymap_file contents
-    # thanks to http://github.com/vim-scripts/greek_polytonic.vim, we can't assume
-    # that we'll find keymap_name near the top of the file.
-    # also see check_for_keymap_helper
-    contents.lines.find { |line| line =~ /^\s*let\s+b:keymap_name\s*=/ }
+  # thanks to http://github.com/vim-scripts/greek_polytonic.vim, we can't assume
+  # that we'll find keymap_name near the top of the file.
+  # also see check_for_keymap_helper
+  contents.lines.find { |line| line =~ /^\s*let\s+b:keymap_name\s*=/ }
 end
 
 
 # returns the new path if a change was made, or nil if not.
 # returns true if the file should just be suppressed.
 def fix_file_location script, path
-    fix = $file_location_fixes[script['script_id'].to_i]
-    if fix
-        fix.each do |re,sub|
-            if sub.nil?
-                # suppress the file if re matches
-                return path =~ re ? true : nil
-            else
-                # path substitution
-                newpath = path.gsub re, sub
-                return newpath if newpath != path
-            end
-        end
+  fix = $file_location_fixes[script['script_id'].to_i]
+  if fix
+    fix.each do |re,sub|
+      if sub.nil?
+        # suppress the file if re matches
+        return path =~ re ? true : nil
+      else
+        # path substitution
+        newpath = path.gsub re, sub
+        return newpath if newpath != path
+      end
     end
-    return nil
+  end
+  return nil
 end
 
 
 def smart_copy_file repo, script, filename, contents
-    filename = cleanpath(filename)
-    if newpath = fix_file_location(script, filename)
-        copy_file repo, newpath, contents unless newpath == true
-    elsif filename =~ /^[^\/]+\.vim$/
-        # vimfile in the root directory
-        encoded_contents = contents.dup    # this encoding stuff is killing me
-        encoded_contents.force_encoding "ASCII-8BIT"
+  filename = cleanpath(filename)
+  if newpath = fix_file_location(script, filename)
+    copy_file repo, newpath, contents unless newpath == true
+  elsif filename =~ /^[^\/]+\.vim$/
+    # vimfile in the root directory
+    encoded_contents = contents.dup    # this encoding stuff is killing me
+    encoded_contents.force_encoding "ASCII-8BIT"
 
-        if filename =~ /_options\.vim$/
-            # convention seems to be to put example options to copy into
-            # your vimrc in a file in the root dir called plugin_options.name
-            copy_file(repo,  filename, contents)
-        elsif is_compiler_file encoded_contents
-            copy_file(repo, "compiler/" + filename, contents)
-        elsif is_keymap_file encoded_contents
-            copy_file(repo, "keymap/" + filename, contents)
-        else
-            case script['script_type']
-            when 'color scheme' then copy_file(repo, "colors/" + filename, contents)
-            when 'ftplugin' then copy_file(repo, "ftplugin/" + filename, contents)
-            when 'game' then copy_file(repo, "plugin/" + filename, contents)
-            when 'indent' then copy_file(repo, "indent/" + filename, contents)
-            when 'syntax' then copy_file(repo, "syntax/" + filename, contents)
-            when 'utility' then copy_file(repo, "plugin/" + filename, contents)
-            when 'patch' then copy_file(repo, "plugin/" + filename, contents)
-            else
-                # if this fires, they must have added more script types?!
-                raise "Don't know where to put #{filename} for #{script['script_type']}"
-            end
-        end
-    elsif filename =~ /^[^\/]+\.txt$/
-        # docfile in the root directory
-        copy_file(repo, "doc/" + filename, contents)
-    elsif filename =~ /(autoload|after)\/(#{$vimdirs.join('|')})\/([^\/]+)$/
-        # vimdir in autoload or after: a/b/autoload/plugin/fixit.vim
-        copy_file(repo, "#{$1}/#{$2}/#{$3}", contents)
-    elsif filename =~ /^[^\/]+\/(#{$vimdirs.join('|')})\/([^\/]+)$/
-        # developer put vimfiles in a subdir, i.e. fixit/plugin/fixit.vim.
-        copy_file(repo, "#{$1}/#{$2}", contents)
+    if filename =~ /_options\.vim$/
+      # convention seems to be to put example options to copy into
+      # your vimrc in a file in the root dir called plugin_options.name
+      copy_file(repo,  filename, contents)
+    elsif is_compiler_file encoded_contents
+      copy_file(repo, "compiler/" + filename, contents)
+    elsif is_keymap_file encoded_contents
+      copy_file(repo, "keymap/" + filename, contents)
     else
-        copy_file(repo, filename, contents)
+      case script['script_type']
+      when 'color scheme' then copy_file(repo, "colors/" + filename, contents)
+      when 'ftplugin' then copy_file(repo, "ftplugin/" + filename, contents)
+      when 'game' then copy_file(repo, "plugin/" + filename, contents)
+      when 'indent' then copy_file(repo, "indent/" + filename, contents)
+      when 'syntax' then copy_file(repo, "syntax/" + filename, contents)
+      when 'utility' then copy_file(repo, "plugin/" + filename, contents)
+      when 'patch' then copy_file(repo, "plugin/" + filename, contents)
+      else
+        # if this fires, they must have added more script types?!
+        raise "Don't know where to put #{filename} for #{script['script_type']}"
+      end
     end
+  elsif filename =~ /^[^\/]+\.txt$/
+    # docfile in the root directory
+    copy_file(repo, "doc/" + filename, contents)
+  elsif filename =~ /(autoload|after)\/(#{$vimdirs.join('|')})\/([^\/]+)$/
+    # vimdir in autoload or after: a/b/autoload/plugin/fixit.vim
+    copy_file(repo, "#{$1}/#{$2}/#{$3}", contents)
+  elsif filename =~ /^[^\/]+\/(#{$vimdirs.join('|')})\/([^\/]+)$/
+    # developer put vimfiles in a subdir, i.e. fixit/plugin/fixit.vim.
+    copy_file(repo, "#{$1}/#{$2}", contents)
+  else
+    copy_file(repo, filename, contents)
+  end
 end
 
 
-def common_prefix set 
-    # http://stackoverflow.com/questions/1916218/find-the-longest-common-starting-substring-in-a-set-of-strings
-    chars = set.map {|w| w.split('') }
-    chars[0].zip(*chars[1..-1]).map { |c| c.uniq }.take_while { |c| c.size == 1 }.join
+def common_prefix set
+  # http://stackoverflow.com/questions/1916218/find-the-longest-common-starting-substring-in-a-set-of-strings
+  chars = set.map {|w| w.split('') }
+  chars[0].zip(*chars[1..-1]).map { |c| c.uniq }.take_while { |c| c.size == 1 }.join
 end
 
 
 def copy_filesystem repo, script, dir, opts={}
-    paths = []
-    Find.find(dir) do |path|
-        if test(?l, path) or path =~ /(?:^|\/)(\.git|.hg|\.bzr|\.svn)$/i
-            Find.prune
-        else
-            # make sure all subdirs are readable
-            File.chmod 0700, path if test ?d, path
-            # only work on files, and ignore anything that the caller says should be skipped
-            paths << path if test(?f, path) && (block_given? ? !yield(path) : true)
-        end
+  paths = []
+  Find.find(dir) do |path|
+    if test(?l, path) or path =~ /(?:^|\/)(\.git|.hg|\.bzr|\.svn)$/i
+      Find.prune
+    else
+      # make sure all subdirs are readable
+      File.chmod 0700, path if test ?d, path
+      # only work on files, and ignore anything that the caller says should be skipped
+      paths << path if test(?f, path) && (block_given? ? !yield(path) : true)
+    end
+  end
+
+  return if paths.empty?    # script 1433 is all directories, no files!
+  prefix = paths.count == 1 ?  File.dirname(paths.first) : common_prefix(paths)
+  prefix.sub! /\/+[^\/]*$/, '' unless test ?d, prefix  # trim any partial filenames
+  prefix.sub! /(?:^|\/)#{Regexp.union $vimdirs}(?:\/.*|$)/, ''  # don't trim any vim dirs
+
+  paths.each do |path|
+    # make all files rw and preserve the executable bit
+    mode = File::Stat.new(path).mode
+    File.chmod 0600 | (mode & 0700), path
+
+    if opts[:smart]
+      # trim as much as we can off the front of the path
+      localpath = path.sub /^#{Regexp.escape prefix}\/*/, ''
+    else
+      # use the archive location as the path
+      localpath = path.sub /^#{Regexp.escape dir}\/*/, ''
     end
 
-    return if paths.empty?    # script 1433 is all directories, no files!
-    prefix = paths.count == 1 ?  File.dirname(paths.first) : common_prefix(paths)
-    prefix.sub! /\/+[^\/]*$/, '' unless test ?d, prefix  # trim any partial filenames
-    prefix.sub! /(?:^|\/)#{Regexp.union $vimdirs}(?:\/.*|$)/, ''  # don't trim any vim dirs
-
-    paths.each do |path|
-        # make all files rw and preserve the executable bit
-        mode = File::Stat.new(path).mode
-        File.chmod 0600 | (mode & 0700), path
-
-        if opts[:smart]
-            # trim as much as we can off the front of the path
-            localpath = path.sub /^#{Regexp.escape prefix}\/*/, ''
-        else
-            # use the archive location as the path
-            localpath = path.sub /^#{Regexp.escape dir}\/*/, ''
-        end
-
-        if opts[:smart]
-            smart_copy_file repo, script, localpath, File.read(path)
-        else
-            copy_file repo, localpath, File.read(path)
-        end
+    if opts[:smart]
+      smart_copy_file repo, script, localpath, File.read(path)
+    else
+      copy_file repo, localpath, File.read(path)
     end
+  end
 end
 
 
 def corrupt_vimball where
-    puts "  corrupt vimball at #{where}"
-    throw :corrupt
+  puts "  corrupt vimball at #{where}"
+  throw :corrupt
 end
 
 
 def unvimball repo, script, vimball
-    # this routine deeply inspired by
-    # https://github.com/carlhuda/janus/commit/6ae56116aa9f1cd65af43bd550405295ff2f5967
-    lines = File.readlines(vimball).map &:chomp
+  # this routine deeply inspired by
+  # https://github.com/carlhuda/janus/commit/6ae56116aa9f1cd65af43bd550405295ff2f5967
+  lines = File.readlines(vimball).map &:chomp
 
-    # If UseVimball and finish headers aren't found, archive is corrupt
-    # This should be /^" Vimball Archiver/ but the BOM screws Ruby up.
-    corrupt_vimball "A" unless lines.shift =~ /" Vimball Archiver/
-    until (current = lines.shift) =~ /UseVimball\s*$/
-        corrupt_vimball "B" unless current =~ /^\s*("|$)/
-    end
-    until (current = lines.shift) =~ /finish\s*$/
-        corrupt_vimball "C" unless current =~ /^\s*("|$)/
-    end
+  # If UseVimball and finish headers aren't found, archive is corrupt
+  # This should be /^" Vimball Archiver/ but the BOM screws Ruby up.
+  corrupt_vimball "A" unless lines.shift =~ /" Vimball Archiver/
+  until (current = lines.shift) =~ /UseVimball\s*$/
+    corrupt_vimball "B" unless current =~ /^\s*("|$)/
+  end
+  until (current = lines.shift) =~ /finish\s*$/
+    corrupt_vimball "C" unless current =~ /^\s*("|$)/
+  end
 
-    while current = lines.shift
-        # filename (followed by who knows), then the number of lines, then the data
-        path = current
-        path.sub! /\t\[\[\[1$/, ''
-        path.gsub! '\\', '/'
-        current = lines.shift
-        num_lines = current[/^(\d+)$/, 1].to_i
-        data = lines.slice!(0, num_lines)
+  while current = lines.shift
+    # filename (followed by who knows), then the number of lines, then the data
+    path = current
+    path.sub! /\t\[\[\[1$/, ''
+    path.gsub! '\\', '/'
+    current = lines.shift
+    num_lines = current[/^(\d+)$/, 1].to_i
+    data = lines.slice!(0, num_lines)
 
-        unless path == 'doc/tags'
-            path = cleanpath path
-            path = fix_file_location(script, path) || path
-            copy_file repo, path, data.join("\n")+"\n" unless path == true
-        end
+    unless path == 'doc/tags'
+      path = cleanpath path
+      path = fix_file_location(script, path) || path
+      copy_file repo, path, data.join("\n")+"\n" unless path == true
     end
+  end
 end
 
 
 def unshell repo, script, localpath, cmd
-    Dir.mktmpdir('scraper') do |tmpdir|
-        fullpath = File.expand_path(localpath)
-        Dir.chdir(tmpdir) do
-            cmd = [*cmd, fullpath]
-            # unzip returns a 1 exit code for success with warnings
-            unless system(*cmd) || (cmd[0] == 'unzip' && $?.exitstatus == 1)
-                raise "couldn't run #{cmd.join(' ')}: #{$?}"
-            end
-        end
-        copy_filesystem repo, script, tmpdir, :smart => true
+  Dir.mktmpdir('scraper') do |tmpdir|
+    fullpath = File.expand_path(localpath)
+    Dir.chdir(tmpdir) do
+      cmd = [*cmd, fullpath]
+      # unzip returns a 1 exit code for success with warnings
+      unless system(*cmd) || (cmd[0] == 'unzip' && $?.exitstatus == 1)
+        raise "couldn't run #{cmd.join(' ')}: #{$?}"
+      end
     end
+    copy_filesystem repo, script, tmpdir, :smart => true
+  end
 end
 
 
 def ungzip file
-    Zlib::GzipReader.open(file) { |gz| yield(gz) }
+  Zlib::GzipReader.open(file) { |gz| yield(gz) }
 end
 
 
 def unbzip2 file
-    Bzip2::Reader.open(file) { |bz| yield(bz) }
+  Bzip2::Reader.open(file) { |bz| yield(bz) }
 end
 
 
 def unxz file
-      IO.popen(['xz', '-d', '--to-stdout', file]) do |contents|
-          yield(contents)
-      end
+  IO.popen(['xz', '-d', '--to-stdout', file]) do |contents|
+    yield(contents)
+  end
 end
 
 
 def download_package version, script
-    pkgname = "#{version['date']} #{filenameify(script_version(version))} #{filenameify(version['filename'])}"
-    pkgdir = File.join($packages_dir, "#{'%04d' % script['script_id']} - #{filenameify(script['name'])}")
-    Dir.mkdir pkgdir unless test ?d, pkgdir
-    pkgfile = File.join(pkgdir, pkgname)
-    download_file(version['url'], pkgfile) unless test ?f, pkgfile
-    return pkgfile
+  pkgname = "#{version['date']} #{filenameify(script_version(version))} #{filenameify(version['filename'])}"
+  pkgdir = File.join($packages_dir, "#{'%04d' % script['script_id']} - #{filenameify(script['name'])}")
+  Dir.mkdir pkgdir unless test ?d, pkgdir
+  pkgfile = File.join(pkgdir, pkgname)
+  download_file(version['url'], pkgfile) unless test ?f, pkgfile
+  return pkgfile
 end
 
 
 def sense_zipped_file repo, script, filename, infile
-    # sense the payload of a compressed file.  don't want to recurse into sense_file: too complex.
-    contents = infile.read
-    contents.force_encoding('ASCII-8BIT')
-    Tempfile.open('scraper') do |ttfile|
-        ttfile.write(contents)
-        ttfile.close
+  # sense the payload of a compressed file.  don't want to recurse into sense_file: too complex.
+  contents = infile.read
+  contents.force_encoding('ASCII-8BIT')
+  Tempfile.open('scraper') do |ttfile|
+    ttfile.write(contents)
+    ttfile.close
 
-        if MimeMagic.by_magic(contents) == 'application/x-tar'
-            unshell repo, script, ttfile.path, ['tar', 'xf']
-        elsif contents[0..512] =~ /^\bUseVimball\s*$/
-            unvimball repo, script, ttfile.path
-        else
-            smart_copy_file repo, script, filename, contents
-        end
+    if MimeMagic.by_magic(contents) == 'application/x-tar'
+      unshell repo, script, ttfile.path, ['tar', 'xf']
+    elsif contents[0..512] =~ /^\bUseVimball\s*$/
+      unvimball repo, script, ttfile.path
+    else
+      smart_copy_file repo, script, filename, contents
     end
+  end
 end
 
 
 def is_some_sort_of_zipfile type
-    type.include?('application/zip') || type.include?('application/x-gzip') || type.include?('application/x-bzip')
+  type.include?('application/zip') || type.include?('application/x-gzip') || type.include?('application/x-bzip')
 end
 
 
 def sense_file repo, actual_name, pkgfile
-    # some files lie about their type (claim to be .zips but are just .vim files).  fix em.
-    extension_type = MIME::Types.type_for(actual_name)
-    magic_type = File.open(pkgfile) { |f| MimeMagic.by_magic(f) }
-    if ( extension_type.include?(magic_type) ||
-        (extension_type.include?('application/x-bzip2') && magic_type == 'application/x-bzip') ||
-        (extension_type.include?('application/x-rar-compressed') && magic_type == 'application/x-rar') )
-        # we're good, extension and magic match up
+  # some files lie about their type (claim to be .zips but are just .vim files).  fix em.
+  extension_type = MIME::Types.type_for(actual_name)
+  magic_type = File.open(pkgfile) { |f| MimeMagic.by_magic(f) }
+  if ( extension_type.include?(magic_type) ||
+    (extension_type.include?('application/x-bzip2') && magic_type == 'application/x-bzip') ||
+    (extension_type.include?('application/x-rar-compressed') && magic_type == 'application/x-rar') )
+    # we're good, extension and magic match up
+  else
+    # need to figure out what's going on and fix it.
+    if (magic_type.nil? || magic_type.text?) && actual_name =~ /#{$textext}/
+      # no problem, it's a textfile
+    elsif actual_name =~ /\.vba$|\.vmb$|\.vimball$/
+      # arg, a vimball.  let it through.  see sense_zipped_file for vimball sensing.
+    elsif actual_name =~ /^[^a-z]*\.VIM$/
+      # i guess dos users might do everything in caps
+      actual_name.downcase!
+    elsif actual_name =~ /^(.*)\.VIM$/
+      actual_name = "#{$1}.vim"
+    elsif ( %w{application/x-awk application/x-perl application/x-ruby application/x-shellscript application/xml}.include?(magic_type.to_s) ||
+      (magic_type == nil && %w{vimopen cleanswap cvsvimdiff vmake vim_menu_HTMLpol}.include?(actual_name)) ||
+      %w{zshrc vimrc _vimrc .vimrc}.include?(actual_name) ||
+      actual_name =~ /\.dict$/ || %w{pydiction xdebug2}.include?(actual_name) ||  # dictionaries
+      actual_name =~ /\.applescript$/ ||
+      magic_type == 'application/x-java' ||
+      magic_type == 'application/x-ms-dos-executable' )
+      # names and magic have failed us, copy these files over raw
+      copy_file(repo, actual_name, File.read(pkgfile))
+      actual_name = nil
+    elsif magic_type == 'application/x-tar' && extension_type.include?('application/x-gtar')
+      # extension claims tarfile was gzipped but magic claims it wasn't.  Trust the magic.
+      actual_name += '.tar'
+    elsif magic_type == 'application/zip' && extension_type.include?('application/x-java-archive')
+      # jarfiles sense as zipfiles so don't let the fixup code below "correct" the package extension
+    elsif magic_type == 'application/zip'
+      # authors have uploaded a lot of compressed archives without the correct extension.
+      actual_name += '.zip'
+    elsif magic_type == 'application/x-gzip'
+      actual_name += '.gz'
+    elsif magic_type == 'application/x-bzip'
+      actual_name += '.bz2'
+    elsif magic_type == 'application/x-7z-compressed'
+      actual_name += '.7z'
+    elsif magic_type == 'application/x-xz'
+      actual_name += '.xz'
+    elsif is_some_sort_of_zipfile(extension_type)
+      # extension claims zipfile but magic disagrees, this happens a lot
+      actual_name.sub!(/\.zip$|\.tar\.gz$|\.tar\.bz2?$|\.tgz$|\.tbz2?$/i, '')
+      if magic_type == 'text/x-python'
+        actual_name += '.py'
+      elsif magic_type.nil? || magic_type.text?   # chances are it's a vimscript...?
+        actual_name += '.vim'   # http://www.vim.org/scripts/script.php?script_id=29
+      elsif magic_type == 'application/x-tar'
+        actual_name += '.tar'
+      else
+        # just need to hope that nobody makes this mistake anymore.  if they do, fix this function.
+        raise "unknown failed zip type for #{actual_name}: #{magic_type}"
+      end
+    elsif magic_type == 'application/x-macbinary'
+      copy_file(repo, actual_name + '.macbinary', File.read(pkgfile))
+      actual_name = nil
+    elsif !magic_type && actual_name =~ /^exUtility-[0-9.]*.tar$/
+      # odd that magic couldn't sense this valid tarfile.  owell, process it as normal.
+    elsif extension_type.include?('application/x-tar') && magic_type == nil
+      # magic has a bug where tarfiles are missed: http://github.com/minad/mimemagic/issues/#issue/1
+      # when this happens, we just blindly trust the extension.
     else
-        # need to figure out what's going on and fix it.
-        if (magic_type.nil? || magic_type.text?) && actual_name =~ /#{$textext}/
-            # no problem, it's a textfile
-        elsif actual_name =~ /\.vba$|\.vmb$|\.vimball$/
-            # arg, a vimball.  let it through.  see sense_zipped_file for vimball sensing.
-        elsif actual_name =~ /^[^a-z]*\.VIM$/
-            # i guess dos users might do everything in caps
-            actual_name.downcase!
-        elsif actual_name =~ /^(.*)\.VIM$/
-            actual_name = "#{$1}.vim"
-        elsif ( %w{application/x-awk application/x-perl application/x-ruby application/x-shellscript application/xml}.include?(magic_type.to_s) ||
-                (magic_type == nil && %w{vimopen cleanswap cvsvimdiff vmake vim_menu_HTMLpol}.include?(actual_name)) ||
-                %w{zshrc vimrc _vimrc .vimrc}.include?(actual_name) ||
-                actual_name =~ /\.dict$/ || %w{pydiction xdebug2}.include?(actual_name) ||  # dictionaries
-                actual_name =~ /\.applescript$/ ||
-                magic_type == 'application/x-java' ||
-                magic_type == 'application/x-ms-dos-executable' )
-            # names and magic have failed us, copy these files over raw
-            copy_file(repo, actual_name, File.read(pkgfile))
-            actual_name = nil
-        elsif magic_type == 'application/x-tar' && extension_type.include?('application/x-gtar')
-            # extension claims tarfile was gzipped but magic claims it wasn't.  Trust the magic.
-            actual_name += '.tar'
-        elsif magic_type == 'application/zip' && extension_type.include?('application/x-java-archive')
-            # jarfiles sense as zipfiles so don't let the fixup code below "correct" the package extension
-        elsif magic_type == 'application/zip'
-        # authors have uploaded a lot of compressed archives without the correct extension.
-            actual_name += '.zip'
-        elsif magic_type == 'application/x-gzip'
-            actual_name += '.gz'
-        elsif magic_type == 'application/x-bzip'
-            actual_name += '.bz2'
-        elsif magic_type == 'application/x-7z-compressed'
-            actual_name += '.7z'
-        elsif magic_type == 'application/x-xz'
-            actual_name += '.xz'
-        elsif is_some_sort_of_zipfile(extension_type)
-            # extension claims zipfile but magic disagrees, this happens a lot
-            actual_name.sub!(/\.zip$|\.tar\.gz$|\.tar\.bz2?$|\.tgz$|\.tbz2?$/i, '')
-            if magic_type == 'text/x-python'
-                actual_name += '.py'
-            elsif magic_type.nil? || magic_type.text?   # chances are it's a vimscript...?
-                actual_name += '.vim'   # http://www.vim.org/scripts/script.php?script_id=29
-            elsif magic_type == 'application/x-tar'
-                actual_name += '.tar'
-            else
-                # just need to hope that nobody makes this mistake anymore.  if they do, fix this function.
-                raise "unknown failed zip type for #{actual_name}: #{magic_type}"
-            end
-        elsif magic_type == 'application/x-macbinary'
-            copy_file(repo, actual_name + '.macbinary', File.read(pkgfile))
-            actual_name = nil
-        elsif !magic_type && actual_name =~ /^exUtility-[0-9.]*.tar$/
-            # odd that magic couldn't sense this valid tarfile.  owell, process it as normal.
-        elsif extension_type.include?('application/x-tar') && magic_type == nil
-            # magic has a bug where tarfiles are missed: http://github.com/minad/mimemagic/issues/#issue/1
-            # when this happens, we just blindly trust the extension.
-        else
-            # there's such a range of reasons why this will happen that there's nothing to do but
-            # have a human improve this function to handle this case.  :(
-            raise "differing mime types for #{actual_name}, ext claims #{extension_type} but magic is #{magic_type.inspect}"
-        end
+      # there's such a range of reasons why this will happen that there's nothing to do but
+      # have a human improve this function to handle this case.  :(
+      raise "differing mime types for #{actual_name}, ext claims #{extension_type} but magic is #{magic_type.inspect}"
     end
-    return actual_name
+  end
+  return actual_name
 end
 
 
 def add_version repo, version, script
-    # adds all the files in the package to the repo
-    pkgfile = download_package(version, script)
-    actual_name = sense_file(repo, version['filename'], pkgfile)
+  # adds all the files in the package to the repo
+  pkgfile = download_package(version, script)
+  actual_name = sense_file(repo, version['filename'], pkgfile)
 
-    case actual_name
-    when nil then # do nothing
+  case actual_name
+  when nil then # do nothing
 
     # need to special-case 3584 - checklist.vim because the zipfile is too new.
     # TODO: switch to unzipping all zipfiles with 7z once this bug is fixed:
     # https://sourceforge.net/tracker/?func=detail&aid=3310980&group_id=14481&atid=114481
-    when /checklist-v0.51.zip$/ then unshell repo, script, pkgfile, ['7z', 'x']
+  when /checklist-v0.51.zip$/ then unshell repo, script, pkgfile, ['7z', 'x']
 
-    when /#{$textext}/ then smart_copy_file repo, script, actual_name, File.read(pkgfile)
-    when /\.zip$/i then unshell repo, script, pkgfile, ['unzip']
-    when /\.tar$/ then unshell repo, script, pkgfile, ['tar', 'xf']
-    when /\.t?gz$/i then ungzip(pkgfile) { |contents| sense_zipped_file(repo, script, version['filename'].sub(/\.t?gz$/, ''), contents) }
-    when /\.t?bz2?$/i then unbzip2(pkgfile) { |contents| sense_zipped_file(repo, script, version['filename'].sub(/\.t?bz2?$/, ''), contents) }
-    when /\.xz$/ then unxz(pkgfile) { |contents| sense_zipped_file(repo, script, version['filename'].sub(/\.xz$/, ''), contents) }
-    when /\.7z$/ then unshell repo, script, pkgfile, ['7za', 'x']
-    when /\.rar$/ then unshell repo, script, pkgfile, ['unrar', 'x']
-    when /\.vba$|\.vmb$|\.vimball$/ then unvimball repo, script, pkgfile
-    when /\.jar$/ then copy_file repo, actual_name, File.read(pkgfile)
-    when /\.gif$|\.jpe?g$|\.png$/ then copy_file repo, actual_name, File.read(pkgfile)
-    else
-        # probably need to add a new text file extension to $textext.
-        # if not, it's probably a new compression format.
-        raise "unknown filetype: #{actual_name}"
-    end
+  when /#{$textext}/ then smart_copy_file repo, script, actual_name, File.read(pkgfile)
+  when /\.zip$/i then unshell repo, script, pkgfile, ['unzip']
+  when /\.tar$/ then unshell repo, script, pkgfile, ['tar', 'xf']
+  when /\.t?gz$/i then ungzip(pkgfile) { |contents| sense_zipped_file(repo, script, version['filename'].sub(/\.t?gz$/, ''), contents) }
+  when /\.t?bz2?$/i then unbzip2(pkgfile) { |contents| sense_zipped_file(repo, script, version['filename'].sub(/\.t?bz2?$/, ''), contents) }
+  when /\.xz$/ then unxz(pkgfile) { |contents| sense_zipped_file(repo, script, version['filename'].sub(/\.xz$/, ''), contents) }
+  when /\.7z$/ then unshell repo, script, pkgfile, ['7za', 'x']
+  when /\.rar$/ then unshell repo, script, pkgfile, ['unrar', 'x']
+  when /\.vba$|\.vmb$|\.vimball$/ then unvimball repo, script, pkgfile
+  when /\.jar$/ then copy_file repo, actual_name, File.read(pkgfile)
+  when /\.gif$|\.jpe?g$|\.png$/ then copy_file repo, actual_name, File.read(pkgfile)
+  else
+    # probably need to add a new text file extension to $textext.
+    # if not, it's probably a new compression format.
+    raise "unknown filetype: #{actual_name}"
+  end
 end
 
 
 def check_for_readme_file commit
-    # we drop a README file into each repo.  don't want to conflict with one already there.
-    commit.entries.each do |name|
-        if name =~ /^README$/i
-            raise "already have a readme.orig!" if commit.entries.find { |n| n =~ /^readme\.orig$/i }
-            commit.add name+'.orig', commit.remove(name)
-        end
+  # we drop a README file into each repo.  don't want to conflict with one already there.
+  commit.entries.each do |name|
+    if name =~ /^README$/i
+      raise "already have a readme.orig!" if commit.entries.find { |n| n =~ /^readme\.orig$/i }
+      commit.add name+'.orig', commit.remove(name)
     end
+  end
 end
 
 
 def check_for_keymap_helper commit, script
-    # It's easy to autodetect keymap files (see is_keymap_file above)
-    # but some keymaps come with additional scripts that are not so common
-    return unless commit.entry('keymap') && commit.entry('plugin')
-    names = commit.entry('keymap', :tree)
-    namesre = Regexp.union names
-    commit.entry('plugin', :tree).each do |name|
-        contents = commit.entry("plugin/#{name}").dup
-        contents.force_encoding "ASCII-8BIT"
-        if contents.lines.find { |line| line =~ /^\s*source\s+<sfile>:p:h\/#{namesre}/ }
-            # yep, it's a keymap helper.
-            data = commit.remove "plugin/#{name}"
-            copy_file commit, "keymap/#{name}", data
-        end
+  # It's easy to autodetect keymap files (see is_keymap_file above)
+  # but some keymaps come with additional scripts that are not so common
+  return unless commit.entry('keymap') && commit.entry('plugin')
+  names = commit.entry('keymap', :tree)
+  namesre = Regexp.union names
+  commit.entry('plugin', :tree).each do |name|
+    contents = commit.entry("plugin/#{name}").dup
+    contents.force_encoding "ASCII-8BIT"
+    if contents.lines.find { |line| line =~ /^\s*source\s+<sfile>:p:h\/#{namesre}/ }
+      # yep, it's a keymap helper.
+      data = commit.remove "plugin/#{name}"
+      copy_file commit, "keymap/#{name}", data
     end
+  end
 end
 
 
 def corrupted_package script, version
-    # returns true if this version has been hard-coded as corrupted
-    names = $skip_packages[script['script_id'].to_i]
-    names && [names].flatten.include?("#{version['date']} #{version['script_version']}")
+  # returns true if this version has been hard-coded as corrupted
+  names = $skip_packages[script['script_id'].to_i]
+  names && [names].flatten.include?("#{version['date']} #{version['script_version']}")
 end
 
 
 def store_versions_in_repo repo, script
-    committer = { :name => $vimscripts_name, :email => $vimscripts_email }
-    puts "Processing script #{script['script_id']}: #{script['name']}"
-    count = 0
+  committer = { :name => $vimscripts_name, :email => $vimscripts_email }
+  puts "Processing script #{script['script_id']}: #{script['name']}"
+  count = 0
 
-    script['versions'].reverse.each do |version|
-        # todo: rather than bailing, we should bit-for-bit verify
-        tagname = gittagify(script_version(version))
-        next if repo.find_tag(tagname)
+  script['versions'].reverse.each do |version|
+    # todo: rather than bailing, we should bit-for-bit verify
+    tagname = gittagify(script_version(version))
+    next if repo.find_tag(tagname)
 
-        next if corrupted_package(script, version)
+    next if corrupted_package(script, version)
 
-        author_name, author_email = fix_email_address(version['author'])
-        author = { :name => author_name, :email => author_email,
-                   :date => Time.new(*version['date'].split('-'), 0, 0, 0, 0) }
+    author_name, author_email = fix_email_address(version['author'])
+    author = { :name => author_name, :email => author_email,
+      :date => Time.new(*version['date'].split('-'), 0, 0, 0, 0) }
 
-        catch :corrupt do
-            puts "  adding #{version['filename']} #{version['date']} #{script_version(version)}"
-            repo.commit(fix_release_notes(version), author, committer) do |commit|
-                commit.empty_index
-                add_version commit, version, script
-                check_for_keymap_helper commit, script
-                check_for_readme_file commit
-                copy_file(commit, 'README', "This is a mirror of #{script_id_to_url(script['script_id'])}\n\n" + script['description'] + "\n") unless repo.root['README']
-            end
-            sver = script_version(version)
-            puts "  tagging with #{gittagify(sver)} from #{sver}"
-            repo.create_tag gittagify(sver), "tag #{sver}", committer
-            count += 1
-        end
+    catch :corrupt do
+      puts "  adding #{version['filename']} #{version['date']} #{script_version(version)}"
+      repo.commit(fix_release_notes(version), author, committer) do |commit|
+        commit.empty_index
+        add_version commit, version, script
+        check_for_keymap_helper commit, script
+        check_for_readme_file commit
+        copy_file(commit, 'README', "This is a mirror of #{script_id_to_url(script['script_id'])}\n\n" + script['description'] + "\n") unless repo.root['README']
+      end
+      sver = script_version(version)
+      puts "  tagging with #{gittagify(sver)} from #{sver}"
+      repo.create_tag gittagify(sver), "tag #{sver}", committer
+      count += 1
     end
-    count
+  end
+  count
 end
 
 
 def repo_url script
-    "http://github.com/vim-scripts/#{script['name']}"
+  "http://github.com/vim-scripts/#{script['name']}"
 end
 
 
@@ -1285,292 +1284,292 @@ end
 # see this for more: http://help.github.com/multiple-keys
 
 def remote_url script
-    "git@vim-scripts.github.com:vim-scripts/#{script['name']}"
+  "git@vim-scripts.github.com:vim-scripts/#{script['name']}"
 end
 
 
 def perform_push repo_name
-    return unless repo_name
-    github = GitHub.new
-    repo = GitRepo.new :root => repo_name, :bare => true
-    script = Hashie::Mash.new(JSON.parse(File.read(File.join(repo_name, $git_script_file))))
-    puts "Uploading #{script['script_id']} - #{script['name']}"
+  return unless repo_name
+  github = GitHub.new
+  repo = GitRepo.new :root => repo_name, :bare => true
+  script = Hashie::Mash.new(JSON.parse(File.read(File.join(repo_name, $git_script_file))))
+  puts "Uploading #{script['script_id']} - #{script['name']}"
 
-    remote = begin
-        github.info script.name
-      rescue Octokit::NotFound
-        nil
-      end
+  remote = begin
+    github.info script.name
+  rescue Octokit::NotFound
+    nil
+  end
 
-    if remote
-        # make sure this actually is the same repo
-        puts "  remote already exists: #{remote.url}"
-        remote.homepage =~ /script_id=(\d+)$/
-        raise "bad url on github repo #{script['name']}" unless $1
-        raise "remote #{script['name']} exists but id is for #{$1}" if script['script_id'] != $1
-    else
-        puts "  remote doesn't exist, creating..."
+  if remote
+    # make sure this actually is the same repo
+    puts "  remote already exists: #{remote.url}"
+    remote.homepage =~ /script_id=(\d+)$/
+    raise "bad url on github repo #{script['name']}" unless $1
+    raise "remote #{script['name']} exists but id is for #{$1}" if script['script_id'] != $1
+  else
+    puts "  remote doesn't exist, creating..."
+  end
+
+  unless remote
+    retryable(:task => "  creating #{script['script_id']} - #{script['name']}") do |retries|
+      remote = github.create(script.name,
+      :description => script.summary,
+      :homepage => script_id_to_url(script.script_id),
+      :public => true)
     end
+  end
 
-    unless remote
-        retryable(:task => "  creating #{script['script_id']} - #{script['name']}") do |retries|
-            remote = github.create(script.name,
-                :description => script.summary,
-                :homepage => script_id_to_url(script.script_id),
-                :public => true)
-        end
-    end
-
-    repo.remote_remove 'origin' rescue nil
-    repo.remote_add 'origin', remote_url(script)
-    retryable(:task => "  #{"force " if ENV['FORCE']}pushing #{script['script_id']} - #{script['name']}") do |retries|
-        args = ['--tags']
-        args << '--force' if ENV['FORCE']
-        args << 'origin'
-        args << 'master'
-        repo.push *args
-    end
+  repo.remote_remove 'origin' rescue nil
+  repo.remote_add 'origin', remote_url(script)
+  retryable(:task => "  #{"force " if ENV['FORCE']}pushing #{script['script_id']} - #{script['name']}") do |retries|
+    args = ['--tags']
+    args << '--force' if ENV['FORCE']
+    args << 'origin'
+    args << 'master'
+    repo.push *args
+  end
 end
 
 
 def perform_scrape script_id
-    script = scrape_script script_id
-    script = resolve_name_conflicts script
-    script = resolve_renamed_scripts script
-    write_script script
+  script = scrape_script script_id
+  script = resolve_name_conflicts script
+  script = resolve_renamed_scripts script
+  write_script script
 end
 
 
 def perform_download script_file
-    return [nil,-1] unless script_file
-    script = JSON.parse(File.read(script_file))
-    repo = open_repo script['script_id'], script['name']
+  return [nil,-1] unless script_file
+  script = JSON.parse(File.read(script_file))
+  repo = open_repo script['script_id'], script['name']
 
-    dedup_script_versions script
+  dedup_script_versions script
 
-    # store the script file in the repo it creates
-    File.open(File.join(repo.root, $git_script_file), 'w') { |f|
-        f.write json_pretty(script)
-    }
+  # store the script file in the repo it creates
+  File.open(File.join(repo.root, $git_script_file), 'w') { |f|
+    f.write json_pretty(script)
+  }
 
-    count = store_versions_in_repo(repo, script)
-    dump_repo "#{$repo_dir}/#{repo.root}", ENV['DUMP_REPO'] if ENV['DUMP_REPO']
-    FileUtils.rm_rf "#{$repo_dir}/#{repo.root}" if ENV['PURGE_REPOS']
-    [repo.root, count]
+  count = store_versions_in_repo(repo, script)
+  dump_repo "#{$repo_dir}/#{repo.root}", ENV['DUMP_REPO'] if ENV['DUMP_REPO']
+  FileUtils.rm_rf "#{$repo_dir}/#{repo.root}" if ENV['PURGE_REPOS']
+  [repo.root, count]
 end
 
 
 def dump_repo repo, stats_dir
-    raise "no repo" unless repo
-    repo = repo.gsub /\/$/, ''  # remove trailing / added by filename completion
-    ENV['GIT_DIR'] = repo
-    log = `git log --pretty=fuller --decorate=full --stat`
-    log = log.each_line.reduce([]) { |a,v|
-        v.gsub!(/^commit\s+[0-9A-Fa-f]*/, 'commit SHA1SHA1SHA1');  # make sha static, changes every run
-        v.gsub!(/, refs\/(remotes|heads)[^,)]*\/master/, '');      # remove info about what's on the remote TODO: can I remove this?
-        v.gsub!(/^( .*\|\s*[0-9]*)\s*[+-]*$/) { $1 };              # remove the git log --stat graph, it hides changes     sed -i 's/^\( .*\|\s*[0-9]*\)\s*[+-]*$/\1/' *
-        a.push(v) unless v =~ /^CommitDate: /;                     # remove CommitDate since that's different each run
-        a }.join
-    ENV.delete('GIT_DIR')
-    filename = File.join(stats_dir, File.basename(repo).gsub(/\.git$/, '') + '.stats')
-    puts "Stats in #{filename}"
-    File.open(filename, 'w') { |f|
-        f.write log
-    }
+  raise "no repo" unless repo
+  repo = repo.gsub /\/$/, ''  # remove trailing / added by filename completion
+  ENV['GIT_DIR'] = repo
+  log = `git log --pretty=fuller --decorate=full --stat`
+  log = log.each_line.reduce([]) { |a,v|
+    v.gsub!(/^commit\s+[0-9A-Fa-f]*/, 'commit SHA1SHA1SHA1');  # make sha static, changes every run
+    v.gsub!(/, refs\/(remotes|heads)[^,)]*\/master/, '');      # remove info about what's on the remote TODO: can I remove this?
+    v.gsub!(/^( .*\|\s*[0-9]*)\s*[+-]*$/) { $1 };              # remove the git log --stat graph, it hides changes     sed -i 's/^\( .*\|\s*[0-9]*\)\s*[+-]*$/\1/' *
+    a.push(v) unless v =~ /^CommitDate: /;                     # remove CommitDate since that's different each run
+    a }.join
+  ENV.delete('GIT_DIR')
+  filename = File.join(stats_dir, File.basename(repo).gsub(/\.git$/, '') + '.stats')
+  puts "Stats in #{filename}"
+  File.open(filename, 'w') { |f|
+    f.write log
+  }
 end
 
 
 def perform_all script_id, always_push=false
-    repo_name,count = perform_download(perform_scrape(script_id.to_s))
-    if $pushing && (always_push or count > 0)
-        perform_push repo_name
-    end
-    [repo_name, count]
+  repo_name,count = perform_download(perform_scrape(script_id.to_s))
+  if $pushing && (always_push or count > 0)
+    perform_push repo_name
+  end
+  [repo_name, count]
 end
 
 
 def fetch_rss
-    feed = Feedzirra::Feed.fetch_and_parse($rss_url)
-    raise "No feed -- network disconnected?" if feed == 0
-    puts "feed contains #{feed.entries.map { |e| script_id_from_url(e.url) }.inspect}"
-    feed
+  feed = Feedzirra::Feed.fetch_and_parse($rss_url)
+  raise "No feed -- network disconnected?" if feed == 0
+  puts "feed contains #{feed.entries.map { |e| script_id_from_url(e.url) }.inspect}"
+  feed
 end
 
 
 def timeout_expired?
-    if Time.now > $start_time + $max_run_time
-        puts "We are now #{Time.now - ($start_time + $max_run_time)} seconds past time to quit."
-        true
-    else
-        false
-    end
+  if Time.now > $start_time + $max_run_time
+    puts "We are now #{Time.now - ($start_time + $max_run_time)} seconds past time to quit."
+    true
+  else
+    false
+  end
 end
 
 
 def enter_full_mode state
-    state.mode = 'full'
-    feed = fetch_rss
-    unless feed.entries.first
-        puts "NO ENTRIES IN FEED??"
-        exit 1
-    end
-    state.target_rss_id = feed.entries.first.entry_id
-    state.full_index = 1
-    puts "Entering full scrape mode!  Target is #{script_id_from_url feed.entries.first.url} / #{feed.entries.first.entry_id}."
+  state.mode = 'full'
+  feed = fetch_rss
+  unless feed.entries.first
+    puts "NO ENTRIES IN FEED??"
+    exit 1
+  end
+  state.target_rss_id = feed.entries.first.entry_id
+  state.full_index = 1
+  puts "Entering full scrape mode!  Target is #{script_id_from_url feed.entries.first.url} / #{feed.entries.first.entry_id}."
 end
 
 
 def enter_rss_mode state
-    state.last_rss_id = state.target_rss_id
-    state.target_rss_id = nil
-    state.full_index = nil
-    state.mode = 'rss'
-    puts "Entering RSS scrape mode!"
+  state.last_rss_id = state.target_rss_id
+  state.target_rss_id = nil
+  state.full_index = nil
+  state.mode = 'rss'
+  puts "Entering RSS scrape mode!"
 end
 
 
 def perform_full
-    state = read_state
+  state = read_state
 
-    # The target rss id is the most recent rss id when we start the full scrape.
-    # If it's still in the feed when we finish the full scrape, we're synced
-    # and can return to rss mode.  If not, the full scrape must start again.
-    if state.target_rss_id.nil? || state.mode != 'full'
-        enter_full_mode state
-    else
-        puts "Resuming full scrape from #{state.full_index}.  Target is #{state.target_rss_id}."
-    end
+  # The target rss id is the most recent rss id when we start the full scrape.
+  # If it's still in the feed when we finish the full scrape, we're synced
+  # and can return to rss mode.  If not, the full scrape must start again.
+  if state.target_rss_id.nil? || state.mode != 'full'
+    enter_full_mode state
+  else
+    puts "Resuming full scrape from #{state.full_index}.  Target is #{state.target_rss_id}."
+  end
 
-    highest_index = highest_script_id
-    original_index = state.full_index
-    while true
-        break if timeout_expired?
-        # Always push the first repo for the same reason as in perform_rss.
-        # Only push subsequent repos if we actually downloaded changes because
-        # pushing takes a lot of time, even if there's nothing to push.
-        repo_name,count = perform_all(state.full_index, state.full_index == original_index)
-        if repo_name.nil? && state.full_index > highest_index + 4
-            # full scrape succeeded!
-            enter_rss_mode state
-            write_state state
-            # do an rss scrape so we don't lose sync while waiting for the cronjob to fire
-            perform_rss false
-            generate_docs
-            break
-        end
-        state.full_index += 1
-        write_state state
+  highest_index = highest_script_id
+  original_index = state.full_index
+  while true
+    break if timeout_expired?
+    # Always push the first repo for the same reason as in perform_rss.
+    # Only push subsequent repos if we actually downloaded changes because
+    # pushing takes a lot of time, even if there's nothing to push.
+    repo_name,count = perform_all(state.full_index, state.full_index == original_index)
+    if repo_name.nil? && state.full_index > highest_index + 4
+      # full scrape succeeded!
+      enter_rss_mode state
+      write_state state
+      # do an rss scrape so we don't lose sync while waiting for the cronjob to fire
+      perform_rss false
+      generate_docs
+      break
     end
+    state.full_index += 1
+    write_state state
+  end
 end
 
 
 def perform_rss fallback=true
-    state = read_state
-    if state.mode != 'rss' || !state.last_rss_id
-        perform_full
-        return nil
-    else
-        puts "Resuming RSS scrape."
-    end
+  state = read_state
+  if state.mode != 'rss' || !state.last_rss_id
+    perform_full
+    return nil
+  else
+    puts "Resuming RSS scrape."
+  end
 
-    feed = fetch_rss
+  feed = fetch_rss
+  entries = nil
+
+  last_index = feed.entries.index { |e| e.entry_id == state.last_rss_id }
+  if last_index
+    if last_index == 0
+      # rss is up to date!  nothing to scrape
+      entries = []
+    else
+      entries = feed.entries[0..(last_index - 1)]
+    end
+  else
+    puts "can't find  previous location #{state.last_rss_id} in the RSS feed."
+    if fallback
+      puts "Performing a full scrape from the beginning!"
+      perform_full
+    end
     entries = nil
+  end
 
-    last_index = feed.entries.index { |e| e.entry_id == state.last_rss_id }
-    if last_index
-        if last_index == 0
-            # rss is up to date!  nothing to scrape
-            entries = []
-        else
-            entries = feed.entries[0..(last_index - 1)]
-        end
-    else
-        puts "can't find  previous location #{state.last_rss_id} in the RSS feed."
-        if fallback
-            puts "Performing a full scrape from the beginning!"
-            perform_full
-        end
-        entries = nil
+  if entries
+    puts "   processing #{entries.map { |e| script_id_from_url(e.url) }.inspect}"
+    entries.reverse.each do |entry|
+      break if timeout_expired?
+      script_id = script_id_from_url(entry.url)
+      puts "Fetching script #{script_id} for rss #{entry.entry_id}"
+
+      # always_push=true because there's a chance the previous scrape failed due to
+      # a transient network error.  next time we run, we may find that there are
+      # no versions to download, but the repo still needs to be pushed.
+      perform_all(script_id, true)
+
+      state.last_rss_id = entry.entry_id
+      write_state state
     end
+    generate_docs
+  end
 
-    if entries
-        puts "   processing #{entries.map { |e| script_id_from_url(e.url) }.inspect}"
-        entries.reverse.each do |entry|
-            break if timeout_expired?
-            script_id = script_id_from_url(entry.url)
-            puts "Fetching script #{script_id} for rss #{entry.entry_id}"
-
-            # always_push=true because there's a chance the previous scrape failed due to
-            # a transient network error.  next time we run, we may find that there are
-            # no versions to download, but the repo still needs to be pushed.
-            perform_all(script_id, true)
-
-            state.last_rss_id = entry.entry_id
-            write_state state
-        end
-        generate_docs
-    end
-
-    entries ? entries.count : nil
+  entries ? entries.count : nil
 end
 
 
 def perform_continuous count
-    state = read_state
-    highest_script = highest_script_id
+  state = read_state
+  highest_script = highest_script_id
 
-    # Since vim.org explodes its 10-item RSS fed and forces a rescrape every few weeks,
-    # we'll never get past the first few hundred scripts if we always start from 0.
-    # Starting from a random number ensures eventually we should visit every script.
-    state.last_script_id ||= rand highest_script
+  # Since vim.org explodes its 10-item RSS fed and forces a rescrape every few weeks,
+  # we'll never get past the first few hundred scripts if we always start from 0.
+  # Starting from a random number ensures eventually we should visit every script.
+  state.last_script_id ||= rand highest_script
 
+  state.last_script_id += 1
+
+  # keep looking past the last known id in case rss missed new scripts
+  if state.last_script_id > highest_script + 3
+    puts "Count is #{state.last_script_id} and the highest known script id is #{highest_script_id}.  Starting from 0!"
+    state.last_script_id = 1
+  end
+
+  puts "Performing continuous scrape of #{state.last_script_id} through #{state.last_script_id+count-1}"
+  limit = state.last_script_id + count
+  while state.last_script_id < limit
+    break if timeout_expired?
+    puts "Fetching script #{state.last_script_id} for continuous scrape"
+    perform_all state.last_script_id, true
+    write_state state
     state.last_script_id += 1
-
-    # keep looking past the last known id in case rss missed new scripts
-    if state.last_script_id > highest_script + 3
-        puts "Count is #{state.last_script_id} and the highest known script id is #{highest_script_id}.  Starting from 0!"
-        state.last_script_id = 1
-    end
-
-    puts "Performing continuous scrape of #{state.last_script_id} through #{state.last_script_id+count-1}"
-    limit = state.last_script_id + count
-    while state.last_script_id < limit
-        break if timeout_expired?
-        puts "Fetching script #{state.last_script_id} for continuous scrape"
-        perform_all state.last_script_id, true
-        write_state state
-        state.last_script_id += 1
-    end
+  end
 end
 
 
 def fork_jobs args
-    # This helps a lot (14 mins to 9 mins) but could even be better.
-    # If 3 jobs are forked, 0-1100 gets done in 60% of the time of 2200-3300.
-    # Might fork batches of 10 at a time or something...  not sure it's
-    # worth the additional complexity just to save 30 sec though.
-    #   todo: what about randomizing the argument order before grouping them?
-    if ENV['JOBS']
-        ENV['JOBS'].to_i.downto(2) do |i|
-            workunit = args.count / i
-            if i > 1 && workunit > 0 && fork.nil?
-                args = args[0..workunit-1]
-                $child_number = i
-                break
-            else # parent
-                args = args[workunit..-1]
-            end
-        end
-        puts "Processing #{args.size} unit#{'s' if args.size != 1}."
+  # This helps a lot (14 mins to 9 mins) but could even be better.
+  # If 3 jobs are forked, 0-1100 gets done in 60% of the time of 2200-3300.
+  # Might fork batches of 10 at a time or something...  not sure it's
+  # worth the additional complexity just to save 30 sec though.
+  #   todo: what about randomizing the argument order before grouping them?
+  if ENV['JOBS']
+    ENV['JOBS'].to_i.downto(2) do |i|
+      workunit = args.count / i
+      if i > 1 && workunit > 0 && fork.nil?
+        args = args[0..workunit-1]
+        $child_number = i
+        break
+      else # parent
+        args = args[workunit..-1]
+      end
     end
-    args
+    puts "Processing #{args.size} unit#{'s' if args.size != 1}."
+  end
+  args
 end
 
 
 if __FILE__ == $0
-$start_time = Time.now
+  $start_time = Time.now
 
-if ARGV.empty?
+  if ARGV.empty?
     puts "Starting scrape at #{$start_time}"
     $ignore_cache = true
     # don't time out after 15 minutes if FOREVER=1
@@ -1578,71 +1577,71 @@ if ARGV.empty?
     count = perform_rss
     # also cycle through all packages in case the rss feed missed anything
     perform_continuous($idle_count - count) if count && $idle_count - count > 0
-elsif ARGV[0] == '--console'
+  elsif ARGV[0] == '--console'
     require 'irb'
     ARGV.shift
     IRB.start
-elsif ARGV[0] == '--docs'
+  elsif ARGV[0] == '--docs'
     generate_docs
-elsif ARGV[0] == '--dump'
+  elsif ARGV[0] == '--dump'
     args = ARGV[1..-1]
     stats_dir = 'scraper-stats'
     if args.empty?
-        # this is a full dump so remove old dumpfiles
-        Dir.entries(stats_dir).
-            reject { |f| f == '.' || f == '..' || f == '.git' }.
-            each { |f| File.delete(File.join(stats_dir, f)) }
-        args = Dir.entries($repos_dir).
-            reject { |f| f == '.' || f == '..' || f == '.git' }.
-            map { |f| File.join $repos_dir, f }.
-            sort
+      # this is a full dump so remove old dumpfiles
+      Dir.entries(stats_dir).
+        reject { |f| f == '.' || f == '..' || f == '.git' }.
+        each { |f| File.delete(File.join(stats_dir, f)) }
+      args = Dir.entries($repos_dir).
+        reject { |f| f == '.' || f == '..' || f == '.git' }.
+        map { |f| File.join $repos_dir, f }.
+        sort
     end
     args.each { |repo| dump_repo repo, stats_dir }
-elsif ARGV[0] == '--all'
+  elsif ARGV[0] == '--all'
     # this generates all the repos but doesn't push them
     $max_run_time = 10.days
     $ignore_cache = false
     $pushing = false
     perform_full
-else
+  else
     args = fork_jobs ARGV
     args.each do |arg|
-        # if you're passing args, you probably don't want the scraper to quit
-        # before it's finished processing them all.
-        $max_run_time = 10.days
+      # if you're passing args, you probably don't want the scraper to quit
+      # before it's finished processing them all.
+      $max_run_time = 10.days
 
-        if arg =~ /^\d+$/
-            $ignore_cache = true
-            # leading zeros cause script ID to be interpreted as octal
-            perform_all arg.gsub(/^0+/, ''), true
-        elsif arg =~ /^-(\d+)$/
-            # leading zeros cause script ID to be interpreted as octal
-            perform_scrape $1.gsub(/^0+/, '')
-        elsif test ?f, arg
-            perform_download arg
-        elsif test ?d, arg
-            retryable(:task => "pushing #{arg}") do |retries|
-                # sometimes, and it's hard to predict why, github errors out reliably
-                # for a few minutes, then magically fixes itself.
-                perform_push arg
-            end
-        elsif (f=Dir.glob("#{$scripts_dir}/???? - #{arg}.json")) && !f.empty? && test(?f, f.first)
-            # plain script name -- must have already been scraped tho
-            raise "multiple hits for #{arg}: #{f.inspect}" unless f.count == 1
-            f.first =~ /^#{$scripts_dir}\/(\d\d\d\d)/
-            perform_all $1.gsub(/^0+/, ''), true
-        else
-            raise "Could not recognize argument #{arg}"
+      if arg =~ /^\d+$/
+        $ignore_cache = true
+        # leading zeros cause script ID to be interpreted as octal
+        perform_all arg.gsub(/^0+/, ''), true
+      elsif arg =~ /^-(\d+)$/
+        # leading zeros cause script ID to be interpreted as octal
+        perform_scrape $1.gsub(/^0+/, '')
+      elsif test ?f, arg
+        perform_download arg
+      elsif test ?d, arg
+        retryable(:task => "pushing #{arg}") do |retries|
+          # sometimes, and it's hard to predict why, github errors out reliably
+          # for a few minutes, then magically fixes itself.
+          perform_push arg
         end
+      elsif (f=Dir.glob("#{$scripts_dir}/???? - #{arg}.json")) && !f.empty? && test(?f, f.first)
+        # plain script name -- must have already been scraped tho
+        raise "multiple hits for #{arg}: #{f.inspect}" unless f.count == 1
+        f.first =~ /^#{$scripts_dir}\/(\d\d\d\d)/
+        perform_all $1.gsub(/^0+/, ''), true
+      else
+        raise "Could not recognize argument #{arg}"
+      end
     end
 
     unless $child_number || args.count == ARGV.count
-        puts "waiting for children to finish..."
-        Process.wait
+      puts "waiting for children to finish..."
+      Process.wait
     end
-end
+  end
 
-stop = Time.now
-puts "done#{" #{$child_number}" if $child_number}.  Run took #{'%.2f' % (stop-$start_time)} seconds or #{ '%.3f' % ((stop-$start_time)/60)} minutes"
+  stop = Time.now
+  puts "done#{" #{$child_number}" if $child_number}.  Run took #{'%.2f' % (stop-$start_time)} seconds or #{ '%.3f' % ((stop-$start_time)/60)} minutes"
 
 end
