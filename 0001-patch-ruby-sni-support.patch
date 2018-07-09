@@ -1,0 +1,13 @@
+diff --git a/lib/net/http.rb b/lib/net/http.rb
+index c90b20297c08..a2891495d556 100644
+--- a/lib/net/http.rb
++++ b/lib/net/http.rb
+@@ -780,6 +780,8 @@ def connect
+             @socket.writeline ''
+             HTTPResponse.read_new(@socket).value
+           end
++          # Server Name Indication (SNI) RFC 3546
++          s.hostname = @address if s.respond_to? :hostname=
+           timeout(@open_timeout) { s.connect }
+           if @ssl_context.verify_mode != OpenSSL::SSL::VERIFY_NONE
+             s.post_connection_check(@address)

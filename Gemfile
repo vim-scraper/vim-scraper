@@ -19,10 +19,10 @@ gem 'mimemagic', '= 0.1.7'
 gem 'hpricot', '= 0.8.2'
 
 # we use some convenience features that other retryables don't support (yet?)
-gem 'retryable', git: 'git://github.com/bronson/retryable.git'
+gem 'retryable', git: 'https://github.com/bronson/retryable.git'
 
 # Desperately need bugfix for https://github.com/minad/gitrb/pull/11 but it looks like gitrb is end-of-lifed.
-gem 'gitrb', git: 'git://github.com/bronson/gitrb.git', branch: 'patch-1'
+gem 'gitrb', git: 'https://github.com/bronson/gitrb.git', branch: 'patch-1'
 
 group :test do
   gem 'rake'                # needed by travis-ci
