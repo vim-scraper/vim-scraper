@@ -1,0 +1,12 @@
+stats-*
+.bundle
+creds.json
+state.json
+repos*
+scraper-stats
+scripts
+packages
+webcache
+vim-scripts.github.com
+password
+ramdisk

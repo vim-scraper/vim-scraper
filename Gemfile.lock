@@ -1,13 +1,13 @@
 GIT
-  remote: git://github.com/bronson/gitrb.git
+  remote: https://github.com/bronson/gitrb.git
   revision: b026b6a45e95e36ff2759ba1d05ea6058a161dd0
   branch: patch-1
   specs:
     gitrb (0.2.8)
 
 GIT
-  remote: git://github.com/bronson/retryable.git
-  revision: 6bf1a505c8a8d03d486b713e606e5f920aa01b39
+  remote: https://github.com/bronson/retryable.git
+  revision: e5abac7f38cd784d76ddd5c0c220a9a5468084b0
   specs:
     retryable (0.9.0)
 
@@ -99,4 +99,4 @@ DEPENDENCIES
   webmock (~> 1.8)
 
 BUNDLED WITH
-   1.10.6
+   1.16.2

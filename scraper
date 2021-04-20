@@ -112,7 +112,7 @@ retryable_options :detect_nesting => true, :tries => 4,
 $vimscripts_name = "Able Scraper"
 $vimscripts_email = 'scraper@vim-scripts.org'
 
-$rss_url = 'http://feed43.com/vim-scripts.xml'
+$rss_url = 'https://feed43.com/vim-scripts.xml'
 $idle_count = 10    # number of scripts to scrape when we have nothing else to do
 $max_run_time = 14.minutes + 30.seconds    # script exits normally once this time has elapsed
 $repos_dir = ENV['REPOS_DIR'] || 'repos'        # if a repo has been renamed there will be duplicate ids in here
@@ -140,7 +140,7 @@ $skip_packages = {
 }
 
 # some scripts were created with the wrong type.  this fixes the ones that matter.
-#     http://groups.google.com/group/vim_use/msg/6f9f82e8c6fb4faa
+#     https://groups.google.com/group/vim_use/msg/6f9f82e8c6fb4faa
 # note that you must re-scrape after adding a fix ("./scraper 1780").
 # regenerating ("./scraper scripts/1780*") is not sufficient in this case.
 $script_type_fixes = {
@@ -191,7 +191,7 @@ def retryable_errors
 end
 
 
-# http://github.com/hpricot/hpricot/issues#issue/25
+# https://github.com/hpricot/hpricot/issues#issue/25
 # super ugly that hpricot manages to screw up charset encodings so badly.
 
 # hopefully the next version of hpricot allows us to get rid of these monkeypatches
@@ -286,6 +286,8 @@ def cached_open url, retries
   # ignore_cache should be true if we're running a real scrape and should
   # never use stale data.  Otherwise, leave it false so your testing and
   # debugging will just use the local file system.
+  uri = URI.parse('http://something.example.com/directory/')
+  OpenSSL::SSL::SSLSocket#hostname = uri.host
   if $ignore_cache || !File.exist?(path) || File.size(path) <= 0
     File.open(path, 'w') do |f|
       puts "downloading #{url}#{retries > 0 ? "  RETRY #{retries}" : ""}"
@@ -314,7 +316,7 @@ end
 def scrape_author user_id, retries
   $authors ||= []
   unless $authors[user_id.to_i]
-    doc = scrape_page "http://www.vim.org/account/profile.php?user_id=#{user_id}", retries
+    doc = scrape_page "https://www.vim.org/account/profile.php?user_id=#{user_id}", retries
     unless doc.at('td[text()="user name"]')
       puts "    no content received #{retries}"
       raise NoContentError.new "bad page"
@@ -333,7 +335,7 @@ end
 
 
 def script_id_to_url(script_id)
-  "http://www.vim.org/scripts/script.php?script_id=#{script_id}"
+  "https://www.vim.org/scripts/script.php?script_id=#{script_id}"
 end
 
 
@@ -386,13 +388,13 @@ def scrape_script(script_id)
 
   if false     # we don't use this info and it generates too much noise
     doc.search('td.lightbg~td').find { |e| e.inner_text =~ /Rating.*\s(-?\d+)\/(\d+),.*Downloaded[^\d]*(\d+)/m }
-    s['rating_total'], s['rating_votes'], s['downloads'] = $1, $2, $3      # http://www.vim.org/karma.php
+    s['rating_total'], s['rating_votes'], s['downloads'] = $1, $2, $3      # https://www.vim.org/karma.php
   end
 
   s['install_details'] = doc.at('td[text()="install details"]').parent.next_sibling.children.first.inner_content.gsub("\r", "\n")
   # reject links with targets so download links in the description don't appear to be a version (script 1843)
   s['versions'] = doc.search('a[@href*="download_script.php?"]').select { |e| e.attributes['target'].empty? }.to_a.map do |a|
-    v = {'url' => 'http://www.vim.org/scripts/' + a.attributes['href'],
+    v = {'url' => 'https://www.vim.org/scripts/' + a.attributes['href'],
       'filename' => a.inner_content}
     row = a.parent
     v['script_version'] = row.siblings_at(1).inner_content
@@ -764,7 +766,7 @@ def resolve_renamed_scripts script
     FileUtils.cp_r old_repo, new_repo unless test ?d, new_repo
 
     # old repos have a bad timezone, use filter-branch to fix it before pushing
-    # http://vim-scripts.org/news/2011/06/23/picky-about-timezones.html
+    # https://vim-scripts.org/news/2011/06/23/picky-about-timezones.html
     Dir.chdir(new_repo) do
       system "git filter-branch --env-filter '' --tag-name-filter cat HEAD"
       raise "git filter-branch failed: #{$?}" unless $?.success?
@@ -867,7 +869,7 @@ end
 
 # sniff file contents to determine if it's a keymap file
 def is_keymap_file contents
-  # thanks to http://github.com/vim-scripts/greek_polytonic.vim, we can't assume
+  # thanks to https://github.com/vim-scripts/greek_polytonic.vim, we can't assume
   # that we'll find keymap_name near the top of the file.
   # also see check_for_keymap_helper
   contents.lines.find { |line| line =~ /^\s*let\s+b:keymap_name\s*=/ }
@@ -941,7 +943,7 @@ end
 
 
 def common_prefix set
-  # http://stackoverflow.com/questions/1916218/find-the-longest-common-starting-substring-in-a-set-of-strings
+  # https://stackoverflow.com/questions/1916218/find-the-longest-common-starting-substring-in-a-set-of-strings
   chars = set.map {|w| w.split('') }
   chars[0].zip(*chars[1..-1]).map { |c| c.uniq }.take_while { |c| c.size == 1 }.join
 end
@@ -1143,7 +1145,7 @@ def sense_file repo, actual_name, pkgfile
       if magic_type == 'text/x-python'
         actual_name += '.py'
       elsif magic_type.nil? || magic_type.text?   # chances are it's a vimscript...?
-        actual_name += '.vim'   # http://www.vim.org/scripts/script.php?script_id=29
+        actual_name += '.vim'   # https://www.vim.org/scripts/script.php?script_id=29
       elsif magic_type == 'application/x-tar'
         actual_name += '.tar'
       else
@@ -1156,7 +1158,7 @@ def sense_file repo, actual_name, pkgfile
     elsif !magic_type && actual_name =~ /^exUtility-[0-9.]*.tar$/
       # odd that magic couldn't sense this valid tarfile.  owell, process it as normal.
     elsif extension_type.include?('application/x-tar') && magic_type == nil
-      # magic has a bug where tarfiles are missed: http://github.com/minad/mimemagic/issues/#issue/1
+      # magic has a bug where tarfiles are missed: https://github.com/minad/mimemagic/issues/#issue/1
       # when this happens, we just blindly trust the extension.
     else
       # there's such a range of reasons why this will happen that there's nothing to do but
@@ -1272,7 +1274,7 @@ end
 
 
 def repo_url script
-  "http://github.com/vim-scripts/#{script['name']}"
+  "https://github.com/vim-scripts/#{script['name']}"
 end
 
 
@@ -1281,7 +1283,7 @@ end
 # and create a ~/.ssh/config that has 2 Host sections:
 #   Host github.com\nHostName github.com\nUser git\nIdentityFile ~/.ssh/id_rsa
 #   Host vim-scripts.github.com\nHostName github.com\nUser git\nIdentityFile ~/.ssh/vimscripts-id_rsa
-# see this for more: http://help.github.com/multiple-keys
+# see this for more: https://help.github.com/multiple-keys
 
 def remote_url script
   "git@vim-scripts.github.com:vim-scripts/#{script['name']}"
@@ -1645,3 +1647,4 @@ if __FILE__ == $0
   puts "done#{" #{$child_number}" if $child_number}.  Run took #{'%.2f' % (stop-$start_time)} seconds or #{ '%.3f' % ((stop-$start_time)/60)} minutes"
 
 end
+
